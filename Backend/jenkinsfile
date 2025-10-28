@@ -17,7 +17,7 @@ pipeline {
             steps {
                 echo "📥 Clonando repositorio desde GitHub..."
                 checkout scm
-                sh 'ls -R SGH/Devops || true'
+                sh 'ls -R Devops || true'
             }
         }
 
@@ -43,7 +43,7 @@ pipeline {
                             break
                     }
 
-                    env.ENV_DIR = "SGH/Devops/${env.ENVIRONMENT}"
+                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
                     env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
                     env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
