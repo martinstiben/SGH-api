@@ -1,14 +1,17 @@
+version: '3.8'
+
 services:
+  # ==================== DESARROLLO ====================
   mysql-develop:
-    image: mysql:8.0
     container_name: sgh-mysql-develop
+    image: mysql:8.0
     restart: always
     env_file:
       - .env.dev
     ports:
       - "3306:3306"
     networks:
-      - network_develop
+      - network_mysql_develop
     volumes:
       - mysql_data_develop:/var/lib/mysql
       - "./backups/develop:/backups/mysql"
@@ -25,4 +28,4 @@ volumes:
   mysql_data_develop:
 
 networks:
-  network_develop:
+  network_mysql_develop:

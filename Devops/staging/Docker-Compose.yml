@@ -1,14 +1,17 @@
+version: '3.8'
+
 services:
+  # ==================== STAGING ====================
   mysql-staging:
-    image: mysql:8.0
     container_name: sgh-mysql-staging
+    image: mysql:8.0
     restart: always
     env_file:
       - .env.staging
     ports:
-      - "3307:3306"
+      - "3308:3306"
     networks:
-      - network_staging
+      - network_mysql_staging
     volumes:
       - mysql_data_staging:/var/lib/mysql
       - "./backups/staging:/backups/mysql"
@@ -25,4 +28,4 @@ volumes:
   mysql_data_staging:
 
 networks:
-  network_staging:
+  network_mysql_staging:
