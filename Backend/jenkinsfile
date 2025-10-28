@@ -2,10 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOTNET_CLI_HOME = '/var/jenkins_home/.dotnet'
-        DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
-        DOTNET_NOLOGO = '1'
-        PROJECT_PATH = 'GESCOMPH/WebGESCOMPH/WebGESCOMPH.csproj'
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
+        MAVEN_HOME = '/opt/maven'
+        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
+        PROJECT_PATH = 'SGH'
     }
 
     stages {
@@ -17,7 +17,7 @@ pipeline {
             steps {
                 echo "📥 Clonando repositorio desde GitHub..."
                 checkout scm
-                sh 'ls -R GESCOMPH/DevOps || true'
+                sh 'ls -R SGH/Devops || true'
             }
         }
 
@@ -32,20 +32,20 @@ pipeline {
                         case 'main':
                             env.ENVIRONMENT = 'prod'
                             break
-                        case 'staging':
-                            env.ENVIRONMENT = 'staging'
+                        case 'Staging':
+                            env.ENVIRONMENT = 'Staging'
                             break
-                        case 'qa':
-                            env.ENVIRONMENT = 'qa'
+                        case 'QA':
+                            env.ENVIRONMENT = 'QA'
                             break
                         default:
-                            env.ENVIRONMENT = 'develop'
+                            env.ENVIRONMENT = 'Develop'
                             break
                     }
 
-                    env.ENV_DIR = "GESCOMPH/DevOps/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "${env.ENV_DIR}/docker-compose.yml"
-                    env.ENV_FILE = "${env.ENV_DIR}/.env"
+                    env.ENV_DIR = "SGH/Devops/${env.ENVIRONMENT}"
+                    env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
                     echo """
                     ✅ Rama detectada: ${env.BRANCH_NAME}
@@ -64,17 +64,16 @@ pipeline {
         // =======================================================
         // 3️⃣ COMPILAR Y PUBLICAR .NET
         // =======================================================
-        stage('Compilar .NET dentro de contenedor SDK') {
+        stage('Compilar Java con Maven') {
             steps {
                 script {
-                    docker.image('mcr.microsoft.com/dotnet/sdk:9.0')
+                    docker.image('maven:3.9.4-openjdk-17-slim')
                         .inside('-v /var/run/docker.sock:/var/run/docker.sock -u root:root') {
                         sh '''
-                            echo "🔧 Restaurando dependencias .NET..."
-                            cd GESCOMPH
-                            dotnet restore WebGESCOMPH/WebGESCOMPH.csproj
-                            dotnet build WebGESCOMPH/WebGESCOMPH.csproj --configuration Release
-                            dotnet publish WebGESCOMPH/WebGESCOMPH.csproj -c Release -o ./publish
+                            echo "🔧 Compilando proyecto Java con Maven..."
+                            cd SGH
+                            mvn clean compile -DskipTests
+                            mvn package -DskipTests
                         '''
                     }
                 }
@@ -86,10 +85,10 @@ pipeline {
         // =======================================================
         stage('Construir imagen Docker') {
             steps {
-                dir('GESCOMPH') {
+                dir('SGH') {
                     sh """
-                        echo "🐳 Construyendo imagen Docker para GESCOMPH (${env.ENVIRONMENT})"
-                        docker build -t gescomph-api-${env.ENVIRONMENT}:latest -f WebGESCOMPH/Dockerfile .
+                        echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
+                        docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
                     """
                 }
             }
@@ -98,7 +97,7 @@ pipeline {
         // =======================================================
         // 5️⃣ DESPLEGAR CON DOCKER COMPOSE
         // =======================================================
-        stage('Desplegar GESCOMPH') {
+        stage('Desplegar SGH') {
             steps {
                 dir('.') {
                     sh """
@@ -112,10 +111,10 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Despliegue completado correctamente para ${env.ENVIRONMENT}"
+            echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
         }
         failure {
-            echo "💥 Error durante el despliegue en ${env.ENVIRONMENT}"
+            echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
         }
         always {
             echo "🧹 Limpieza final del pipeline completada."
