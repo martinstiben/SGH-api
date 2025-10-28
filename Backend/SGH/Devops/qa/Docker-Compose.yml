@@ -1,0 +1,28 @@
+services:
+  mysql-qa:
+    image: mysql:8.0
+    container_name: sgh-mysql-qa
+    restart: always
+    env_file:
+      - .env.qa
+    ports:
+      - "3308:3306"
+    networks:
+      - network_qa
+    volumes:
+      - mysql_data_qa:/var/lib/mysql
+      - "./backups/qa:/backups/mysql"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=qa
+
+volumes:
+  mysql_data_qa:
+
+networks:
+  network_qa:

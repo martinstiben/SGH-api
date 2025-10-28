@@ -1,0 +1,29 @@
+services:
+
+  mysql-prod:
+    image: mysql:8.0
+    container_name: sgh-mysql-prod
+    restart: always
+    env_file:
+      - .env.prod
+    ports:
+      - "3309:3306"
+    networks:
+      - network_prod
+    volumes:
+      - mysql_data_prod:/var/lib/mysql
+      - "./backups/prod:/backups/mysql"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=prod
+
+volumes:
+  mysql_data_prod:
+
+networks:
+  network_prod:
