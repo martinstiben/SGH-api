@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    options {
+        // Evita builds concurrentes que generan workspaces @2, @3
+        disableConcurrentBuilds()
+    }
+
     environment {
         PROJECT_PATH = 'Backend/SGH'
     }
@@ -9,7 +14,8 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                deleteDir() // limpia el workspace
+                // Limpia el workspace y clona el repo desde cero
+                deleteDir()
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: "*/${env.BRANCH_NAME}"]],
