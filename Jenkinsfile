@@ -93,7 +93,15 @@ pipeline {
             steps {
                 sh """
                     echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                    docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                    if ! command -v docker &> /dev/null; then
+                        echo "💥 Error: Docker no está instalado en este agente"
+                        exit 1
+                    fi
+                    if ! docker compose version &> /dev/null; then
+                        echo "💥 Error: Docker Compose v2 no está instalado en este agente"
+                        exit 1
+                    fi
+                    docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
                 """
             }
         }
