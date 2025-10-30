@@ -10,9 +10,6 @@ pipeline {
 
     stages {
 
-        // =======================================================
-        // 1️⃣ VERIFICAR ESTRUCTURA DEL REPO
-        // =======================================================
         stage('Verificar estructura') {
             steps {
                 echo "📁 Explorando estructura del repositorio..."
@@ -20,9 +17,6 @@ pipeline {
             }
         }
 
-        // =======================================================
-        // 2️⃣ DETECTAR ENTORNO SEGÚN LA RAMA
-        // =======================================================
         stage('Detectar entorno') {
             steps {
                 script {
@@ -59,14 +53,12 @@ pipeline {
             }
         }
 
-        // =======================================================
-        // 3️⃣ COMPILAR Y PUBLICAR JAVA (CON IMAGEN MAVEN)
-        // =======================================================
         stage('Compilar Java con Maven') {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
                     args '-v /root/.m2:/root/.m2'
+                    reuseNode true
                 }
             }
             steps {
@@ -81,9 +73,6 @@ pipeline {
             }
         }
 
-        // =======================================================
-        // 4️⃣ CONSTRUIR IMAGEN DOCKER
-        // =======================================================
         stage('Construir imagen Docker') {
             steps {
                 dir("${PROJECT_PATH}") {
@@ -95,9 +84,6 @@ pipeline {
             }
         }
 
-        // =======================================================
-        // 5️⃣ DESPLEGAR CON DOCKER COMPOSE
-        // =======================================================
         stage('Desplegar SGH') {
             steps {
                 sh """
