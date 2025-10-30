@@ -79,6 +79,7 @@ pipeline {
         }
 
         stage('Construir imagen Docker') {
+            agent any // Ejecutar en el host, no en el contenedor Maven
             steps {
                 dir("${PROJECT_PATH}") {
                     sh """
@@ -90,17 +91,12 @@ pipeline {
         }
 
         stage('Desplegar SGH') {
+            agent any // Asegura que se ejecuta en el host con Docker
             steps {
                 sh """
                     echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                    if ! command -v docker &> /dev/null; then
-                        echo "💥 Error: Docker no está instalado en este agente"
-                        exit 1
-                    fi
-                    if ! docker compose version &> /dev/null; then
-                        echo "💥 Error: Docker Compose v2 no está instalado en este agente"
-                        exit 1
-                    fi
+                    docker --version || { echo '💥 Docker no está disponible'; exit 1; }
+                    docker compose version || { echo '💥 Docker Compose v2 no está disponible'; exit 1; }
                     docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
                 """
             }
