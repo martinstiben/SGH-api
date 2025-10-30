@@ -27,14 +27,14 @@ pipeline {
         stage('Detectar entorno') {
             steps {
                 script {
-                    switch (env.BRANCH_NAME?.toLowerCase()) {
+                    switch (env.BRANCH_NAME) {
                         case 'main':
                             env.ENVIRONMENT = 'prod'
                             break
-                        case 'staging':
+                        case 'Staging':
                             env.ENVIRONMENT = 'staging'
                             break
-                        case 'qa':
+                        case 'QA':
                             env.ENVIRONMENT = 'qa'
                             break
                         default:
