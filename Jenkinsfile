@@ -33,13 +33,13 @@ pipeline {
                             env.ENVIRONMENT = 'prod'
                             break
                         case 'Staging':
-                            env.ENVIRONMENT = 'Staging'
+                            env.ENVIRONMENT = 'staging'
                             break
                         case 'QA':
-                            env.ENVIRONMENT = 'QA'
+                            env.ENVIRONMENT = 'qa'
                             break
                         default:
-                            env.ENVIRONMENT = 'Develop'
+                            env.ENVIRONMENT = 'develop'
                             break
                     }
 
