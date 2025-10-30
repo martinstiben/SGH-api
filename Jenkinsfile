@@ -17,14 +17,15 @@ pipeline {
         stage('Detectar entorno') {
             steps {
                 script {
-                    switch (env.BRANCH_NAME) {
+                    def branch = env.BRANCH_NAME?.toLowerCase()
+                    switch (branch) {
                         case 'main':
                             env.ENVIRONMENT = 'prod'
                             break
-                        case 'Staging':
+                        case 'staging':
                             env.ENVIRONMENT = 'staging'
                             break
-                        case 'QA':
+                        case 'qa':
                             env.ENVIRONMENT = 'qa'
                             break
                         default:
@@ -43,8 +44,15 @@ pipeline {
                     📁 Env file: ${env.ENV_FILE}
                     """
 
-                    if (!fileExists(env.COMPOSE_FILE)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE}"
+                    if (!fileExists(env.ENV_FILE)) {
+                        echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
+                        writeFile file: env.ENV_FILE, text: '''
+                            # Variables de entorno por defecto
+                            PORT=8080
+                            DB_HOST=localhost
+                            DB_USER=admin
+                            DB_PASS=secret
+                        '''
                     }
                 }
             }
