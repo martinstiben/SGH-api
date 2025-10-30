@@ -5,7 +5,7 @@ pipeline {
         JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
         MAVEN_HOME = '/opt/maven'
         PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
-        PROJECT_PATH = 'SGH'
+        PROJECT_PATH = 'Backend/SGH'
     }
 
     stages {
@@ -62,20 +62,16 @@ pipeline {
         }
 
         // =======================================================
-        // 3️⃣ COMPILAR Y PUBLICAR .NET
+        // 3️⃣ COMPILAR Y PUBLICAR JAVA
         // =======================================================
         stage('Compilar Java con Maven') {
             steps {
-                script {
-                    docker.image('maven:3.9.4-openjdk-17-slim')
-                        .inside('-v /var/run/docker.sock:/var/run/docker.sock -u root:root') {
-                        sh '''
-                            echo "🔧 Compilando proyecto Java con Maven..."
-                            cd SGH
-                            mvn clean compile -DskipTests
-                            mvn package -DskipTests
-                        '''
-                    }
+                dir('Backend/SGH') {
+                    sh '''
+                        echo "🔧 Compilando proyecto Java con Maven..."
+                        mvn clean compile -DskipTests
+                        mvn package -DskipTests
+                    '''
                 }
             }
         }
@@ -85,7 +81,7 @@ pipeline {
         // =======================================================
         stage('Construir imagen Docker') {
             steps {
-                dir('SGH') {
+                dir('Backend/SGH') {
                     sh """
                         echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
                         docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
