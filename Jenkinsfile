@@ -1,22 +1,16 @@
 pipeline {
     agent any
 
-    options {
-        // Evita checkouts automáticos en cada node
-        skipDefaultCheckout()
-        // Evita builds concurrentes que generan workspaces @2, @3
-        disableConcurrentBuilds()
-    }
-
     environment {
         PROJECT_PATH = 'Backend/SGH'
     }
 
     stages {
 
-        stage('Verificar estructura') {
+        stage('Checkout código fuente') {
             steps {
-                echo "📁 Explorando estructura del repositorio..."
+                echo "📥 Clonando repositorio desde GitHub..."
+                checkout scm
                 sh 'ls -R Devops || true'
             }
         }
@@ -51,10 +45,13 @@ pipeline {
                     📁 Env file: ${env.ENV_FILE}
                     """
 
+                    if (!fileExists(env.COMPOSE_FILE)) {
+                        error "❌ No se encontró ${env.COMPOSE_FILE}"
+                    }
+
                     if (!fileExists(env.ENV_FILE)) {
                         echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
                         writeFile file: env.ENV_FILE, text: '''
-                            # Variables de entorno por defecto
                             PORT=8080
                             DB_HOST=localhost
                             DB_USER=admin
@@ -77,7 +74,6 @@ pipeline {
                 dir("${PROJECT_PATH}") {
                     sh '''
                         echo "🔧 Compilando proyecto Java con Maven..."
-                        mvn -v
                         mvn clean compile -DskipTests
                         mvn package -DskipTests
                     '''
@@ -86,7 +82,6 @@ pipeline {
         }
 
         stage('Construir imagen Docker') {
-            agent any
             steps {
                 dir("${PROJECT_PATH}") {
                     sh """
@@ -98,13 +93,10 @@ pipeline {
         }
 
         stage('Desplegar SGH') {
-            agent any
             steps {
                 sh """
                     echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                    docker --version || { echo '💥 Docker no está disponible'; exit 1; }
-                    docker compose version || { echo '💥 Docker Compose v2 no está disponible'; exit 1; }
-                    docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                    docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
                 """
             }
         }
