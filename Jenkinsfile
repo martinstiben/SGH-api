@@ -27,7 +27,6 @@ pipeline {
         stage('Detectar entorno') {
             steps {
                 script {
-                    // Mapear ramas con entornos
                     switch (env.BRANCH_NAME) {
                         case 'main':
                             env.ENVIRONMENT = 'prod'
@@ -62,13 +61,20 @@ pipeline {
         }
 
         // =======================================================
-        // 3️⃣ COMPILAR Y PUBLICAR JAVA
+        // 3️⃣ COMPILAR Y PUBLICAR JAVA (CON IMAGEN MAVEN)
         // =======================================================
         stage('Compilar Java con Maven') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2' // cache local de dependencias
+                }
+            }
             steps {
                 dir('Backend/SGH') {
                     sh '''
                         echo "🔧 Compilando proyecto Java con Maven..."
+                        mvn -v
                         mvn clean compile -DskipTests
                         mvn package -DskipTests
                     '''
