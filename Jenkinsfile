@@ -5,7 +5,7 @@ pipeline {
         JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
         MAVEN_HOME = '/opt/maven'
         PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
-        PROJECT_PATH = 'SGH'
+        PROJECT_PATH = 'Backend/SGH'
     }
 
     stages {
@@ -27,19 +27,18 @@ pipeline {
         stage('Detectar entorno') {
             steps {
                 script {
-                    // Mapear ramas con entornos
-                    switch (env.BRANCH_NAME) {
+                    switch (env.BRANCH_NAME?.toLowerCase()) {
                         case 'main':
                             env.ENVIRONMENT = 'prod'
                             break
-                        case 'Staging':
-                            env.ENVIRONMENT = 'Staging'
+                        case 'staging':
+                            env.ENVIRONMENT = 'staging'
                             break
-                        case 'QA':
-                            env.ENVIRONMENT = 'QA'
+                        case 'qa':
+                            env.ENVIRONMENT = 'qa'
                             break
                         default:
-                            env.ENVIRONMENT = 'Develop'
+                            env.ENVIRONMENT = 'develop'
                             break
                     }
 
@@ -57,24 +56,34 @@ pipeline {
                     if (!fileExists(env.COMPOSE_FILE)) {
                         error "❌ No se encontró ${env.COMPOSE_FILE}"
                     }
+
+                    if (!fileExists(env.ENV_FILE)) {
+                        echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
+                        writeFile file: env.ENV_FILE, text: '''
+                            PORT=8080
+                            DB_HOST=localhost
+                            DB_USER=admin
+                            DB_PASS=secret
+                        '''
+                    }
                 }
             }
         }
 
         // =======================================================
-        // 3️⃣ COMPILAR Y PUBLICAR .NET
+        // 3️⃣ COMPILAR JAVA CON MAVEN
         // =======================================================
         stage('Compilar Java con Maven') {
             steps {
                 script {
                     docker.image('maven:3.9.4-openjdk-17-slim')
                         .inside('-v /var/run/docker.sock:/var/run/docker.sock -u root:root') {
-                        sh '''
+                        sh """
                             echo "🔧 Compilando proyecto Java con Maven..."
-                            cd SGH
+                            cd ${PROJECT_PATH}
                             mvn clean compile -DskipTests
                             mvn package -DskipTests
-                        '''
+                        """
                     }
                 }
             }
@@ -85,7 +94,7 @@ pipeline {
         // =======================================================
         stage('Construir imagen Docker') {
             steps {
-                dir('SGH') {
+                dir("${PROJECT_PATH}") {
                     sh """
                         echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
                         docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
@@ -99,12 +108,10 @@ pipeline {
         // =======================================================
         stage('Desplegar SGH') {
             steps {
-                dir('.') {
-                    sh """
-                        echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                        docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
-                    """
-                }
+                sh """
+                    echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
+                    docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                """
             }
         }
     }
