@@ -2,6 +2,8 @@ pipeline {
     agent any
 
     options {
+        // Evita checkouts automáticos en cada node
+        skipDefaultCheckout()
         // Evita builds concurrentes que generan workspaces @2, @3
         disableConcurrentBuilds()
     }
