@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_PATH = 'SGH'
+        PROJECT_PATH = 'Backend/SGH'
     }
 
     stages {
