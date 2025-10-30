@@ -13,7 +13,7 @@ pipeline {
         stage('Verificar código fuente') {
             steps {
                 echo "📁 Jenkins ya hizo el checkout automáticamente"
-                sh 'ls -R Devops || true'
+                sh 'ls -la'
             }
         }
 
