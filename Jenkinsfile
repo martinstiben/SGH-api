@@ -2,9 +2,6 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
-        MAVEN_HOME = '/opt/maven'
-        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
         PROJECT_PATH = 'Backend/SGH'
     }
 
@@ -54,21 +51,16 @@ pipeline {
         }
 
         stage('Compilar Java con Maven') {
-            agent {
-                docker {
-                    image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
-                    reuseNode true
-                }
-            }
             steps {
-                dir("${PROJECT_PATH}") {
-                    sh '''
-                        echo "🔧 Compilando proyecto Java con Maven..."
-                        mvn -v
-                        mvn clean compile -DskipTests
-                        mvn package -DskipTests
-                    '''
+                docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v /root/.m2:/root/.m2') {
+                    dir("${PROJECT_PATH}") {
+                        sh '''
+                            echo "🔧 Compilando proyecto Java con Maven..."
+                            mvn -v
+                            mvn clean compile -DskipTests
+                            mvn package -DskipTests
+                        '''
+                    }
                 }
             }
         }
