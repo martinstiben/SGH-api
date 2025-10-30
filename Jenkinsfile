@@ -7,6 +7,20 @@ pipeline {
 
     stages {
 
+        stage('Checkout') {
+            steps {
+                deleteDir() // limpia el workspace
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.BRANCH_NAME}"]],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/martinstiben/SGH-api.git',
+                        credentialsId: 'github-token'
+                    ]]
+                ])
+            }
+        }
+
         stage('Verificar estructura') {
             steps {
                 echo "📁 Explorando estructura del repositorio..."
@@ -79,7 +93,7 @@ pipeline {
         }
 
         stage('Construir imagen Docker') {
-            agent any // Ejecutar en el host, no en el contenedor Maven
+            agent any
             steps {
                 dir("${PROJECT_PATH}") {
                     sh """
@@ -91,7 +105,7 @@ pipeline {
         }
 
         stage('Desplegar SGH') {
-            agent any // Asegura que se ejecuta en el host con Docker
+            agent any
             steps {
                 sh """
                     echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
