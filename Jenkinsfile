@@ -12,21 +12,6 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
-            steps {
-                // Limpia el workspace y clona el repo desde cero
-                deleteDir()
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.BRANCH_NAME}"]],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/martinstiben/SGH-api.git',
-                        credentialsId: 'github-token'
-                    ]]
-                ])
-            }
-        }
-
         stage('Verificar estructura') {
             steps {
                 echo "📁 Explorando estructura del repositorio..."
