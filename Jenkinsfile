@@ -2,29 +2,36 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
-        MAVEN_HOME = '/opt/maven'
-        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
         PROJECT_PATH = 'Backend/SGH'
     }
 
     stages {
 
-        stage('Verificar código fuente') {
+        stage('Checkout código fuente') {
             steps {
-                echo "📁 Jenkins ya hizo el checkout automáticamente"
-                sh 'ls -la'
+                echo "📥 Clonando repositorio desde GitHub..."
+                checkout scm
+                sh 'ls -R Devops || true'
             }
         }
 
         stage('Detectar entorno') {
             steps {
                 script {
-                    switch (env.BRANCH_NAME) {
-                        case 'main': env.ENVIRONMENT = 'prod'; break
-                        case 'Staging': env.ENVIRONMENT = 'staging'; break
-                        case 'QA': env.ENVIRONMENT = 'qa'; break
-                        default: env.ENVIRONMENT = 'develop'; break
+                    def branch = env.BRANCH_NAME?.toLowerCase()
+                    switch (branch) {
+                        case 'main':
+                            env.ENVIRONMENT = 'prod'
+                            break
+                        case 'staging':
+                            env.ENVIRONMENT = 'staging'
+                            break
+                        case 'qa':
+                            env.ENVIRONMENT = 'qa'
+                            break
+                        default:
+                            env.ENVIRONMENT = 'develop'
+                            break
                     }
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
@@ -32,18 +39,18 @@ pipeline {
                     env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
                     echo """
-                    ✅ Rama: ${env.BRANCH_NAME}
-                    🌎 Entorno: ${env.ENVIRONMENT}
-                    📄 Compose: ${env.COMPOSE_FILE}
-                    📁 Env: ${env.ENV_FILE}
+                    ✅ Rama detectada: ${env.BRANCH_NAME}
+                    🌎 Entorno asignado: ${env.ENVIRONMENT}
+                    📄 Compose file: ${env.COMPOSE_FILE}
+                    📁 Env file: ${env.ENV_FILE}
                     """
 
                     if (!fileExists(env.COMPOSE_FILE)) {
-                        error "❌ Falta ${env.COMPOSE_FILE}"
+                        error "❌ No se encontró ${env.COMPOSE_FILE}"
                     }
 
                     if (!fileExists(env.ENV_FILE)) {
-                        echo "⚠️ Generando archivo de entorno temporal..."
+                        echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
                         writeFile file: env.ENV_FILE, text: '''
                             PORT=8080
                             DB_HOST=localhost
@@ -56,17 +63,20 @@ pipeline {
         }
 
         stage('Compilar Java con Maven') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
+                    reuseNode true
+                }
+            }
             steps {
-                script {
-                    docker.image('maven:3.9.4-openjdk-17-slim')
-                        .inside('-v /var/run/docker.sock:/var/run/docker.sock -u root:root') {
-                        sh """
-                            echo "🔧 Compilando con Maven..."
-                            cd ${PROJECT_PATH}
-                            mvn clean compile -DskipTests
-                            mvn package -DskipTests
-                        """
-                    }
+                dir("${PROJECT_PATH}") {
+                    sh '''
+                        echo "🔧 Compilando proyecto Java con Maven..."
+                        mvn clean compile -DskipTests
+                        mvn package -DskipTests
+                    '''
                 }
             }
         }
@@ -75,7 +85,7 @@ pipeline {
             steps {
                 dir("${PROJECT_PATH}") {
                     sh """
-                        echo "🐳 Construyendo imagen SGH (${env.ENVIRONMENT})"
+                        echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
                         docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
                     """
                 }
@@ -85,8 +95,8 @@ pipeline {
         stage('Desplegar SGH') {
             steps {
                 sh """
-                    echo "🚀 Desplegando SGH en ${env.ENVIRONMENT}"
-                    docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                    echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
+                    docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
                 """
             }
         }
@@ -94,13 +104,13 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Despliegue exitoso en ${env.ENVIRONMENT}"
+            echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
         }
         failure {
-            echo "💥 Fallo en el despliegue de SGH en ${env.ENVIRONMENT}"
+            echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
         }
         always {
-            echo "🧹 Limpieza final completada."
+            echo "🧹 Limpieza final del pipeline completada."
         }
     }
 }
