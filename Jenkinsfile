@@ -11,12 +11,11 @@ pipeline {
     stages {
 
         // =======================================================
-        // 1️⃣ CHECKOUT
+        // 1️⃣ VERIFICAR ESTRUCTURA DEL REPO
         // =======================================================
-        stage('Checkout código fuente') {
+        stage('Verificar estructura') {
             steps {
-                echo "📥 Clonando repositorio desde GitHub..."
-                checkout scm
+                echo "📁 Explorando estructura del repositorio..."
                 sh 'ls -R Devops || true'
             }
         }
@@ -67,11 +66,11 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2' // cache local de dependencias
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
-                dir('Backend/SGH') {
+                dir("${PROJECT_PATH}") {
                     sh '''
                         echo "🔧 Compilando proyecto Java con Maven..."
                         mvn -v
@@ -87,7 +86,7 @@ pipeline {
         // =======================================================
         stage('Construir imagen Docker') {
             steps {
-                dir('Backend/SGH') {
+                dir("${PROJECT_PATH}") {
                     sh """
                         echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
                         docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
@@ -101,12 +100,10 @@ pipeline {
         // =======================================================
         stage('Desplegar SGH') {
             steps {
-                dir('.') {
-                    sh """
-                        echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                        docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
-                    """
-                }
+                sh """
+                    echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
+                    docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                """
             }
         }
     }
