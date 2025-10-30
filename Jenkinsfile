@@ -11,12 +11,11 @@ pipeline {
     stages {
 
         // =======================================================
-        // 1️⃣ CHECKOUT
+        // 1️⃣ VERIFICAR CÓDIGO FUENTE
         // =======================================================
-        stage('Checkout código fuente') {
+        stage('Verificar código fuente') {
             steps {
-                echo "📥 Clonando repositorio desde GitHub..."
-                checkout scm
+                echo "📁 Repositorio ya clonado por Jenkins (Multibranch)"
                 sh 'ls -R Devops || true'
             }
         }
