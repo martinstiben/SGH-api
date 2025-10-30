@@ -2,15 +2,14 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_PATH = 'SGH'
+        PROJECT_PATH = 'Backend/SGH'
     }
 
     stages {
 
-        stage('Checkout código fuente') {
+        stage('Verificar estructura') {
             steps {
-                echo "📥 Clonando repositorio desde GitHub..."
-                checkout scm
+                echo "📁 Explorando estructura del repositorio..."
                 sh 'ls -R Devops || true'
             }
         }
@@ -45,13 +44,10 @@ pipeline {
                     📁 Env file: ${env.ENV_FILE}
                     """
 
-                    if (!fileExists(env.COMPOSE_FILE)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE}"
-                    }
-
                     if (!fileExists(env.ENV_FILE)) {
                         echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
                         writeFile file: env.ENV_FILE, text: '''
+                            # Variables de entorno por defecto
                             PORT=8080
                             DB_HOST=localhost
                             DB_USER=admin
@@ -74,6 +70,7 @@ pipeline {
                 dir("${PROJECT_PATH}") {
                     sh '''
                         echo "🔧 Compilando proyecto Java con Maven..."
+                        mvn -v
                         mvn clean compile -DskipTests
                         mvn package -DskipTests
                     '''
