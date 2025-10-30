@@ -85,7 +85,7 @@ pipeline {
             steps {
                 sh """
                     echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                    docker compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                    docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
                 """
             }
         }
