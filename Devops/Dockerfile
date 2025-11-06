@@ -1,6 +1,6 @@
 # Dockerfile for PostgreSQL with locale configuration
-# Author: [Jesús Ariel González Bonilla]
-# Date: [21-06-2024]
+# Author: [Juan Pablo Saavedra]
+# Date: [06-11-2025]
 
 FROM postgres:latest
 
