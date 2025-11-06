@@ -35,7 +35,11 @@ pipeline {
                     }
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
+                    if (env.ENVIRONMENT == "staging") {
+                        env.COMPOSE_FILE = "${env.ENV_DIR}/docker-compose-api-staging.yml:${env.ENV_DIR}/docker-compose-databases-staging.yml"
+                    } else {
+                        env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
+                    }
                     env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
                     echo """
@@ -83,11 +87,23 @@ pipeline {
 
         stage('Construir imagen Docker') {
             steps {
-                dir("${PROJECT_PATH}") {
-                    sh """
-                        echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
-                        docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
-                    """
+                script {
+                    // Determinar el perfil de Spring Boot según el entorno
+                    def springProfile = "dev"
+                    if (env.ENVIRONMENT == "prod") {
+                        springProfile = "prod"
+                    } else if (env.ENVIRONMENT == "staging") {
+                        springProfile = "staging"
+                    } else if (env.ENVIRONMENT == "qa") {
+                        springProfile = "qa"
+                    }
+
+                    dir("${PROJECT_PATH}") {
+                        sh """
+                            echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT}) con perfil: ${springProfile}"
+                            docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
+                        """
+                    }
                 }
             }
         }
