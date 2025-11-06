@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # ==================== DESARROLLO ====================
   postgres-develop:
-    container_name: sgh-postgres-develop
+    container_name: DB_Develop
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,7 +28,7 @@ services:
 
   # ==================== QA ====================
   postgres-qa:
-    container_name: sgh-postgres-qa
+    container_name: DB_QA
     build:
       context: .
       dockerfile: Dockerfile
@@ -53,7 +53,7 @@ services:
 
   # ==================== STAGING ====================
   postgres-staging:
-    container_name: sgh-postgres-staging
+    container_name: DB_Staging
     build:
       context: .
       dockerfile: Dockerfile
@@ -78,7 +78,7 @@ services:
 
   # ==================== PRODUCCIÓN ====================
   postgres-prod:
-    container_name: sgh-postgres-prod
+    container_name: DB_Prod
     build:
       context: .
       dockerfile: Dockerfile
