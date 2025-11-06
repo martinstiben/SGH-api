@@ -37,8 +37,11 @@ pipeline {
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
                     if (env.ENVIRONMENT == "staging") {
                         env.COMPOSE_FILE = "Devops/docker-compose-api-staging.yml:Devops/docker-compose-databases-staging.yml"
+                        env.COMPOSE_FILE1 = "Devops/docker-compose-api-staging.yml"
+                        env.COMPOSE_FILE2 = "Devops/docker-compose-databases-staging.yml"
                     } else {
                         env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
+                        env.COMPOSE_FILE1 = env.COMPOSE_FILE
                     }
                     env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
@@ -49,8 +52,17 @@ pipeline {
                     📁 Env file: ${env.ENV_FILE}
                     """
 
-                    if (!fileExists(env.COMPOSE_FILE)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE}"
+                    if (env.ENVIRONMENT == "staging") {
+                        if (!fileExists(env.COMPOSE_FILE1)) {
+                            error "❌ No se encontró ${env.COMPOSE_FILE1}"
+                        }
+                        if (!fileExists(env.COMPOSE_FILE2)) {
+                            error "❌ No se encontró ${env.COMPOSE_FILE2}"
+                        }
+                    } else {
+                        if (!fileExists(env.COMPOSE_FILE)) {
+                            error "❌ No se encontró ${env.COMPOSE_FILE}"
+                        }
                     }
 
                     if (!fileExists(env.ENV_FILE)) {
