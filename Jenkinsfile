@@ -32,17 +32,15 @@ pipeline {
                             
                             echo "🔄 Intentando clonar la rama más apropiada..."
                             
-                            # Intentar con la rama qa primero
-                            if git clone -b qa https://github.com/martinstiben/SGH-api.git .; then
-                                echo "✅ Clonado rama qa exitosamente"
+                            # SOLO usar la rama QA - es independiente
+                            if git clone -b QA https://github.com/martinstiben/SGH-api.git .; then
+                                echo "✅ Clonado rama QA exitosamente"
+                                echo "🎯 Pipeline ejecutándose en ambiente QA (independiente)"
                             else
-                                echo "⚠️ Rama qa no existe, intentando con main..."
-                                if git clone -b main https://github.com/martinstiben/SGH-api.git .; then
-                                    echo "✅ Clonado rama main exitosamente - configurado para QA"
-                                else
-                                    echo "❌ No se pudo clonar el repositorio con ninguna rama"
-                                    exit 1
-                                fi
+                                echo "❌ No se pudo clonar la rama QA"
+                                echo "💡 La rama QA debe existir para ejecutar este pipeline de QA"
+                                echo "🔧 Verifica que la rama 'QA' esté creada en el repositorio"
+                                exit 1
                             fi
                             
                             echo "📁 Verificando estructura del repositorio:"
