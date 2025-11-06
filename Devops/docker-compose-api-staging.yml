@@ -6,25 +6,14 @@ services:
     container_name: API_Staging
     image: sgh-api-staging:latest
     restart: always
-    env_file:
-      - ./staging/.env.staging
     environment:
       - SPRING_PROFILES_ACTIVE=staging
-      - SPRING_DATASOURCE_URL=${DB_URL}
-      - SPRING_DATASOURCE_USERNAME=${DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_JPA_SHOW_SQL=true
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRATION=${JWT_EXPIRATION}
-      - SERVER_PORT=${PORT}
     ports:
       - "8084:8084"
     networks:
       - network_staging
     depends_on:
-      - postgres-staging:
-          condition: service_healthy
+      - postgres-staging
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
       interval: 30s
