@@ -112,7 +112,10 @@ pipeline {
             steps {
                 sh """
                     echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
-                    docker-compose -f Devops/Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
+                    echo "📁 Cambiando al directorio Devops..."
+                    cd Devops || { echo "❌ No se puede cambiar al directorio Devops"; exit 1; }
+                    echo "📄 Usando compose file: Docker-Compose.yml"
+                    docker-compose -f Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
                 """
             }
         }
@@ -122,7 +125,8 @@ pipeline {
                 sh """
                     echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
                     echo "📦 Desplegando solo el contenedor de la API..."
-                    docker-compose -f Devops/Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+                    cd Devops || { echo "❌ No se puede cambiar al directorio Devops"; exit 1; }
+                    docker-compose -f Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
                     echo "✅ API desplegada correctamente"
                     echo "🌐 Swagger UI disponible en:"
                     case ${env.ENVIRONMENT} in
