@@ -28,9 +28,7 @@ services:
 
   sgh-api-develop:
     container_name: API_Develop
-    build:
-      context: ../Backend/SGH
-      dockerfile: Dockerfile
+    image: sgh-api-develop:latest
     restart: always
     env_file:
       - ./develop/.env.dev
@@ -78,9 +76,7 @@ services:
 
   sgh-api-qa:
     container_name: API_QA
-    build:
-      context: ../Backend/SGH
-      dockerfile: Dockerfile
+    image: sgh-api-qa:latest
     restart: always
     env_file:
       - ./qa/.env.qa
@@ -128,9 +124,7 @@ services:
 
   sgh-api-staging:
     container_name: API_Staging
-    build:
-      context: ../Backend/SGH
-      dockerfile: Dockerfile
+    image: sgh-api-staging:latest
     restart: always
     env_file:
       - ./staging/.env.staging
@@ -178,9 +172,7 @@ services:
 
   sgh-api-prod:
     container_name: API_Prod
-    build:
-      context: ../Backend/SGH
-      dockerfile: Dockerfile
+    image: sgh-api-prod:latest
     restart: always
     env_file:
       - ./prod/.env.prod
