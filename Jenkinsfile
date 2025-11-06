@@ -8,29 +8,75 @@ pipeline {
 
     stages {
 
-        stage('Limpiar y Checkout Manual') {
+        stage('Checkout del código') {
             steps {
-                echo "🧹 Limpiando workspace..."
-                deleteDir()
-                
-                echo "📥 Haciendo checkout manual del repositorio..."
-                sh """
-                    echo "🔄 Clonando repositorio desde GitHub..."
-                    git clone -b qa https://github.com/martinstiben/SGH-api.git . || {
-                        echo "⚠️ Fallo al clonar rama qa, intentando main..."
-                        git clone https://github.com/martinstiben/SGH-api.git .
-                        if git branch -a | grep -q "main"; then
-                            git checkout main
-                        elif git branch -a | grep -q "master"; then
-                            git checkout master
-                        else
-                            echo "📍 Repositorio no tiene rama qa/main/master, usando lo que hay"
-                        fi
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        echo "📥 Obteniendo código del repositorio..."
+                        // Checkout automático de Jenkins configurado para no hacer checkout automático
+                        try {
+                            // Verificar si estamos en un directorio git
+                            sh '''
+                                if [ -d ".git" ]; then
+                                    echo "✅ Directorio Git detectado"
+                                    git fetch origin || { echo "⚠️ No se pudo hacer fetch"; }
+                                    if git branch -r | grep -q "origin/qa"; then
+                                        echo "🔀 Cambiando a rama qa..."
+                                        git checkout qa || git checkout -b qa origin/qa
+                                    elif git branch -r | grep -q "origin/main"; then
+                                        echo "🔀 Cambiando a rama main..."
+                                        git checkout main || git checkout -b main origin/main
+                                    elif git branch -r | grep -q "origin/master"; then
+                                        echo "🔀 Cambiando a rama master..."
+                                        git checkout master || git checkout -b master origin/master
+                                    else
+                                        echo "📍 Usando rama actual"
+                                    fi
+                                    echo "📁 Verificando estructura del repositorio:"
+                                    ls -la
+                                else
+                                    echo "🔄 No hay directorio Git, clonando..."
+                                    throw new Exception("Not a git directory")
+                                fi
+                            '''
+                        } catch (Exception e) {
+                            // Si el checkout automático falla, hacer checkout manual
+                            echo "🔄 Haciendo checkout manual del repositorio..."
+                            sh """
+                                # Limpiar workspace si es necesario
+                                if [ -d ".git" ]; then
+                                    echo "🧹 Limpiando directorio anterior..."
+                                    rm -rf .git
+                                fi
+                                
+                                echo "🔄 Clonando repositorio desde GitHub..."
+                                # Intentar con la rama qa primero
+                                if git clone -b qa https://github.com/martinstiben/SGH-api.git .; then
+                                    echo "✅ Clonado rama qa exitosamente"
+                                else
+                                    echo "⚠️ Fallo al clonar rama qa, intentando main..."
+                                    if git clone https://github.com/martinstiben/SGH-api.git .; then
+                                        if git branch -r | grep -q "origin/main"; then
+                                            echo "🔀 Cambiando a rama main..."
+                                            git checkout main
+                                        elif git branch -r | grep -q "origin/master"; then
+                                            echo "🔀 Cambiando a rama master..."
+                                            git checkout master
+                                        else
+                                            echo "📍 Usando rama por defecto"
+                                        fi
+                                    else
+                                        echo "❌ No se pudo clonar el repositorio"
+                                        exit 1
+                                    fi
+                                fi
+                                
+                                echo "📁 Verificando estructura del repositorio:"
+                                ls -la
+                            """
+                        }
                     }
-                    
-                    echo "📁 Verificando estructura del repositorio:"
-                    ls -la
-                """
+                }
             }
         }
 
@@ -49,6 +95,29 @@ pipeline {
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
                     """
+
+                    echo "🔍 Verificando estructura del workspace..."
+                    sh '''
+                        echo "📁 Contenido actual del directorio:"
+                        ls -la
+                        echo "📂 Verificando directorio Backend/SGH:"
+                        if [ -d "Backend/SGH" ]; then
+                            echo "✅ Backend/SGH encontrado"
+                        else
+                            echo "❌ Backend/SGH no encontrado"
+                            echo "🔍 Listando contenido de .:"
+                            ls -la
+                            echo "💡 ERROR: La estructura del repositorio no es correcta"
+                        fi
+                        echo "📂 Verificando directorio Devops:"
+                        if [ -d "Devops" ]; then
+                            echo "✅ Devops encontrado"
+                        else
+                            echo "❌ Devops no encontrado"
+                            echo "🔍 Contenido actual:"
+                            ls -la
+                        fi
+                    '''
 
                     if (!fileExists(env.COMPOSE_FILE_DATABASE)) {
                         error "❌ No se encontró ${env.COMPOSE_FILE_DATABASE}"
