@@ -106,14 +106,17 @@ public class DataInitializer {
             if (teacherRepo.count() == 0) {
                 teachers teacher1 = new teachers();
                 teacher1.setTeacherName("Juan Pérez");
+                teacher1.setPhotoData(null); // Sin imagen temporal
                 teacher1 = teacherRepo.save(teacher1);
 
                 teachers teacher2 = new teachers();
                 teacher2.setTeacherName("María García");
+                teacher2.setPhotoData(null); // Sin imagen temporal
                 teacher2 = teacherRepo.save(teacher2);
 
                 teachers teacher3 = new teachers();
                 teacher3.setTeacherName("Carlos López");
+                teacher3.setPhotoData(null); // Sin imagen temporal
                 teacher3 = teacherRepo.save(teacher3);
 
                 // Asignar especializaciones
