@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-import java.util.List;
 
 @Entity(name = "people")
 @Data
@@ -30,8 +29,7 @@ public class People {
     @Column(name = "photo_content_type", length = 100)
     private String photoContentType;
 
-    @Column(name = "photo_data")
-    @Lob
+    @Column(name = "photo_data", columnDefinition = "BYTEA")
     private byte[] photoData;
 
     @OneToOne(mappedBy = "person", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
