@@ -12,31 +12,51 @@ pipeline {
                 echo "📥 Clonando repositorio desde GitHub..."
                 
                 script {
-                    // Verificar si tenemos información de SCM
-                    if (env.BRANCH_NAME && env.GIT_URL) {
-                        echo "🌿 Rama detectada: ${env.BRANCH_NAME}"
-                        echo "🔗 URL del repositorio: ${env.GIT_URL}"
-                        checkout scm
-                    } else {
-                        echo "⚠️ Configuración de SCM no encontrada, usando checkout manual..."
-                        // Checkout manual para casos donde la configuración SCM no está disponible
-                        def branch = 'qa'  // Valor por defecto para QA
-                        def repoUrl = 'https://github.com/martinstiben/SGH-api.git'
-                        
-                        sh """
-                            echo "🔄 Haciendo checkout de la rama: ${branch}"
-                            git clone -b ${branch} ${repoUrl} . || {
-                                echo "⚠️ Fallo al clonar, intentando con rama master..."
-                                git clone ${repoUrl} .
-                                cd .git && git checkout ${branch} || git checkout -b ${branch}
-                            }
-                        """
-                    }
+                    // Siempre usar checkout manual para evitar problemas de SCM
+                    def branch = env.BRANCH_NAME ?: 'qa'  // Usar BRANCH_NAME o fallback
+                    def repoUrl = 'https://github.com/martinstiben/SGH-api.git'
+                    
+                    echo "🌿 Rama objetivo: ${branch}"
+                    echo "🔗 Repositorio: ${repoUrl}"
+                    
+                    // Limpiar directorio primero
+                    sh """
+                        echo "🧹 Limpiando directorio de trabajo..."
+                        rm -rf .git 2>/dev/null || true
+                        rm -rf * 2>/dev/null || true
+                    """
+                    
+                    // Clonar repositorio
+                    sh """
+                        echo "🔄 Clonando repositorio..."
+                        git clone -b ${branch} ${repoUrl} . || {
+                            echo "⚠️ Fallo al clonar ${branch}, intentando con master/main..."
+                            git clone ${repoUrl} .
+                            if git branch -a | grep -q "main"; then
+                                git checkout main
+                            elif git branch -a | grep -q "master"; then
+                                git checkout master
+                            else
+                                echo "📍 Creando rama ${branch} desde master..."
+                                git checkout -b ${branch} || {
+                                    echo "📍 Creando rama ${branch} como nueva..."
+                                    echo "⚠️  Posible repositorio vacío o rama no existe"
+                                }
+                            fi
+                        }
+                    """
+                    
+                    // Verificar checkout
+                    sh """
+                        echo "🔍 Verificando estado del repositorio..."
+                        git status
+                        git branch
+                    """
                 }
                 
                 echo "📁 Verificando estructura del repositorio:"
                 sh 'find . -name "*.yml" -o -name "Jenkinsfile" | head -10'
-                sh 'ls -la Devops/ || true'
+                sh 'ls -la Devops/ || echo "⚠️ Directorio Devops no encontrado"'
             }
         }
 
