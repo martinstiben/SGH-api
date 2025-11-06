@@ -25,15 +25,24 @@ pipeline {
                         
                         echo "📥 Clonando repositorio desde GitHub..."
                         sh '''
-                            echo "🔄 Clonando repositorio desde GitHub..."
+                            echo "🔄 Verificando ramas disponibles en el repositorio..."
                             
-                            # Solo intentar con la rama qa
+                            # Intentar listar las ramas disponibles
+                            git ls-remote --heads https://github.com/martinstiben/SGH-api.git
+                            
+                            echo "🔄 Intentando clonar la rama más apropiada..."
+                            
+                            # Intentar con la rama qa primero
                             if git clone -b qa https://github.com/martinstiben/SGH-api.git .; then
                                 echo "✅ Clonado rama qa exitosamente"
                             else
-                                echo "❌ No se pudo clonar la rama qa. Repositorio no tiene rama qa o no tienes acceso."
-                                echo "💡 Asegúrate de que el repositorio tenga una rama 'qa' y tengas permisos de lectura."
-                                exit 1
+                                echo "⚠️ Rama qa no existe, intentando con main..."
+                                if git clone -b main https://github.com/martinstiben/SGH-api.git .; then
+                                    echo "✅ Clonado rama main exitosamente - configurado para QA"
+                                else
+                                    echo "❌ No se pudo clonar el repositorio con ninguna rama"
+                                    exit 1
+                                fi
                             fi
                             
                             echo "📁 Verificando estructura del repositorio:"
