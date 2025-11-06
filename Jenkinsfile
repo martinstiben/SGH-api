@@ -8,23 +8,29 @@ pipeline {
 
     stages {
 
-        stage('Checkout código fuente') {
+        stage('Limpiar y Checkout Manual') {
             steps {
-                echo "📥 Clonando repositorio desde GitHub..."
-                checkout scm
+                echo "🧹 Limpiando workspace..."
+                deleteDir()
                 
-                // Verificar si el checkout fue exitoso, si no, hacer checkout manual
+                echo "📥 Haciendo checkout manual del repositorio..."
                 sh """
-                    if [ ! -d "Devops" ]; then
-                        echo "⚠️ Checkout automático falló, haciendo checkout manual..."
-                        git clone -b qa https://github.com/martinstiben/SGH-api.git . || {
-                            echo "⚠️ Checkout manual también falló"
-                        }
-                    fi
+                    echo "🔄 Clonando repositorio desde GitHub..."
+                    git clone -b qa https://github.com/martinstiben/SGH-api.git . || {
+                        echo "⚠️ Fallo al clonar rama qa, intentando main..."
+                        git clone https://github.com/martinstiben/SGH-api.git .
+                        if git branch -a | grep -q "main"; then
+                            git checkout main
+                        elif git branch -a | grep -q "master"; then
+                            git checkout master
+                        else
+                            echo "📍 Repositorio no tiene rama qa/main/master, usando lo que hay"
+                        fi
+                    }
+                    
+                    echo "📁 Verificando estructura del repositorio:"
+                    ls -la
                 """
-                
-                echo "📁 Verificando estructura del repositorio:"
-                sh 'ls -R Devops || true'
             }
         }
 
@@ -95,6 +101,8 @@ pipeline {
                 sh """
                     echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
+                    echo "📁 Ubicación actual: \$(pwd)"
+                    ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
                     cd Devops
                     docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
                     echo "✅ Base de datos desplegada correctamente"
