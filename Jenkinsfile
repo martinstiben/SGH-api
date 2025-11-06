@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         PROJECT_PATH = 'Backend/SGH'
+        ENVIRONMENT = 'qa'  // Forzar ambiente QA
     }
 
     stages {
@@ -10,118 +11,34 @@ pipeline {
         stage('Checkout código fuente') {
             steps {
                 echo "📥 Clonando repositorio desde GitHub..."
+                checkout scm
                 
-                script {
-                    // Siempre usar checkout manual para evitar problemas de SCM
-                    def branch = env.BRANCH_NAME ?: 'qa'  // Usar BRANCH_NAME o fallback
-                    def repoUrl = 'https://github.com/martinstiben/SGH-api.git'
-                    
-                    echo "🌿 Rama objetivo: ${branch}"
-                    echo "🔗 Repositorio: ${repoUrl}"
-                    
-                    // Limpiar directorio primero
-                    sh """
-                        echo "🧹 Limpiando directorio de trabajo..."
-                        rm -rf .git 2>/dev/null || true
-                        rm -rf * 2>/dev/null || true
-                    """
-                    
-                    // Clonar repositorio
-                    sh """
-                        echo "🔄 Clonando repositorio..."
-                        git clone -b ${branch} ${repoUrl} . || {
-                            echo "⚠️ Fallo al clonar ${branch}, intentando con master/main..."
-                            git clone ${repoUrl} .
-                            if git branch -a | grep -q "main"; then
-                                git checkout main
-                            elif git branch -a | grep -q "master"; then
-                                git checkout master
-                            else
-                                echo "📍 Creando rama ${branch} desde master..."
-                                git checkout -b ${branch} || {
-                                    echo "📍 Creando rama ${branch} como nueva..."
-                                    echo "⚠️  Posible repositorio vacío o rama no existe"
-                                }
-                            fi
+                // Verificar si el checkout fue exitoso, si no, hacer checkout manual
+                sh """
+                    if [ ! -d "Devops" ]; then
+                        echo "⚠️ Checkout automático falló, haciendo checkout manual..."
+                        git clone -b qa https://github.com/martinstiben/SGH-api.git . || {
+                            echo "⚠️ Checkout manual también falló"
                         }
-                    """
-                    
-                    // Verificar checkout
-                    sh """
-                        echo "🔍 Verificando estado del repositorio..."
-                        git status
-                        git branch
-                    """
-                }
+                    fi
+                """
                 
                 echo "📁 Verificando estructura del repositorio:"
-                sh 'find . -name "*.yml" -o -name "Jenkinsfile" | head -10'
-                sh 'ls -la Devops/ || echo "⚠️ Directorio Devops no encontrado"'
+                sh 'ls -R Devops || true'
             }
         }
 
-        stage('Detectar entorno') {
+        stage('Configurar entorno QA') {
             steps {
                 script {
-                    // Detectar rama de manera más robusta
-                    def branch = env.BRANCH_NAME?.toLowerCase()
-                    
-                    // Si no se detecta rama, intentar detectarla de otra manera
-                    if (!branch || branch == 'null') {
-                        echo "⚠️ BRANCH_NAME no disponible, detectando rama..."
-                        
-                        // Intentar detectar desde git
-                        try {
-                            def currentBranch = sh(script: "git branch --show-current", returnStdout: true).trim()
-                            if (currentBranch) {
-                                branch = currentBranch.toLowerCase()
-                                echo "🔍 Rama detectada desde git: ${branch}"
-                            } else {
-                                // Valor por defecto para QA
-                                branch = 'qa'
-                                echo "📍 Usando rama por defecto: ${branch}"
-                            }
-                        } catch (Exception e) {
-                            branch = 'qa'
-                            echo "📍 Error detectando rama, usando default: ${branch}"
-                        }
-                    }
-                    
-                    echo "🌿 Rama final detectada: ${branch}"
-                    
-                    switch (branch) {
-                        case 'main':
-                        case 'master':
-                            env.ENVIRONMENT = 'prod'
-                            break
-                        case 'staging':
-                            env.ENVIRONMENT = 'staging'
-                            break
-                        case 'qa':
-                            env.ENVIRONMENT = 'qa'
-                            break
-                        default:
-                            env.ENVIRONMENT = 'develop'
-                            break
-                    }
-
-                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
-                    
-                    // Use environment-specific compose files
-                    if (env.ENVIRONMENT == 'qa') {
-                        env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-qa.yml"
-                        env.COMPOSE_FILE_API = "Devops/docker-compose-api-qa.yml"
-                        echo "🔧 Usando archivos específicos de QA"
-                    } else {
-                        env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
-                        env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
-                        echo "🔧 Usando archivos generales"
-                    }
-                    env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
+                    env.ENV_DIR = "Devops/qa"
+                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-qa.yml"
+                    env.COMPOSE_FILE_API = "Devops/docker-compose-api-qa.yml"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.qa"
 
                     echo """
-                    ✅ Rama detectada: ${env.BRANCH_NAME}
-                    🌎 Entorno asignado: ${env.ENVIRONMENT}
+                    ✅ Configuración para QA
+                    🌎 Entorno forzado: ${env.ENVIRONMENT}
                     📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
@@ -136,13 +53,8 @@ pipeline {
                     }
 
                     if (!fileExists(env.ENV_FILE)) {
-                        echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
-                        writeFile file: env.ENV_FILE, text: '''
-                            PORT=8080
-                            DB_HOST=localhost
-                            DB_USER=admin
-                            DB_PASS=secret
-                        '''
+                        echo "⚠️ Archivo de entorno no encontrado, usando valores por defecto..."
+                        // Los valores están en el .env.qa que ya debe existir
                     }
                 }
             }
