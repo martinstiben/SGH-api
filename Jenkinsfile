@@ -35,7 +35,7 @@ pipeline {
                     }
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "Devops/Docker-Compose.yml"
+                    env.COMPOSE_FILE = "Devops/docker-compose.yml"
                     env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
                     echo """
@@ -96,8 +96,7 @@ pipeline {
             steps {
                 sh """
                     echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
-                    cd Devops
-                    docker-compose up -d postgres-${env.ENVIRONMENT}
+                    docker-compose -f Devops/Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
                 """
             }
         }
