@@ -1,6 +1,13 @@
 pipeline {
     agent any
 
+    options {
+        // Deshabilitar el checkout automático de Jenkins
+        skipDefaultCheckout()
+        // Timeout general del pipeline
+        timeout(time: 20, unit: 'MINUTES')
+    }
+
     environment {
         PROJECT_PATH = 'Backend/SGH'
         ENVIRONMENT = 'qa'  // Forzar ambiente QA
