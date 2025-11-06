@@ -12,8 +12,6 @@ services:
       - "8084:8084"
     networks:
       - network_staging
-    depends_on:
-      - postgres-staging
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
       interval: 30s
