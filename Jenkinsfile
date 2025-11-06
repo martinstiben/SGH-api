@@ -36,7 +36,7 @@ pipeline {
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
                     if (env.ENVIRONMENT == "staging") {
-                        env.COMPOSE_FILE = "${env.ENV_DIR}/docker-compose-api-staging.yml:${env.ENV_DIR}/docker-compose-databases-staging.yml"
+                        env.COMPOSE_FILE = "Devops/docker-compose-api-staging.yml:Devops/docker-compose-databases-staging.yml"
                     } else {
                         env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
                     }
