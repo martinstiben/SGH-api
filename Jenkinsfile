@@ -35,8 +35,24 @@ pipeline {
                     }
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "Devops/docker-compose.yml"
-                    env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
+                    env.COMPOSE_FILE = "Devops/Docker-Compose.yml"
+                    switch (env.ENVIRONMENT) {
+                        case 'develop':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
+                            break
+                        case 'qa':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.qa"
+                            break
+                        case 'staging':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.staging"
+                            break
+                        case 'prod':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.prod"
+                            break
+                        default:
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
+                            break
+                    }
 
                     echo """
                     ✅ Rama detectada: ${env.BRANCH_NAME}
