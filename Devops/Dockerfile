@@ -1,16 +1,14 @@
-# Dockerfile para PostgreSQL 16 con configuración de locale en español
-FROM postgres:16-alpine
+# Dockerfile for PostgreSQL with locale configuration
+# Author: [Juan Pablo Saavedra]
+# Date: [06-11-2025]
 
-# Establecer variables de entorno para el locale en español
-ENV LANG=es_ES.UTF-8
-ENV LC_ALL=es_ES.UTF-8
-ENV POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+FROM postgres:16
 
-# Copiar script de inicialización personalizado
-COPY init.sql /docker-entrypoint-initdb.d/
+# Install locales and curl if not available, ignore errors
+RUN apt-get update && apt-get install -y locales curl && \
+    localedef -i es_ES -c -f UTF-8 -A /usr/share/locale/locale.alias es_ES.UTF-8 || true && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Exponer puerto por defecto de PostgreSQL
-EXPOSE 5432
-
-# Comando por defecto
-CMD ["postgres"]
+# Set environment variables for PostgreSQL (will be overridden by docker-compose)
+ENV LANG es_ES.UTF-8
+ENV POSTGRES_INITDB_ARGS="--encoding=UTF-8 --lc-collate=es_ES.UTF-8 --lc-ctype=es_ES.UTF-8"
