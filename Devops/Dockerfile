@@ -4,8 +4,8 @@
 
 FROM postgres:16
 
-# Install locales if not available, ignore errors
-RUN apt-get update && apt-get install -y locales && \
+# Install locales and curl if not available, ignore errors
+RUN apt-get update && apt-get install -y locales curl && \
     localedef -i es_ES -c -f UTF-8 -A /usr/share/locale/locale.alias es_ES.UTF-8 || true && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 

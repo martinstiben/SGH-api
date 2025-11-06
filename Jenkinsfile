@@ -120,9 +120,25 @@ pipeline {
         stage('Desplegar SGH Backend') {
             steps {
                 sh """
-                    echo "🚀 Desplegando backend SGH para: ${env.ENVIRONMENT}"
-                    # Aquí irá el despliegue del backend cuando lo estabilices
-                    echo "⏳ Backend deployment pendiente de configuración"
+                    echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
+                    echo "📦 Desplegando solo el contenedor de la API..."
+                    docker-compose -f Devops/Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+                    echo "✅ API desplegada correctamente"
+                    echo "🌐 Swagger UI disponible en:"
+                    case ${env.ENVIRONMENT} in
+                        "develop")
+                            echo "   http://localhost:8082/swagger-ui/index.html"
+                            ;;
+                        "qa")
+                            echo "   http://localhost:8083/swagger-ui/index.html"
+                            ;;
+                        "staging")
+                            echo "   http://localhost:8084/swagger-ui/index.html"
+                            ;;
+                        "prod")
+                            echo "   http://localhost:8085/swagger-ui/index.html"
+                            ;;
+                    esac
                 """
             }
         }

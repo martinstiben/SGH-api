@@ -26,6 +26,31 @@ services:
       - com.sgh.group=sgh
       - com.sgh.environment=develop
 
+  sgh-api-develop:
+    container_name: API_Develop
+    build:
+      context: ../Backend/SGH
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ./develop/.env.dev
+    ports:
+      - "8082:8082"
+    networks:
+      - network_develop
+    depends_on:
+      postgres-develop:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=develop
+
   # ==================== QA ====================
   postgres-qa:
     container_name: DB_QA
@@ -47,6 +72,31 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=qa
+
+  sgh-api-qa:
+    container_name: API_QA
+    build:
+      context: ../Backend/SGH
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ./qa/.env.qa
+    ports:
+      - "8083:8083"
+    networks:
+      - network_qa
+    depends_on:
+      postgres-qa:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     labels:
       - com.sgh.group=sgh
       - com.sgh.environment=qa
@@ -76,6 +126,31 @@ services:
       - com.sgh.group=sgh
       - com.sgh.environment=staging
 
+  sgh-api-staging:
+    container_name: API_Staging
+    build:
+      context: ../Backend/SGH
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ./staging/.env.staging
+    ports:
+      - "8084:8084"
+    networks:
+      - network_staging
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=staging
+
   # ==================== PRODUCCIÓN ====================
   postgres-prod:
     container_name: DB_Prod
@@ -97,6 +172,31 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=prod
+
+  sgh-api-prod:
+    container_name: API_Prod
+    build:
+      context: ../Backend/SGH
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ./prod/.env.prod
+    ports:
+      - "8085:8085"
+    networks:
+      - network_prod
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     labels:
       - com.sgh.group=sgh
       - com.sgh.environment=prod
