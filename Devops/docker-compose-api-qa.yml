@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # ==================== QA ====================
+  sgh-api-qa:
+    container_name: API_QA
+    image: sgh-api-qa:latest
+    restart: always
+    env_file:
+      - ./qa/.env.qa
+    ports:
+      - "8083:8083"
+    networks:
+      - network_qa
+    external_links:
+      - DB_QA:postgres-qa
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=qa
+
+# ==================== REDES ====================
+networks:
+  network_qa:
+    driver: bridge
+    name: network_qa
+    external: true

@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # ==================== QA ====================
+  postgres-qa:
+    container_name: DB_QA
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ./qa/.env.qa
+    ports:
+      - "5433:5432"
+    networks:
+      - network_qa
+    volumes:
+      - postgres_data_qa:/var/lib/postgresql
+      - "./backups/qa:/backups/postgres"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=qa
+
+# ==================== VOLÚMENES ====================
+volumes:
+  postgres_data_qa:
+    driver: local
+    name: postgres_data_qa
+
+# ==================== REDES ====================
+networks:
+  network_qa:
+    driver: bridge
+    name: network_qa
