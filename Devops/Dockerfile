@@ -7,7 +7,7 @@ ENV LC_ALL=es_ES.UTF-8
 ENV POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
 
 # Copiar script de inicialización personalizado
-COPY init.sql /docker-entrypoint-initdb.d/
+COPY Devops/init.sql /docker-entrypoint-initdb.d/
 
 # Exponer puerto por defecto de PostgreSQL
 EXPOSE 5432
