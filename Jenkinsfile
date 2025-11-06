@@ -156,6 +156,20 @@ pipeline {
             }
         }
 
+        stage('Limpiar Base de Datos') {
+            steps {
+                sh """
+                    echo "🗄️ Limpiando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🧹 Eliminando volumen de datos anterior para fresh start..."
+                    
+                    # Eliminar el volumen anterior para start limpio
+                    docker volume rm postgres_data_staging 2>/dev/null || true
+                    
+                    echo "✅ Volumen de base de datos limpio - listo para fresh start"
+                """
+            }
+        }
+
         stage('Desplegar Base de Datos') {
             steps {
                 sh """
@@ -171,7 +185,7 @@ pipeline {
                     docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-staging
                     
                     echo "⏳ Esperando que la base de datos esté lista..."
-                    sleep 10
+                    sleep 15
                     
                     echo "🔍 Verificando que la base de datos esté corriendo:"
                     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_Staging

@@ -32,7 +32,7 @@ public class users {
     @Size(max = 255, message = "El código de verificación debe tener máximo 255 caracteres")
     private String verificationCode;
 
-    @Column(name = "code_expiration", columnDefinition = "DATETIME(6)")
+    @Column(name = "code_expiration")
     private java.time.LocalDateTime codeExpiration;
 
     @Column(name = "is_verified", nullable = false)
@@ -43,7 +43,7 @@ public class users {
     @NotNull(message = "El estado de la cuenta es obligatorio")
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "created_at", nullable = false)
     private java.time.LocalDateTime createdAt;
 
     // Constructor vacío
