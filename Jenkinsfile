@@ -63,15 +63,14 @@ pipeline {
                     // Forzar QA como el usuario solicitó
                     env.ENVIRONMENT = 'qa'
                     
-                    // Usar los archivos Docker Compose que realmente existen
-                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-qa.yml"
-                    env.COMPOSE_FILE_API = "Devops/docker-compose-api-qa.yml"
+                    // Usar la estructura real del repositorio: Docker-Compose.yml por ambiente
+                    env.COMPOSE_FILE_DATABASE = "Devops/qa/Docker-Compose.yml"
+                    env.COMPOSE_FILE_API = "Devops/qa/Docker-Compose.yml"
                     env.ENV_FILE = "Devops/qa/.env.qa"
 
                     echo """
                     ✅ Entorno forzado: ${env.ENVIRONMENT}
-                    📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
-                    📄 API Compose file: ${env.COMPOSE_FILE_API}
+                    📄 Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📁 Env file: ${env.ENV_FILE}
                     """
 
@@ -99,22 +98,21 @@ pipeline {
                         fi
                     '''
 
-                    // Verificar archivos usando shell con los archivos que realmente existen
+                    // Verificar archivos usando la estructura real del repositorio
                     sh '''
                         echo "🔍 Verificando archivos de configuración..."
-                        if [ -f "Devops/docker-compose-databases-qa.yml" ]; then
-                            echo "✅ Devops/docker-compose-databases-qa.yml encontrado"
-                        else
-                            echo "❌ Devops/docker-compose-databases-qa.yml no encontrado"
-                            echo "🔍 Listando archivos en Devops:"
-                            find Devops/ -name "*qa*" -type f
-                            exit 1
-                        fi
                         
-                        if [ -f "Devops/docker-compose-api-qa.yml" ]; then
-                            echo "✅ Devops/docker-compose-api-qa.yml encontrado"
+                        # Verificar el Docker Compose de QA
+                        if [ -f "Devops/qa/Docker-Compose.yml" ]; then
+                            echo "✅ Devops/qa/Docker-Compose.yml encontrado"
+                            echo "📄 Contenido del Docker Compose para QA:"
+                            head -30 Devops/qa/Docker-Compose.yml
                         else
-                            echo "❌ Devops/docker-compose-api-qa.yml no encontrado"
+                            echo "❌ Devops/qa/Docker-Compose.yml no encontrado"
+                            echo "🔍 Listando estructura completa de qa:"
+                            ls -la Devops/qa/
+                            echo "🔍 Buscando todos los archivos Docker-Compose en Devops:"
+                            find Devops/ -name "Docker-Compose.yml" -type f
                             exit 1
                         fi
                         
@@ -161,49 +159,28 @@ pipeline {
             }
         }
 
-        stage('Desplegar Base de Datos') {
+        stage('Desplegar servicios QA') {
             steps {
                 sh """
-                    echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🚀 Desplegando servicios SGH para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
-                    ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
-                    cd Devops
+                    
+                    # Navegar al directorio QA
+                    cd Devops/qa
                     
                     # Limpiar contenedores anteriores para evitar conflictos
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
+                    docker-compose -f Docker-Compose.yml -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
                     
-                    echo "📦 Levantando base de datos..."
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-qa
+                    echo "📦 Levantando todos los servicios de QA..."
+                    docker-compose -f Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d
                     
-                    echo "✅ Base de datos desplegada correctamente"
-                    echo "🗄️ PostgreSQL disponible en puerto: 5433"
-                """
-            }
-        }
-
-        stage('Desplegar SGH Backend') {
-            steps {
-                sh """
-                    echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
-                    echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
-                    
-                    # Asegurar que la base de datos esté funcionando antes de desplegar la API
-                    echo "🔍 Verificando estado de la base de datos..."
-                    sleep 15
-                    
-                    cd Devops
-                    # Limpiar contenedores anteriores para evitar conflictos
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-                    
-                    echo "📦 Levantando API..."
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-qa
-                    
-                    echo "✅ API desplegada correctamente"
+                    echo "✅ Servicios desplegados correctamente"
                     echo "🌐 Swagger UI disponible en:"
                     echo "   http://localhost:8083/swagger-ui/index.html"
                     echo "🔗 Health check:"
                     echo "   http://localhost:8083/actuator/health"
+                    echo "🗄️ Base de datos PostgreSQL en puerto: 5433"
                 """
             }
         }
