@@ -122,10 +122,19 @@ pipeline {
 
         stage('Desplegar SGH') {
             steps {
-                sh """
-                    echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                    docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
-                """
+                script {
+                    if (env.ENVIRONMENT == "staging") {
+                        sh """
+                            echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
+                            docker-compose -f Devops/docker-compose-databases-staging.yml -f Devops/docker-compose-api-staging.yml --env-file ${env.ENV_FILE} up -d --build
+                        """
+                    } else {
+                        sh """
+                            echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
+                            docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                        """
+                    }
+                }
             }
         }
     }
