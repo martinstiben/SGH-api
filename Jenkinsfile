@@ -15,73 +15,42 @@ pipeline {
 
     stages {
 
-        stage('Checkout del código') {
+        stage('Limpiar y Checkout del código') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     script {
+                        echo "🧹 Limpiando workspace completamente..."
+                        deleteDir()
+                        
                         echo "📥 Obteniendo código del repositorio..."
-                        // Checkout automático de Jenkins configurado para no hacer checkout automático
-                        try {
-                            // Verificar si estamos en un directorio git
-                            sh '''
-                                if [ -d ".git" ]; then
-                                    echo "✅ Directorio Git detectado"
-                                    git fetch origin || { echo "⚠️ No se pudo hacer fetch"; }
-                                    if git branch -r | grep -q "origin/qa"; then
-                                        echo "🔀 Cambiando a rama qa..."
-                                        git checkout qa || git checkout -b qa origin/qa
-                                    elif git branch -r | grep -q "origin/main"; then
+                        sh '''
+                            echo "🔄 Clonando repositorio desde GitHub..."
+                            
+                            # Intentar con la rama qa primero
+                            if git clone -b qa https://github.com/martinstiben/SGH-api.git .; then
+                                echo "✅ Clonado rama qa exitosamente"
+                            else
+                                echo "⚠️ Fallo al clonar rama qa, intentando main..."
+                                if git clone https://github.com/martinstiben/SGH-api.git .; then
+                                    if git branch -r | grep -q "origin/main"; then
                                         echo "🔀 Cambiando a rama main..."
-                                        git checkout main || git checkout -b main origin/main
+                                        git checkout main
                                     elif git branch -r | grep -q "origin/master"; then
                                         echo "🔀 Cambiando a rama master..."
-                                        git checkout master || git checkout -b master origin/master
+                                        git checkout master
                                     else
-                                        echo "📍 Usando rama actual"
+                                        echo "📍 Usando rama por defecto"
                                     fi
-                                    echo "📁 Verificando estructura del repositorio:"
-                                    ls -la
+                                    echo "✅ Clonado repositorio exitosamente"
                                 else
-                                    echo "🔄 No hay directorio Git, clonando..."
-                                    throw new Exception("Not a git directory")
+                                    echo "❌ No se pudo clonar el repositorio"
+                                    exit 1
                                 fi
-                            '''
-                        } catch (Exception e) {
-                            // Si el checkout automático falla, hacer checkout manual
-                            echo "🔄 Haciendo checkout manual del repositorio..."
-                            sh """
-                                # Limpiar workspace si es necesario
-                                if [ -d ".git" ]; then
-                                    echo "🧹 Limpiando directorio anterior..."
-                                    rm -rf .git
-                                fi
-                                
-                                echo "🔄 Clonando repositorio desde GitHub..."
-                                # Intentar con la rama qa primero
-                                if git clone -b qa https://github.com/martinstiben/SGH-api.git .; then
-                                    echo "✅ Clonado rama qa exitosamente"
-                                else
-                                    echo "⚠️ Fallo al clonar rama qa, intentando main..."
-                                    if git clone https://github.com/martinstiben/SGH-api.git .; then
-                                        if git branch -r | grep -q "origin/main"; then
-                                            echo "🔀 Cambiando a rama main..."
-                                            git checkout main
-                                        elif git branch -r | grep -q "origin/master"; then
-                                            echo "🔀 Cambiando a rama master..."
-                                            git checkout master
-                                        else
-                                            echo "📍 Usando rama por defecto"
-                                        fi
-                                    else
-                                        echo "❌ No se pudo clonar el repositorio"
-                                        exit 1
-                                    fi
-                                fi
-                                
-                                echo "📁 Verificando estructura del repositorio:"
-                                ls -la
-                            """
-                        }
+                            fi
+                            
+                            echo "📁 Verificando estructura del repositorio:"
+                            ls -la
+                        '''
                     }
                 }
             }
@@ -225,6 +194,7 @@ pipeline {
         }
         failure {
             echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
+            echo "🔍 Revisa los logs arriba para más detalles"
         }
         always {
             echo "🧹 Limpieza final del pipeline completada."
