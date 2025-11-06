@@ -35,7 +35,7 @@ pipeline {
                     }
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
+                    env.COMPOSE_FILE = "Devops/Docker-Compose.yml"
                     env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
                     echo """
@@ -92,11 +92,22 @@ pipeline {
             }
         }
 
-        stage('Desplegar SGH') {
+        stage('Desplegar Base de Datos') {
             steps {
                 sh """
-                    echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                    docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                    echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    cd Devops
+                    docker-compose up -d postgres-${env.ENVIRONMENT}
+                """
+            }
+        }
+
+        stage('Desplegar SGH Backend') {
+            steps {
+                sh """
+                    echo "🚀 Desplegando backend SGH para: ${env.ENVIRONMENT}"
+                    # Aquí irá el despliegue del backend cuando lo estabilices
+                    echo "⏳ Backend deployment pendiente de configuración"
                 """
             }
         }
