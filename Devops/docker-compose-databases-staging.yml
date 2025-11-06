@@ -5,8 +5,8 @@ services:
   postgres-staging:
     container_name: DB_Staging
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: Devops/Dockerfile
     restart: always
     env_file:
       - ./staging/.env.staging
