@@ -6,23 +6,24 @@ pipeline {
         skipDefaultCheckout()
         // Timeout general del pipeline
         timeout(time: 20, unit: 'MINUTES')
+        // Log rotation
+        buildDiscarder(logRotator(numToKeepStr: '5'))
     }
 
     environment {
         PROJECT_PATH = 'Backend/SGH'
-        ENVIRONMENT = 'qa'  // Forzar ambiente QA
     }
 
     stages {
 
-        stage('Limpiar y Checkout del código') {
+        stage('Checkout código fuente') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     script {
                         echo "🧹 Limpiando workspace completamente..."
                         deleteDir()
                         
-                        echo "📥 Obteniendo código del repositorio..."
+                        echo "📥 Clonando repositorio desde GitHub..."
                         sh '''
                             echo "🔄 Clonando repositorio desde GitHub..."
                             
@@ -56,17 +57,19 @@ pipeline {
             }
         }
 
-        stage('Configurar entorno QA') {
+        stage('Detectar entorno') {
             steps {
                 script {
-                    env.ENV_DIR = "Devops/qa"
+                    // Forzar QA como el usuario solicitó
+                    env.ENVIRONMENT = 'qa'
+                    
+                    // Adaptar nombres de archivos para la estructura específica del usuario
                     env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-qa.yml"
                     env.COMPOSE_FILE_API = "Devops/docker-compose-api-qa.yml"
-                    env.ENV_FILE = "${env.ENV_DIR}/.env.qa"
+                    env.ENV_FILE = "Devops/qa/.env.qa"
 
                     echo """
-                    ✅ Configuración para QA
-                    🌎 Entorno forzado: ${env.ENVIRONMENT}
+                    ✅ Entorno forzado: ${env.ENVIRONMENT}
                     📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
@@ -81,32 +84,47 @@ pipeline {
                             echo "✅ Backend/SGH encontrado"
                         else
                             echo "❌ Backend/SGH no encontrado"
-                            echo "🔍 Listando contenido de .:"
-                            ls -la
                             echo "💡 ERROR: La estructura del repositorio no es correcta"
+                            exit 1
                         fi
                         echo "📂 Verificando directorio Devops:"
                         if [ -d "Devops" ]; then
                             echo "✅ Devops encontrado"
+                            echo "📁 Contenido de Devops:"
+                            ls -la Devops/
                         else
                             echo "❌ Devops no encontrado"
-                            echo "🔍 Contenido actual:"
-                            ls -la
+                            echo "💡 ERROR: La estructura del repositorio no es correcta"
+                            exit 1
                         fi
                     '''
 
-                    if (!fileExists(env.COMPOSE_FILE_DATABASE)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE_DATABASE}"
-                    }
-                    
-                    if (!fileExists(env.COMPOSE_FILE_API)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE_API}"
-                    }
-
-                    if (!fileExists(env.ENV_FILE)) {
-                        echo "⚠️ Archivo de entorno no encontrado, usando valores por defecto..."
-                        // Los valores están en el .env.qa que ya debe existir
-                    }
+                    // Verificar archivos usando shell
+                    sh '''
+                        echo "🔍 Verificando archivos de configuración..."
+                        if [ -f "Devops/docker-compose-databases-qa.yml" ]; then
+                            echo "✅ Devops/docker-compose-databases-qa.yml encontrado"
+                        else
+                            echo "❌ Devops/docker-compose-databases-qa.yml no encontrado"
+                            echo "🔍 Listando archivos en Devops:"
+                            find Devops/ -name "*.yml" -type f
+                            exit 1
+                        fi
+                        
+                        if [ -f "Devops/docker-compose-api-qa.yml" ]; then
+                            echo "✅ Devops/docker-compose-api-qa.yml encontrado"
+                        else
+                            echo "❌ Devops/docker-compose-api-qa.yml no encontrado"
+                            exit 1
+                        fi
+                        
+                        if [ -f "Devops/qa/.env.qa" ]; then
+                            echo "✅ Devops/qa/.env.qa encontrado"
+                        else
+                            echo "❌ Devops/qa/.env.qa no encontrado"
+                            exit 1
+                        fi
+                    '''
                 }
             }
         }
@@ -149,6 +167,8 @@ pipeline {
                     echo "📁 Ubicación actual: \$(pwd)"
                     ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
                     cd Devops
+                    # Limpiar contenedores anteriores para evitar conflictos
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
                     docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
                     echo "✅ Base de datos desplegada correctamente"
                 """
@@ -166,23 +186,15 @@ pipeline {
                     echo "🔍 Verificando estado de la base de datos..."
                     sleep 10
                     
+                    # Limpiar contenedores anteriores para evitar conflictos
+                    cd Devops
+                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
                     echo "✅ API desplegada correctamente"
                     echo "🌐 Swagger UI disponible en:"
-                    case ${env.ENVIRONMENT} in
-                        "develop")
-                            echo "   http://localhost:8082/swagger-ui/index.html"
-                            ;;
-                        "qa")
-                            echo "   http://localhost:8083/swagger-ui/index.html"
-                            ;;
-                        "staging")
-                            echo "   http://localhost:8084/swagger-ui/index.html"
-                            ;;
-                        "prod")
-                            echo "   http://localhost:8085/swagger-ui/index.html"
-                            ;;
-                    esac
+                    echo "   http://localhost:8083/swagger-ui/index.html"
+                    echo "🔗 Health check:"
+                    echo "   http://localhost:8083/actuator/health"
                 """
             }
         }
@@ -191,6 +203,9 @@ pipeline {
     post {
         success {
             echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
+            echo "🌐 Tu API está disponible en: http://localhost:8083"
+            echo "📚 Swagger UI: http://localhost:8083/swagger-ui/index.html"
+            echo "🔍 Health check: http://localhost:8083/actuator/health"
         }
         failure {
             echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
