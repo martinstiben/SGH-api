@@ -27,26 +27,13 @@ pipeline {
                         sh '''
                             echo "🔄 Clonando repositorio desde GitHub..."
                             
-                            # Intentar con la rama qa primero
+                            # Solo intentar con la rama qa
                             if git clone -b qa https://github.com/martinstiben/SGH-api.git .; then
                                 echo "✅ Clonado rama qa exitosamente"
                             else
-                                echo "⚠️ Fallo al clonar rama qa, intentando main..."
-                                if git clone https://github.com/martinstiben/SGH-api.git .; then
-                                    if git branch -r | grep -q "origin/main"; then
-                                        echo "🔀 Cambiando a rama main..."
-                                        git checkout main
-                                    elif git branch -r | grep -q "origin/master"; then
-                                        echo "🔀 Cambiando a rama master..."
-                                        git checkout master
-                                    else
-                                        echo "📍 Usando rama por defecto"
-                                    fi
-                                    echo "✅ Clonado repositorio exitosamente"
-                                else
-                                    echo "❌ No se pudo clonar el repositorio"
-                                    exit 1
-                                fi
+                                echo "❌ No se pudo clonar la rama qa. Repositorio no tiene rama qa o no tienes acceso."
+                                echo "💡 Asegúrate de que el repositorio tenga una rama 'qa' y tengas permisos de lectura."
+                                exit 1
                             fi
                             
                             echo "📁 Verificando estructura del repositorio:"
@@ -105,8 +92,8 @@ pipeline {
                         # Verificar el Docker Compose de QA
                         if [ -f "Devops/qa/Docker-Compose.yml" ]; then
                             echo "✅ Devops/qa/Docker-Compose.yml encontrado"
-                            echo "📄 Contenido del Docker Compose para QA:"
-                            head -30 Devops/qa/Docker-Compose.yml
+                            echo "📄 Servicios definidos en el Docker Compose:"
+                            grep -A 2 "container_name:" Devops/qa/Docker-Compose.yml || grep "    [a-zA-Z]" Devops/qa/Docker-Compose.yml
                         else
                             echo "❌ Devops/qa/Docker-Compose.yml no encontrado"
                             echo "🔍 Listando estructura completa de qa:"
@@ -169,13 +156,27 @@ pipeline {
                     # Navegar al directorio QA
                     cd Devops/qa
                     
+                    # Mostrar los servicios que se van a levantar
+                    echo "📄 Servicios definidos en Docker-Compose.yml:"
+                    grep -A 1 "container_name:" Docker-Compose.yml
+                    
                     # Limpiar contenedores anteriores para evitar conflictos
+                    echo "🧹 Limpiando contenedores anteriores..."
                     docker-compose -f Docker-Compose.yml -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
                     
-                    echo "📦 Levantando todos los servicios de QA..."
+                    echo "📦 Levantando servicios de QA..."
                     docker-compose -f Docker-Compose.yml -p sgh-${env.ENVIRONMENT} up -d
                     
-                    echo "✅ Servicios desplegados correctamente"
+                    echo "⏳ Esperando que los servicios estén listos..."
+                    sleep 15
+                    
+                    echo "🔍 Verificando contenedores que están corriendo:"
+                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                    
+                    echo "✅ Despliegue completado - Contenedores de QA:"
+                    echo "   🗄️ DB_QA (Base de datos PostgreSQL)"
+                    echo "   🚀 API_QA (Spring Boot API)"
+                    echo ""
                     echo "🌐 Swagger UI disponible en:"
                     echo "   http://localhost:8083/swagger-ui/index.html"
                     echo "🔗 Health check:"
