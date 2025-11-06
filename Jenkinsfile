@@ -10,17 +10,66 @@ pipeline {
         stage('Checkout código fuente') {
             steps {
                 echo "📥 Clonando repositorio desde GitHub..."
-                checkout scm
-                sh 'ls -R Devops || true'
+                
+                // Verificar si tenemos información de SCM
+                if (env.BRANCH_NAME && env.GIT_URL) {
+                    echo "🌿 Rama detectada: ${env.BRANCH_NAME}"
+                    echo "🔗 URL del repositorio: ${env.GIT_URL}"
+                    checkout scm
+                } else {
+                    echo "⚠️ Configuración de SCM no encontrada, usando checkout manual..."
+                    // Checkout manual para casos donde la configuración SCM no está disponible
+                    def branch = 'qa'  // Valor por defecto para QA
+                    def repoUrl = 'https://github.com/martinstiben/SGH-api.git'
+                    
+                    sh """
+                        echo "🔄 Haciendo checkout de la rama: ${branch}"
+                        git clone -b ${branch} ${repoUrl} . || {
+                            echo "⚠️ Fallo al clonar, intentando con rama master..."
+                            git clone ${repoUrl} .
+                            cd .git && git checkout ${branch} || git checkout -b ${branch}
+                        }
+                    """
+                }
+                
+                echo "📁 Verificando estructura del repositorio:"
+                sh 'find . -name "*.yml" -o -name "Jenkinsfile" | head -10'
+                sh 'ls -la Devops/ || true'
             }
         }
 
         stage('Detectar entorno') {
             steps {
                 script {
+                    // Detectar rama de manera más robusta
                     def branch = env.BRANCH_NAME?.toLowerCase()
+                    
+                    // Si no se detecta rama, intentar detectarla de otra manera
+                    if (!branch || branch == 'null') {
+                        echo "⚠️ BRANCH_NAME no disponible, detectando rama..."
+                        
+                        // Intentar detectar desde git
+                        try {
+                            def currentBranch = sh(script: "git branch --show-current", returnStdout: true).trim()
+                            if (currentBranch) {
+                                branch = currentBranch.toLowerCase()
+                                echo "🔍 Rama detectada desde git: ${branch}"
+                            } else {
+                                // Valor por defecto para QA
+                                branch = 'qa'
+                                echo "📍 Usando rama por defecto: ${branch}"
+                            }
+                        } catch (Exception e) {
+                            branch = 'qa'
+                            echo "📍 Error detectando rama, usando default: ${branch}"
+                        }
+                    }
+                    
+                    echo "🌿 Rama final detectada: ${branch}"
+                    
                     switch (branch) {
                         case 'main':
+                        case 'master':
                             env.ENVIRONMENT = 'prod'
                             break
                         case 'staging':
@@ -35,13 +84,16 @@ pipeline {
                     }
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
+                    
                     // Use environment-specific compose files
                     if (env.ENVIRONMENT == 'qa') {
                         env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-qa.yml"
                         env.COMPOSE_FILE_API = "Devops/docker-compose-api-qa.yml"
+                        echo "🔧 Usando archivos específicos de QA"
                     } else {
                         env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
                         env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                        echo "🔧 Usando archivos generales"
                     }
                     env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
 
