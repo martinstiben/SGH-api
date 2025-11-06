@@ -11,25 +11,27 @@ pipeline {
             steps {
                 echo "📥 Clonando repositorio desde GitHub..."
                 
-                // Verificar si tenemos información de SCM
-                if (env.BRANCH_NAME && env.GIT_URL) {
-                    echo "🌿 Rama detectada: ${env.BRANCH_NAME}"
-                    echo "🔗 URL del repositorio: ${env.GIT_URL}"
-                    checkout scm
-                } else {
-                    echo "⚠️ Configuración de SCM no encontrada, usando checkout manual..."
-                    // Checkout manual para casos donde la configuración SCM no está disponible
-                    def branch = 'qa'  // Valor por defecto para QA
-                    def repoUrl = 'https://github.com/martinstiben/SGH-api.git'
-                    
-                    sh """
-                        echo "🔄 Haciendo checkout de la rama: ${branch}"
-                        git clone -b ${branch} ${repoUrl} . || {
-                            echo "⚠️ Fallo al clonar, intentando con rama master..."
-                            git clone ${repoUrl} .
-                            cd .git && git checkout ${branch} || git checkout -b ${branch}
-                        }
-                    """
+                script {
+                    // Verificar si tenemos información de SCM
+                    if (env.BRANCH_NAME && env.GIT_URL) {
+                        echo "🌿 Rama detectada: ${env.BRANCH_NAME}"
+                        echo "🔗 URL del repositorio: ${env.GIT_URL}"
+                        checkout scm
+                    } else {
+                        echo "⚠️ Configuración de SCM no encontrada, usando checkout manual..."
+                        // Checkout manual para casos donde la configuración SCM no está disponible
+                        def branch = 'qa'  // Valor por defecto para QA
+                        def repoUrl = 'https://github.com/martinstiben/SGH-api.git'
+                        
+                        sh """
+                            echo "🔄 Haciendo checkout de la rama: ${branch}"
+                            git clone -b ${branch} ${repoUrl} . || {
+                                echo "⚠️ Fallo al clonar, intentando con rama master..."
+                                git clone ${repoUrl} .
+                                cd .git && git checkout ${branch} || git checkout -b ${branch}
+                            }
+                        """
+                    }
                 }
                 
                 echo "📁 Verificando estructura del repositorio:"
