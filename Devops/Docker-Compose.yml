@@ -15,7 +15,7 @@ services:
     networks:
       - network_develop
     volumes:
-      - postgres_data_develop:/var/lib/postgresql/data
+      - postgres_data_develop:/var/lib/postgresql
       - "./backups/develop:/backups/postgres"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -40,7 +40,7 @@ services:
     networks:
       - network_qa
     volumes:
-      - postgres_data_qa:/var/lib/postgresql/data
+      - postgres_data_qa:/var/lib/postgresql
       - "./backups/qa:/backups/postgres"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -65,7 +65,7 @@ services:
     networks:
       - network_staging
     volumes:
-      - postgres_data_staging:/var/lib/postgresql/data
+      - postgres_data_staging:/var/lib/postgresql
       - "./backups/staging:/backups/postgres"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -90,7 +90,7 @@ services:
     networks:
       - network_prod
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+      - postgres_data_prod:/var/lib/postgresql
       - "./backups/prod:/backups/postgres"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
