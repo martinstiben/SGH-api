@@ -32,14 +32,14 @@ public class users {
     @Size(max = 255, message = "El código de verificación debe tener máximo 255 caracteres")
     private String verificationCode;
 
-    @Column(name = "code_expiration", columnDefinition = "DATETIME(6)")
+    @Column(name = "code_expiration")
     private java.time.LocalDateTime codeExpiration;
 
     @Column(name = "is_verified", nullable = false)
     private boolean isVerified = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_status", nullable = false)
+    @Column(name = "account_status", nullable = false, length = 20)
     @NotNull(message = "El estado de la cuenta es obligatorio")
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 

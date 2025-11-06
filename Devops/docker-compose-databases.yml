@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # ==================== PRODUCCIÓN ====================
+  postgres-prod:
+    container_name: DB_Prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ./prod/.env.prod
+    ports:
+      - "5435:5432"
+    networks:
+      - network_prod
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql
+      - "./backups/prod:/backups/postgres"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=prod
+
+# ==================== VOLÚMENES ====================
+volumes:
+  postgres_data_develop:
+    driver: local
+    name: postgres_data_develop
+  postgres_data_qa:
+    driver: local
+    name: postgres_data_qa
+  postgres_data_staging:
+    driver: local
+    name: postgres_data_staging
+  postgres_data_prod:
+    driver: local
+    name: postgres_data_prod
+
+# ==================== REDES ====================
+networks:
+  network_develop:
+    driver: bridge
+    name: network_develop
+  network_qa:
+    driver: bridge
+    name: network_qa
+  network_staging:
+    driver: bridge
+    name: network_staging
+  network_prod:
+    driver: bridge
+    name: network_prod

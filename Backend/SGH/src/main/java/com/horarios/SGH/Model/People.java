@@ -30,8 +30,7 @@ public class People {
     @Column(name = "photo_content_type", length = 100)
     private String photoContentType;
 
-    @Column(name = "photo_data", columnDefinition = "LONGBLOB")
-    @Lob
+    @Column(name = "photo_data")
     private byte[] photoData;
 
     @OneToOne(mappedBy = "person", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

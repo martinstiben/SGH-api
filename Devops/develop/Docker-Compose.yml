@@ -24,8 +24,33 @@ services:
       - com.sgh.group=sgh
       - com.sgh.environment=develop
 
+  # ==================== API ====================
+  sgh-api-develop:
+    container_name: API_Develop
+    image: sgh-api-develop:latest
+    restart: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=develop
+    ports:
+      - "8080:8080"
+    networks:
+      - network_mysql_develop
+    depends_on:
+      - mysql-develop
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      - com.sgh.group=sgh
+      - com.sgh.environment=develop
+
 volumes:
   mysql_data_develop:
 
 networks:
   network_mysql_develop:
+    driver: bridge
+    name: network_mysql_develop

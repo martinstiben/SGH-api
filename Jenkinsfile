@@ -35,18 +35,40 @@ pipeline {
                     }
 
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE = "${env.ENV_DIR}/Docker-Compose.yml"
-                    env.ENV_FILE = "${env.ENV_DIR}/.env.${env.ENVIRONMENT}"
+                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
+                    env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                    switch (env.ENVIRONMENT) {
+                        case 'develop':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
+                            break
+                        case 'qa':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.qa"
+                            break
+                        case 'staging':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.staging"
+                            break
+                        case 'prod':
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.prod"
+                            break
+                        default:
+                            env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
+                            break
+                    }
 
                     echo """
                     ✅ Rama detectada: ${env.BRANCH_NAME}
                     🌎 Entorno asignado: ${env.ENVIRONMENT}
-                    📄 Compose file: ${env.COMPOSE_FILE}
+                    📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
+                    📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
                     """
 
-                    if (!fileExists(env.COMPOSE_FILE)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE}"
+                    if (!fileExists(env.COMPOSE_FILE_DATABASE)) {
+                        error "❌ No se encontró ${env.COMPOSE_FILE_DATABASE}"
+                    }
+                    
+                    if (!fileExists(env.COMPOSE_FILE_API)) {
+                        error "❌ No se encontró ${env.COMPOSE_FILE_API}"
                     }
 
                     if (!fileExists(env.ENV_FILE)) {
@@ -92,11 +114,47 @@ pipeline {
             }
         }
 
-        stage('Desplegar SGH') {
+        stage('Desplegar Base de Datos') {
             steps {
                 sh """
-                    echo "🚀 Desplegando entorno: ${env.ENVIRONMENT}"
-                    docker-compose -f ${env.COMPOSE_FILE} --env-file ${env.ENV_FILE} up -d --build
+                    echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
+                    echo "📁 Ubicación actual: \$(pwd)"
+                    ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
+                    echo "✅ Base de datos desplegada correctamente"
+                """
+            }
+        }
+
+        stage('Desplegar SGH Backend') {
+            steps {
+                sh """
+                    echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
+                    echo "📦 Desplegando solo el contenedor de la API..."
+                    echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
+                    
+                    # Asegurar que la base de datos esté funcionando antes de desplegar la API
+                    echo "🔍 Verificando estado de la base de datos..."
+                    sleep 10
+                    
+                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+                    echo "✅ API desplegada correctamente"
+                    echo "🌐 Swagger UI disponible en:"
+                    case ${env.ENVIRONMENT} in
+                        "develop")
+                            echo "   http://localhost:8082/swagger-ui/index.html"
+                            ;;
+                        "qa")
+                            echo "   http://localhost:8083/swagger-ui/index.html"
+                            ;;
+                        "staging")
+                            echo "   http://localhost:8084/swagger-ui/index.html"
+                            ;;
+                        "prod")
+                            echo "   http://localhost:8085/swagger-ui/index.html"
+                            ;;
+                    esac
                 """
             }
         }

@@ -3,7 +3,8 @@ package com.horarios.SGH.Model;
 import jakarta.persistence.*;
 import java.time.LocalTime;
 
-@Entity
+@Entity(name = "schedule")
+@Table(name = "school_schedule")
 public class schedule {
 
     @Id
@@ -22,10 +23,16 @@ public class schedule {
     @JoinColumn(name = "subjectId", nullable = false)
     private subjects subjectId;
 
+    @Column(name = "day", nullable = false)
     private String day;
+    
+    @Column(name = "start_time", columnDefinition = "TIME")
     private LocalTime startTime;
+    
+    @Column(name = "end_time", columnDefinition = "TIME")
     private LocalTime endTime;
 
+    @Column(name = "schedule_name", length = 100)
     private String scheduleName;
 
     public schedule() {}

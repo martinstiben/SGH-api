@@ -4,32 +4,44 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "schedule_history")
+@Table(name = "schedule_execution_history")
 public class schedule_history {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(name = "executed_by", length = 100)
     private String executedBy;
+    
+    @Column(name = "executed_at", columnDefinition = "TIMESTAMP")
     private LocalDateTime executedAt;
 
     // RUNNING | SUCCESS | FAILED
+    @Column(name = "execution_status", length = 20)
     private String status;
 
+    @Column(name = "total_generated")
     private int totalGenerated;
 
-    @Column(length = 1000)
+    @Column(name = "execution_message", length = 1000)
     private String message;
 
     // Parámetros de ejecución (si ya existen, conserva tus nombres)
+    @Column(name = "period_start", columnDefinition = "DATE")
     private LocalDate periodStart;
+    
+    @Column(name = "period_end", columnDefinition = "DATE")
     private LocalDate periodEnd;
+    
+    @Column(name = "dry_run_flag")
     private boolean dryRun;
+    
     @Column(name = "force_flag")
     private boolean force;
 
-    @Column(length = 500)
+    @Column(name = "execution_params", length = 500)
     private String params;
 
     public schedule_history(Integer id, String executedBy, LocalDateTime executedAt, String status, int totalGenerated,
