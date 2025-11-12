@@ -65,6 +65,21 @@ public class usersService {
             throw new RuntimeException("Error al actualizar la foto de perfil: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Encuentra todos los usuarios por rol específico
+     * @param roleName Nombre del rol a buscar
+     * @return Lista de usuarios con el rol especificado
+     */
+    public java.util.List<users> findUsersByRole(String roleName) {
+        try {
+            return usersRepository.findAll().stream()
+                .filter(user -> user.getRole().getRoleName().equals(roleName))
+                .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener usuarios por rol: " + roleName + ", Error: " + e.getMessage());
+        }
+    }
 
     /**
      * Obtiene la información completa de un usuario incluyendo foto.
