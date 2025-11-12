@@ -3,7 +3,6 @@ package com.horarios.SGH.Model;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
