@@ -36,8 +36,9 @@ public class DataInitializer {
     private String masterPassword;
 
     @Bean
-    public CommandLineRunner seedRoles(IRolesRepository rolesRepo) {
+    public CommandLineRunner seedRolesAndMasterUser(Iusers repo, PasswordEncoder encoder, IPeopleRepository peopleRepo, IRolesRepository rolesRepo) {
         return args -> {
+            // Primero crear los roles si no existen
             if (rolesRepo.count() == 0) {
                 rolesRepo.save(new Roles("MAESTRO"));
                 rolesRepo.save(new Roles("ESTUDIANTE"));
@@ -47,12 +48,8 @@ public class DataInitializer {
             } else {
                 System.out.println(">> Roles ya existen");
             }
-        };
-    }
-
-    @Bean
-    public CommandLineRunner seedMasterUser(Iusers repo, PasswordEncoder encoder, IPeopleRepository peopleRepo, IRolesRepository rolesRepo) {
-        return args -> {
+            
+            // Ahora crear el usuario master
             if (!repo.existsByUserName(masterUsername)) {
                 // Verificar si ya existe una persona con este email
                 if (peopleRepo.findByEmail(masterUsername).isPresent()) {
@@ -64,8 +61,12 @@ public class DataInitializer {
                 People masterPerson = new People("Master User", masterUsername);
                 masterPerson = peopleRepo.save(masterPerson);
 
-                // Obtener rol MAESTRO
-                Roles maestroRole = rolesRepo.findByRoleName("MAESTRO").orElseThrow(() -> new RuntimeException("Rol MAESTRO no encontrado"));
+                // Obtener rol MAESTRO - ahora debería existir
+                Roles maestroRole = rolesRepo.findByRoleName("MAESTRO")
+                    .orElseGet(() -> {
+                        System.out.println(">> Rol MAESTRO no encontrado, creando...");
+                        return rolesRepo.save(new Roles("MAESTRO"));
+                    });
 
                 users u = new users(masterPerson, maestroRole, encoder.encode(masterPassword));
                 repo.save(u);
