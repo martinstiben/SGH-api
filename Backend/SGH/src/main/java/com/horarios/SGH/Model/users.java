@@ -32,7 +32,7 @@ public class users {
     @Size(max = 255, message = "El código de verificación debe tener máximo 255 caracteres")
     private String verificationCode;
 
-    @Column(name = "code_expiration", columnDefinition = "TIMESTAMP")
+    @Column(name = "code_expiration", columnDefinition = "DATETIME(6)")
     private java.time.LocalDateTime codeExpiration;
 
     @Column(name = "is_verified", nullable = false)

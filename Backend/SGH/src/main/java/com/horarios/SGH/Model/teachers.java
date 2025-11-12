@@ -19,7 +19,8 @@ public class teachers {
     @Pattern(regexp = "^[a-zA-ZÀ-ÿ\\s]+$", message = "El nombre del profesor solo puede contener letras y espacios")
     private String teacherName;
 
-    @Column(name="photoData", columnDefinition = "BYTEA")
+    @Column(name="photoData", columnDefinition = "LONGBLOB")
+    @Lob
     private byte[] photoData;
 
     @Column(name="photoContentType", length = 100)

@@ -29,7 +29,7 @@ import java.time.LocalTime;
 @Configuration
 public class DataInitializer {
 
-    @Value("${app.master.username:master}")
+    @Value("${app.master.name:master}")
     private String masterUsername;
 
     @Value("${app.master.password:Master$2025!}")
@@ -99,6 +99,10 @@ public class DataInitializer {
                 biology.setSubjectName("Biología");
                 subjectRepo.save(biology);
 
+                subjects Etic = new subjects();
+                Etic.setSubjectName("Etica");
+                subjectRepo.save(Etic);
+
                 System.out.println(">> Materias iniciales creadas");
             }
 
@@ -115,6 +119,10 @@ public class DataInitializer {
                 teachers teacher3 = new teachers();
                 teacher3.setTeacherName("Carlos López");
                 teacher3 = teacherRepo.save(teacher3);
+
+                teachers teacher4 = new teachers();
+                teacher4.setTeacherName("Carlos Manchola");
+                teacher4 = teacherRepo.save(teacher4);
 
                 // Asignar especializaciones
                 subjects math = subjectRepo.findBySubjectName("Matemáticas");
@@ -141,6 +149,14 @@ public class DataInitializer {
                     teacherSubjectRepo.save(ts3);
                 }
 
+                subjects Etic = subjectRepo.findBySubjectName("Etica");
+                if (Etic != null) {
+                    TeacherSubject ts4 = new TeacherSubject();
+                    ts4.setTeacher(teacher4);
+                    ts4.setSubject(Etic);
+                    teacherSubjectRepo.save(ts4);
+                }
+                
                 // Crear disponibilidad inicial para profesores
                 // Disponibilidad para Juan Pérez (Lunes y Miércoles)
                 TeacherAvailability avail1 = new TeacherAvailability();
@@ -193,10 +209,12 @@ public class DataInitializer {
                 subjects math = subjectRepo.findBySubjectName("Matemáticas");
                 subjects physics = subjectRepo.findBySubjectName("Física");
                 subjects chemistry = subjectRepo.findBySubjectName("Química");
+                subjects Etic = subjectRepo.findBySubjectName("Etica");
 
                 teachers teacher1 = teacherRepo.findAll().stream().filter(t -> t.getTeacherName().equals("Juan Pérez")).findFirst().orElse(null);
                 teachers teacher2 = teacherRepo.findAll().stream().filter(t -> t.getTeacherName().equals("María García")).findFirst().orElse(null);
                 teachers teacher3 = teacherRepo.findAll().stream().filter(t -> t.getTeacherName().equals("Carlos López")).findFirst().orElse(null);
+                teachers teacher4 = teacherRepo.findAll().stream().filter(t -> t.getTeacherName().equals("Carlos Manchola")).findFirst().orElse(null);
 
                 // Asignar teacherSubject a cursos
                 TeacherSubject ts1 = teacherSubjectRepo.findByTeacher_IdAndSubject_Id(teacher1.getId(), math.getId()).orElse(null);
@@ -216,6 +234,12 @@ public class DataInitializer {
                 course3.setCourseName("3C");
                 course3.setTeacherSubject(ts3);
                 courseRepo.save(course3);
+
+                TeacherSubject ts4 = teacherSubjectRepo.findByTeacher_IdAndSubject_Id(teacher4.getId(), Etic.getId()).orElse(null);
+                courses course4 = new courses();
+                course3.setCourseName("3C");
+                course3.setTeacherSubject(ts4);
+                courseRepo.save(course4);
 
                 System.out.println(">> Cursos iniciales creados");
             }
