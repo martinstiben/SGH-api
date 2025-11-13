@@ -57,29 +57,52 @@ public class NotificationService {
     /**
      * Envía notificación de forma asíncrona con reintentos automáticos
      */
-    @Async("emailExecutor")
-    public CompletableFuture<Void> sendNotificationAsync(NotificationDTO notification) {
-        log.info("Iniciando envío asíncrono de notificación a: {}", notification.getRecipientEmail());
-        
+    public void validateAndPrepareNotification(NotificationDTO notification) {
+        log.info("Validando notificación para: {}", notification.getRecipientEmail());
+
+        // Validar que el tipo de notificación sea válido para el rol
+        NotificationType notificationType = NotificationType.valueOf(notification.getNotificationType());
+        validateNotificationTypeForRole(notificationType, notification.getRecipientRole());
+
         NotificationLog logEntry = new NotificationLog(
             notification.getRecipientEmail(),
             notification.getRecipientName(),
             notification.getRecipientRole(),
-            NotificationType.valueOf(notification.getNotificationType()),
+            notificationType,
             notification.getSubject(),
             notification.getContent()
         );
-        
+
         notificationLogRepository.save(logEntry);
-        
-        try {
-            sendWithRetry(logEntry, notification);
-            log.info("Notificación enviada exitosamente a: {}", notification.getRecipientEmail());
-        } catch (Exception e) {
-            log.error("Error final al enviar notificación a {}: {}", notification.getRecipientEmail(), e.getMessage());
-        }
-        
-        return CompletableFuture.completedFuture(null);
+        log.info("Notificación validada y preparada para envío a: {}", notification.getRecipientEmail());
+    }
+
+    @Async("emailExecutor")
+    public CompletableFuture<Void> sendNotificationAsync(NotificationDTO notification) {
+        return CompletableFuture.runAsync(() -> {
+            log.info("Iniciando envío asíncrono de notificación a: {}", notification.getRecipientEmail());
+
+            try {
+                // Buscar el log más reciente creado en los últimos 5 minutos
+                LocalDateTime since = LocalDateTime.now().minusMinutes(5);
+                List<NotificationLog> recentLogs = notificationLogRepository
+                    .findRecentByRecipientEmail(notification.getRecipientEmail(), since);
+
+                NotificationLog logEntry = recentLogs.stream()
+                    .filter(log -> log.getNotificationType().name().equals(notification.getNotificationType()) &&
+                                  log.getSubject().equals(notification.getSubject()) &&
+                                  log.getStatus().equals(NotificationStatus.PENDING))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Log de notificación no encontrado para envío asíncrono"));
+
+                sendWithRetry(logEntry, notification);
+                log.info("Notificación enviada exitosamente a: {}", notification.getRecipientEmail());
+
+            } catch (Exception e) {
+                log.error("Error final al enviar notificación a {}: {}", notification.getRecipientEmail(), e.getMessage());
+                throw new RuntimeException("Error al enviar notificación: " + e.getMessage(), e);
+            }
+        });
     }
     
     /**
@@ -580,5 +603,28 @@ public class NotificationService {
                 NotificationType.TEACHER_CLASS_SCHEDULED, NotificationStatus.FAILED));
         
         return stats;
+    }
+
+    /**
+     * Valida que el tipo de notificación sea válido para el rol especificado
+     */
+    private void validateNotificationTypeForRole(NotificationType notificationType, String recipientRole) {
+        String[] allowedRoles = notificationType.getAllowedRoles();
+
+        for (String allowedRole : allowedRoles) {
+            if (allowedRole.equals(recipientRole)) {
+                return; // Válido
+            }
+        }
+
+        // Si llega aquí, el tipo no es válido para el rol
+        throw new IllegalArgumentException(
+            String.format("El tipo de notificación '%s' no está permitido para el rol '%s'. " +
+                         "Tipos permitidos para %s: %s",
+                         notificationType.name(),
+                         recipientRole,
+                         recipientRole,
+                         String.join(", ", allowedRoles))
+        );
     }
 }

@@ -1,6 +1,7 @@
 package com.horarios.SGH.Service;
 
 import com.horarios.SGH.DTO.InAppNotificationDTO;
+import com.horarios.SGH.DTO.InAppNotificationResponseDTO;
 import com.horarios.SGH.Model.InAppNotification;
 import com.horarios.SGH.Model.NotificationPriority;
 import com.horarios.SGH.Model.NotificationType;
@@ -46,31 +47,27 @@ public class InAppNotificationService {
             users user = userService.findById(notificationDTO.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + notificationDTO.getUserId()));
             
+            // Convertir tipos de datos
+            NotificationType type = NotificationType.valueOf(notificationDTO.getNotificationType());
+            NotificationPriority priority = NotificationPriority.valueOf(notificationDTO.getPriority());
+
             // Crear notificación
             InAppNotification notification = new InAppNotification(
                 user.getUserId(),
                 user.getPerson().getEmail(),
                 user.getPerson().getFullName(),
                 user.getRole().getRoleName(),
-                notificationDTO.getNotificationType(),
+                type,
                 notificationDTO.getTitle(),
                 notificationDTO.getMessage()
             );
-            
+
             // Configurar campos adicionales
-            notification.setPriority(notificationDTO.getPriority());
+            notification.setPriority(priority);
             notification.setCategory(notificationDTO.getCategory());
             notification.setActionUrl(notificationDTO.getActionUrl());
             notification.setActionText(notificationDTO.getActionText());
             notification.setIcon(notificationDTO.getIcon());
-            
-            if (notificationDTO.getMetadata() != null) {
-                notification.setMetadata(convertMetadataToJson(notificationDTO.getMetadata()));
-            }
-            
-            if (notificationDTO.getExpiresAt() != null) {
-                notification.setExpiresAt(notificationDTO.getExpiresAt());
-            }
             
             // Guardar en base de datos
             InAppNotification savedNotification = inAppNotificationRepository.save(notification);
@@ -159,30 +156,39 @@ public class InAppNotificationService {
     }
     
     /**
-     * Convierte InAppNotification a InAppNotificationDTO
+     * Convierte InAppNotification a InAppNotificationResponseDTO
      */
-    private InAppNotificationDTO convertToDTO(InAppNotification notification) {
-        InAppNotificationDTO dto = new InAppNotificationDTO();
-        
+    private InAppNotificationResponseDTO convertToDTO(InAppNotification notification) {
+        InAppNotificationResponseDTO dto = new InAppNotificationResponseDTO();
+
         dto.setNotificationId(notification.getNotificationId());
         dto.setUserId(notification.getUserId());
         dto.setUserEmail(notification.getUserEmail());
         dto.setUserName(notification.getUserName());
         dto.setUserRole(notification.getUserRole());
-        dto.setNotificationType(notification.getNotificationType());
+        dto.setNotificationType(notification.getNotificationType().name());
         dto.setTitle(notification.getTitle());
         dto.setMessage(notification.getMessage());
         dto.setActionUrl(notification.getActionUrl());
         dto.setActionText(notification.getActionText());
         dto.setIcon(notification.getIcon());
-        dto.setPriority(notification.getPriority());
+        dto.setPriority(notification.getPriority().name());
         dto.setCategory(notification.getCategory());
         dto.setRead(notification.isRead());
         dto.setArchived(notification.isArchived());
         dto.setCreatedAt(notification.getCreatedAt());
         dto.setReadAt(notification.getReadAt());
         dto.setExpiresAt(notification.getExpiresAt());
-        
+
+        // Campos calculados
+        dto.setPriorityDisplayName(notification.getPriority().getDisplayName());
+        dto.setPriorityColor(notification.getPriority().getColor());
+        dto.setPriorityIcon(notification.getPriority().getIcon());
+        dto.setAge(notification.getAge());
+        dto.setRecent(notification.isRecent());
+        dto.setActive(notification.isActive());
+        dto.setRequiresImmediateAttention(notification.getPriority().requiresImmediateAttention());
+
         return dto;
     }
     

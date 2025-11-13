@@ -45,42 +45,43 @@ public class NotificationController {
     @PostMapping("/send")
     @Operation(summary = "Enviar notificación por correo", 
               description = "Envía una notificación por correo electrónico a un destinatario específico")
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> sendNotification(
+    public ResponseEntity<Map<String, Object>> sendNotification(
             @Valid @RequestBody NotificationDTO notification) {
-        
+
         log.info("Solicitud de envío de notificación para: {}", notification.getRecipientEmail());
-        
+
         try {
-            return notificationService.sendNotificationAsync(notification)
-                .thenApply(result -> {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("status", "success");
-                    response.put("message", "Notificación enviada exitosamente");
-                    response.put("recipient", notification.getRecipientEmail());
-                    response.put("timestamp", java.time.LocalDateTime.now().toString());
-                    
-                    return ResponseEntity.ok(response);
-                })
-                .exceptionally(ex -> {
-                    log.error("Error al enviar notificación: {}", ex.getMessage());
-                    Map<String, Object> errorResponse = new HashMap<>();
-                    errorResponse.put("status", "error");
-                    errorResponse.put("message", "Error al enviar notificación: " + ex.getMessage());
-                    errorResponse.put("timestamp", java.time.LocalDateTime.now().toString());
-                    
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-                });
-                
+            // Validar y preparar la notificación en el hilo principal
+            notificationService.validateAndPrepareNotification(notification);
+
+            // Enviar de forma asíncrona
+            notificationService.sendNotificationAsync(notification);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("message", "Notificación enviada exitosamente");
+            response.put("recipient", notification.getRecipientEmail());
+            response.put("timestamp", java.time.LocalDateTime.now().toString());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Validación fallida para notificación: {}", e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("timestamp", java.time.LocalDateTime.now().toString());
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+
         } catch (Exception e) {
             log.error("Error en la solicitud de envío de notificación: {}", e.getMessage());
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Error interno del servidor: " + e.getMessage());
             errorResponse.put("timestamp", java.time.LocalDateTime.now().toString());
-            
-            return CompletableFuture.completedFuture(
-                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse)
-            );
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
     

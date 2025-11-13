@@ -31,6 +31,12 @@ public interface INotificationLogRepository extends JpaRepository<NotificationLo
      */
     @Query("SELECT nl FROM notification_logs nl WHERE nl.recipientEmail = :email ORDER BY nl.createdAt DESC")
     Page<NotificationLog> findByRecipientEmail(@Param("email") String email, Pageable pageable);
+
+    /**
+     * Busca notificaciones recientes por destinatario (últimas 24 horas)
+     */
+    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipientEmail = :email AND nl.createdAt >= :since ORDER BY nl.createdAt DESC")
+    List<NotificationLog> findRecentByRecipientEmail(@Param("email") String email, @Param("since") LocalDateTime since);
     
     /**
      * Busca notificaciones por tipo

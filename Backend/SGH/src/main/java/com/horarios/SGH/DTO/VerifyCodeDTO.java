@@ -35,8 +35,4 @@ public class VerifyCodeDTO {
         this.code = code;
     }
 
-    // Para compatibilidad, mantener getUsername que retorna email
-    public String getUsername() {
-        return email;
-    }
 }

@@ -46,10 +46,16 @@ public class AuthController {
         @ApiResponse(responseCode = "401", description = "Credenciales inválidas")
     })
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO request) {
+        System.out.println("=== LOGIN REQUEST ===");
+        System.out.println("Email: " + request.getEmail());
+        System.out.println("Password: " + (request.getPassword() != null ? "[PROVIDED]" : "null"));
         try {
             String message = service.initiateLogin(request);
+            System.out.println("Login initiated, code sent");
             return ResponseEntity.ok(Map.of("message", message));
         } catch (Exception e) {
+            System.out.println("Login failed: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(401).body(Map.of("error", "Credenciales inválidas"));
         }
     }
@@ -63,13 +69,20 @@ public class AuthController {
         @ApiResponse(responseCode = "400", description = "Código inválido o expirado")
     })
     public ResponseEntity<?> verifyCode(@Valid @RequestBody VerifyCodeDTO request) {
+        System.out.println("=== VERIFY CODE REQUEST ===");
+        System.out.println("Email: " + request.getEmail());
+        System.out.println("Code: " + request.getCode());
         try {
             LoginResponseDTO resp = service.verifyCode(request.getEmail(), request.getCode());
+            System.out.println("Code verified successfully, token generated");
             return ResponseEntity.ok(resp);
         } catch (Exception e) {
+            System.out.println("Code verification failed: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
         }
     }
+
 
     @PostMapping("/register")
     @Operation(summary = "Registrar usuario", description = "Registra un nuevo usuario con rol específico")

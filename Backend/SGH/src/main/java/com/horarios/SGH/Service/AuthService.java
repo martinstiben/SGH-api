@@ -100,7 +100,28 @@ public class AuthService {
 
 
     /**
-     * Inicia el proceso de login verificando credenciales y enviando código 2FA.
+     * Login directo con email y contraseña, devuelve token JWT.
+     *
+     * @param req DTO con email y contraseña
+     * @return DTO con token JWT
+     */
+    public LoginResponseDTO login(LoginRequestDTO req) {
+        // Validar entrada
+        ValidationUtils.validateEmail(req.getEmail());
+        ValidationUtils.validatePassword(req.getPassword());
+
+        // Verificar credenciales con Spring Security
+        authManager.authenticate(
+            new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
+        );
+
+        // Generar token JWT
+        String token = jwtTokenProvider.generateToken(req.getEmail());
+        return new LoginResponseDTO(token);
+    }
+
+    /**
+     * Inicia el proceso de login verificando credenciales y enviando código 2FA (opcional).
      *
      * @param req DTO con email y contraseña
      * @return Mensaje de confirmación
