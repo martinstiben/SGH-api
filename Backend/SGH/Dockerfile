@@ -1,4 +1,8 @@
 FROM eclipse-temurin:17-jdk-alpine
+
+# Instalar curl para health checks
+RUN apk add --no-cache curl
+
 VOLUME /tmp
 WORKDIR /app
 COPY pom.xml .
