@@ -26,20 +26,16 @@ public enum NotificationType {
     TEACHER_AVAILABILITY_CHANGED("Cambio de Disponibilidad"),
     
     // Directores de Área - alertas sobre disponibilidad de horarios, conflictos o incidencias
-    DIRECTOR_SCHEDULE_CONFLICT("Conflicto de Horarios"),
-    
     DIRECTOR_AVAILABILITY_ISSUE("Problema de Disponibilidad"),
-    
+
     DIRECTOR_SYSTEM_INCIDENT("Incidencia del Sistema"),
-    
+
     // Coordinadores - notificaciones generales, actualizaciones globales, confirmaciones
     COORDINATOR_GLOBAL_UPDATE("Actualización Global"),
-    
+
     COORDINATOR_SYSTEM_ALERT("Alerta del Sistema"),
-    
+
     COORDINATOR_CHANGE_CONFIRMATION("Confirmación de Cambio"),
-    
-    COORDINATOR_MAINTENANCE_ALERT("Mantenimiento Programado"),
     
     // Notificaciones generales para todos los roles
     GENERAL_SYSTEM_NOTIFICATION("Notificación General");
@@ -63,27 +59,25 @@ public enum NotificationType {
             case STUDENT_SCHEDULE_CHANGE:
             case STUDENT_CLASS_CANCELLATION:
                 return new String[]{"ESTUDIANTE"};
-                
+
             case TEACHER_CLASS_SCHEDULED:
             case TEACHER_CLASS_MODIFIED:
             case TEACHER_CLASS_CANCELLED:
             case TEACHER_AVAILABILITY_CHANGED:
                 return new String[]{"MAESTRO"};
-                
-            case DIRECTOR_SCHEDULE_CONFLICT:
+
             case DIRECTOR_AVAILABILITY_ISSUE:
             case DIRECTOR_SYSTEM_INCIDENT:
                 return new String[]{"DIRECTOR_DE_AREA"};
-                
+
             case COORDINATOR_GLOBAL_UPDATE:
             case COORDINATOR_SYSTEM_ALERT:
             case COORDINATOR_CHANGE_CONFIRMATION:
-            case COORDINATOR_MAINTENANCE_ALERT:
                 return new String[]{"COORDINADOR"};
-                
+
             case GENERAL_SYSTEM_NOTIFICATION:
                 return new String[]{"COORDINADOR", "MAESTRO", "ESTUDIANTE", "DIRECTOR_DE_AREA"};
-                
+
             default:
                 return new String[]{};
         }

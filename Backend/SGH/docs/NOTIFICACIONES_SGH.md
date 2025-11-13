@@ -1,18 +1,551 @@
-# 🚀 Sistema de Notificaciones SGH - Listo para Frontend
+# 📧 Sistema de Notificaciones SGH - Documentación Completa
 
-## ✅ **SISTEMA COMPLETAMENTE FUNCIONAL - ¡YA PUEDES CONSUMIRLO!**
+## 🎯 **Visión General**
 
-**El sistema de notificaciones está 100% implementado y listo para ser usado desde tu frontend React/React Native.**
+El Sistema de Notificaciones del **SGH (Sistema de Gestión de Horarios)** es una plataforma completa y elegante para la comunicación institucional. Diseñado con plantillas HTML modernas, envío asíncrono, reintentos automáticos y logging detallado, ofrece una experiencia de comunicación moderna y confiable.
 
-### 🎯 **¿Qué tienes disponible?**
+**Características principales:**
+- ✅ **Envío dual**: Correo electrónico + Notificaciones In-App
+- ✅ **100% automatizado** por roles de usuario
+- ✅ **Plantillas HTML personalizadas** con diseño responsive
+- ✅ **WebSocket en tiempo real** para React Web
+- ✅ **APIs REST completas** para React Native
+- ✅ **Reintentos automáticos** ante fallos SMTP
+- ✅ **Logging completo** de auditoría
+- ✅ **Coordinador con control total** del sistema
 
-1. **📧 Correo Electrónico** - Envío automático con plantillas HTML personalizadas por rol
-2. **📱 Notificaciones In-App** - Tiempo real con persistencia en BD
-3. **🔄 WebSocket** - Sincronización instantánea entre dispositivos
-4. **📚 API REST Completa** - 12 endpoints documentados con Swagger
-5. **⚡ Integración Frontend** - Ejemplos de código para React web y React Native
+---
 
-### 🔗 **URLs de Producción**
+## 🎨 **Características del Sistema**
+
+### ✨ **Diseño y UX**
+- **Plantillas HTML modernas** con gradientes y animaciones sutiles
+- **Responsive design** compatible con móviles y desktop
+- **Paleta de colores corporativa** por rol de usuario
+- **Animaciones CSS** para mejor experiencia visual
+- **Tipografía moderna** (Segoe UI, sans-serif)
+
+### 🔧 **Funcionalidades Técnicas**
+- **Envío asíncrono** con JavaMailSender y pool de hilos
+- **Reintentos automáticos** con backoff exponencial (hasta 3 intentos)
+- **Logging completo** de todas las operaciones con SLF4J
+- **Validación de tipos** por rol de usuario
+- **WebSocket STOMP** para notificaciones en tiempo real
+- **Manejo de errores robusto** con excepciones controladas
+
+### 📊 **Estadísticas y Monitoreo**
+- Dashboard de estadísticas en tiempo real
+- Logs detallados con timestamps y niveles
+- Métricas de éxito/fallo por tipo y rol
+- Historial completo de envíos con auditoría
+- Contadores de reintentos y tiempos de respuesta
+
+---
+
+## 👥 **Roles y Notificaciones Disponibles**
+
+### 🎓 **ESTUDIANTE** (Color: Verde #4CAF50)
+**Icono:** 🎓 | **Enfoque:** Información académica y horarios
+
+#### Tipos de notificación:
+1. **`STUDENT_SCHEDULE_ASSIGNMENT`** - Asignación de horario nuevo
+   - **Propósito:** Informar asignación inicial de clases
+   - **Contenido:** Detalles del horario, materias, profesores
+   - **Acción:** "Acceder al Sistema"
+
+2. **`STUDENT_SCHEDULE_CHANGE`** - Cambio en horario existente
+   - **Propósito:** Notificar modificaciones en clases
+   - **Contenido:** Cambios específicos, nuevas fechas/horas
+   - **Acción:** "Acceder al Sistema"
+
+3. **`STUDENT_CLASS_CANCELLATION`** - Cancelación de clase
+   - **Propósito:** Informar suspensión temporal de clases
+   - **Contenido:** Motivo, fecha alternativa si aplica
+   - **Acción:** "Acceder al Sistema"
+
+---
+
+### 👨‍🏫 **MAESTRO** (Color: Azul #2196F3)
+**Icono:** 👨‍🏫 | **Enfoque:** Gestión académica y clases
+
+#### Tipos de notificación:
+1. **`TEACHER_CLASS_SCHEDULED`** - Nueva clase programada
+   - **Propósito:** Confirmar asignación de nueva clase
+   - **Contenido:** Detalles de la clase, horario, salón
+   - **Acción:** "Acceder al Sistema"
+
+2. **`TEACHER_CLASS_MODIFIED`** - Modificación en clase existente
+   - **Propósito:** Informar cambios en clases asignadas
+   - **Contenido:** Cambios específicos en horario/lugar
+   - **Acción:** "Acceder al Sistema"
+
+3. **`TEACHER_CLASS_CANCELLED`** - Clase cancelada
+   - **Propósito:** Notificar suspensión de clase
+   - **Contenido:** Motivo y reprogramación si aplica
+   - **Acción:** "Acceder al Sistema"
+
+4. **`TEACHER_AVAILABILITY_CHANGED`** - Cambio en disponibilidad
+   - **Propósito:** Actualizar estado de disponibilidad
+   - **Contenido:** Nuevos horarios disponibles
+   - **Acción:** "Acceder al Sistema"
+
+---
+
+### 👔 **DIRECTOR_DE_AREA** (Color: Púrpura #9C27B0)
+**Icono:** 👔 | **Enfoque:** Gestión administrativa y alertas
+
+#### Tipos de notificación:
+1. **`DIRECTOR_SCHEDULE_CONFLICT`** - Conflicto de horarios detectado
+   - **Propósito:** Alertar sobre conflictos en asignaciones
+   - **Contenido:** Detalles del conflicto, afectados
+   - **Acción:** "Panel de Control"
+
+2. **`DIRECTOR_AVAILABILITY_ISSUE`** - Problema en disponibilidad
+   - **Propósito:** Reportar problemas de recursos
+   - **Contenido:** Recursos insuficientes, sobrecargas
+   - **Acción:** "Panel de Control"
+
+3. **`DIRECTOR_SYSTEM_INCIDENT`** - Incidencia importante del sistema
+   - **Propósito:** Alertar sobre problemas críticos
+   - **Contenido:** Detalles técnicos, impacto esperado
+   - **Acción:** "Panel de Control"
+
+---
+
+### ⚙️ **COORDINADOR** (Color: Naranja #FF5722)
+**Icono:** ⚙️ | **Enfoque:** Control total del sistema
+
+#### Tipos de notificación:
+1. **`COORDINATOR_GLOBAL_UPDATE`** - Actualización global de horarios
+   - **Propósito:** Informar cambios masivos en el sistema
+   - **Contenido:** Alcance de cambios, impacto general
+   - **Acción:** "Panel de Administración"
+
+2. **`COORDINATOR_SYSTEM_ALERT`** - Alerta del sistema
+   - **Propósito:** Notificar eventos importantes del sistema
+   - **Contenido:** Alertas de mantenimiento, actualizaciones
+   - **Acción:** "Panel de Administración"
+
+3. **`COORDINATOR_CHANGE_CONFIRMATION`** - Confirmación de cambio realizado
+   - **Propósito:** Confirmar aplicación exitosa de cambios
+   - **Contenido:** Detalles de cambios aplicados
+   - **Acción:** "Panel de Administración"
+
+4. **`COORDINATOR_MAINTENANCE_ALERT`** - Mantenimiento programado
+   - **Propósito:** Informar sobre mantenimientos del sistema
+   - **Contenido:** Horarios, duración, impacto esperado
+   - **Acción:** "Panel de Administración"
+
+---
+
+### 📢 **GENERAL** (Todos los roles - Color: Gris #6c757d)
+**Icono:** 📢 | **Enfoque:** Comunicados institucionales
+
+#### Tipos de notificación:
+1. **`GENERAL_SYSTEM_NOTIFICATION`** - Notificación general del sistema
+   - **Propósito:** Comunicados generales a toda la institución
+   - **Contenido:** Anuncios importantes, recordatorios
+   - **Acción:** "Acceder al Sistema"
+
+---
+
+## 🎨 **Diseño de Plantillas HTML**
+
+### **Elementos Comunes de Diseño:**
+
+#### **Header con Gradiente**
+```css
+background: linear-gradient(135deg, [COLOR_ROL] 0%, [COLOR_SECUNDARIO] 100%);
+```
+
+#### **Animaciones**
+- **slideIn:** Entrada suave desde arriba
+- **float:** Elementos decorativos flotantes
+- **pulse:** Indicadores de estado animados
+- **hover effects:** Interacciones sutiles
+
+#### **Layout Responsive**
+- **Grid system** para información estructurada
+- **Media queries** para móviles
+- **Flexbox** para alineaciones perfectas
+
+### **Paleta de Colores por Rol:**
+
+| Rol | Color Principal | Color Secundario | Color de Acento | Icono |
+|-----|----------------|------------------|-----------------|-------|
+| **Estudiante** | `#4CAF50` | `#45a049` | `#388E3C` | 🎓 |
+| **Maestro** | `#2196F3` | `#1976D2` | `#1565C0` | 👨‍🏫 |
+| **Director** | `#9C27B0` | `#7B1FA2` | `#6A1B9A` | 👔 |
+| **Coordinador** | `#FF5722` | `#E64A19` | `#D84315` | ⚙️ |
+| **General** | `#6c757d` | `#495057` | `#5a6268` | 📢 |
+
+---
+
+## 🚀 **API Endpoints**
+
+### **Endpoints de Correo Electrónico:**
+
+#### **Envío Individual**
+```http
+POST /api/notifications/send
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "subject": "Asunto de la notificación",
+  "content": "Contenido HTML o texto",
+  "recipientEmail": "usuario@email.com",
+  "recipientName": "Nombre Usuario",
+  "recipientRole": "ESTUDIANTE",
+  "notificationType": "STUDENT_SCHEDULE_ASSIGNMENT",
+  "senderName": "Sistema SGH",
+  "isHtml": true
+}
+```
+
+#### **Envío Masivo**
+```http
+POST /api/notifications/send-bulk
+Content-Type: application/json
+Authorization: Bearer {token}
+
+[
+  {
+    "subject": "Notificación 1",
+    "content": "Contenido 1",
+    "recipientEmail": "usuario1@email.com",
+    "recipientName": "Usuario 1",
+    "recipientRole": "ESTUDIANTE",
+    "notificationType": "STUDENT_SCHEDULE_ASSIGNMENT"
+  }
+]
+```
+
+#### **Envío por Rol** (Solo Coordinador)
+```http
+POST /api/notifications/send-by-role
+Content-Type: application/x-www-form-urlencoded
+Authorization: Bearer {token}
+
+role=ESTUDIANTE&notificationType=STUDENT_SCHEDULE_ASSIGNMENT&subject=Actualización&content=Contenido
+```
+
+#### **Reintento de Fallidos** (Solo Coordinador)
+```http
+POST /api/notifications/retry-failed
+Authorization: Bearer {token}
+```
+
+#### **Estadísticas** (Solo Coordinador)
+```http
+GET /api/notifications/email/statistics
+Authorization: Bearer {token}
+```
+
+#### **Tipos Disponibles**
+```http
+GET /api/notifications/types
+Authorization: Bearer {token}
+```
+
+### **Endpoints de Notificaciones In-App:**
+
+#### **Envío Individual**
+```http
+POST /api/notifications/inapp/send
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "userId": 123,
+  "title": "Título de la notificación",
+  "message": "Mensaje detallado",
+  "priority": "HIGH",
+  "type": "INFO"
+}
+```
+
+#### **Envío Masivo**
+```http
+POST /api/notifications/inapp/send-bulk
+Content-Type: application/json
+Authorization: Bearer {token}
+
+[
+  {
+    "userId": 123,
+    "title": "Notificación 1",
+    "message": "Mensaje 1",
+    "priority": "HIGH"
+  }
+]
+```
+
+#### **Obtener Notificaciones de Usuario**
+```http
+GET /api/notifications/inapp/user/{userId}?page=0&size=10
+Authorization: Bearer {token}
+```
+
+#### **Marcar como Leída**
+```http
+PUT /api/notifications/inapp/{notificationId}/read
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "userId": 123
+}
+```
+
+---
+
+## 📁 **Estructura de Archivos Implementados**
+
+### **Modelos** (`src/main/java/com/horarios/SGH/Model/`)
+- **`NotificationType.java`** - Enum con tipos de notificaciones por rol
+- **`NotificationStatus.java`** - Enum con estados del envío
+- **`NotificationLog.java`** - Modelo para logging de correos
+- **`InAppNotification.java`** - Modelo para notificaciones In-App
+- **`NotificationPriority.java`** - Enum con prioridades
+
+### **DTOs** (`src/main/java/com/horarios/SGH/DTO/`)
+- **`NotificationDTO.java`** - DTO principal para envío de notificaciones
+
+### **Repositorios** (`src/main/java/com/horarios/SGH/Repository/`)
+- **`INotificationLogRepository.java`** - Repositorio para logs de correos
+- **`IInAppNotificationRepository.java`** - Repositorio para notificaciones In-App
+
+### **Servicios** (`src/main/java/com/horarios/SGH/Service/`)
+- **`NotificationService.java`** - Servicio principal para correos
+- **`InAppNotificationService.java`** - Servicio para notificaciones In-App
+
+### **Controladores** (`src/main/java/com/horarios/SGH/Controller/`)
+- **`NotificationController.java`** - Controlador REST completo
+
+### **WebSocket** (`src/main/java/com/horarios/SGH/WebSocket/`)
+- **`NotificationWebSocketService.java`** - Servicio para comunicación en tiempo real
+
+### **Configuración** (`src/main/java/com/horarios/SGH/Config/`)
+- **`AsyncConfig.java`** - Configuración para procesamiento asíncrono
+
+---
+
+## 🔧 **Configuración Técnica**
+
+### **application.properties**
+```properties
+# Email Configuration
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${MAIL_USERNAME}
+spring.mail.password=${MAIL_PASSWORD}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+# Notification Settings
+app.notification.max-retries=3
+app.notification.retry-delay=30000
+```
+
+### **Dependencias Maven**
+```xml
+<!-- Para envío de correos -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
+
+<!-- Para plantillas FreeMarker -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-freemarker</artifactId>
+</dependency>
+
+<!-- Para WebSocket -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-websocket</artifactId>
+</dependency>
+```
+
+---
+
+## 📊 **Flujo de Funcionamiento**
+
+### **1. Preparación y Validación**
+```java
+// Validar tipo de notificación para el rol
+NotificationType notificationType = NotificationType.valueOf(notification.getNotificationType());
+validateNotificationTypeForRole(notificationType, notification.getRecipientRole());
+
+// Crear log de notificación
+NotificationLog logEntry = new NotificationLog(...);
+notificationLogRepository.save(logEntry);
+```
+
+### **2. Envío Asíncrono**
+```java
+@Async("emailExecutor")
+public CompletableFuture<Void> sendNotificationAsync(NotificationDTO notification) {
+    // Procesamiento asíncrono con reintentos automáticos
+    return CompletableFuture.runAsync(() -> {
+        sendWithRetry(logEntry, notification);
+    });
+}
+```
+
+### **3. Generación de Contenido HTML**
+```java
+private String generateRoleBasedHtmlContent(NotificationDTO notification) {
+    switch (notification.getRecipientRole()) {
+        case "ESTUDIANTE": return generateStudentHtmlContent(notification);
+        case "MAESTRO": return generateTeacherHtmlContent(notification);
+        case "DIRECTOR_DE_AREA": return generateDirectorHtmlContent(notification);
+        case "COORDINADOR": return generateCoordinatorHtmlContent(notification);
+        default: return generateGeneralHtmlContent(notification);
+    }
+}
+```
+
+### **4. Sistema de Reintentos**
+```java
+private void sendWithRetry(NotificationLog logEntry, NotificationDTO notification) {
+    while (logEntry.canRetry()) {
+        try {
+            sendEmail(notification);
+            logEntry.markAsSent();
+            return;
+        } catch (Exception e) {
+            logEntry.markAsFailed(e.getMessage());
+            if (logEntry.canRetry()) {
+                Thread.sleep(retryDelay * logEntry.getAttemptsCount()); // Backoff exponencial
+            }
+        }
+    }
+}
+```
+
+---
+
+## 📈 **Monitoreo y Logs**
+
+### **Estados de Notificación:**
+- **PENDING:** En cola para envío
+- **SENDING:** En proceso de envío
+- **SENT:** Enviada exitosamente
+- **FAILED:** Falló después de reintentos
+- **RETRY:** Reintentando envío
+- **CANCELLED:** Cancelada por usuario/sistema
+
+### **Métricas Disponibles:**
+- Total de notificaciones enviadas
+- Tasa de éxito por tipo y rol
+- Tiempo promedio de envío
+- Notificaciones fallidas por rol
+- Estadísticas en tiempo real
+- Contadores de reintentos
+
+### **Logging con SLF4J:**
+```java
+log.info("Notificación enviada exitosamente a: {}", recipientEmail);
+log.error("Error al enviar notificación a {}: {}", recipientEmail, e.getMessage());
+log.warn("Reintentando envío (intento {} de {})", attempt, maxRetries);
+```
+
+---
+
+## 🌐 **WebSocket para Tiempo Real**
+
+### **Configuración:**
+```java
+@Configuration
+@EnableWebSocket
+public class WebSocketConfig implements WebSocketConfigurer {
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(notificationWebSocketHandler(), "/ws/notifications")
+                .setAllowedOrigins("*");
+    }
+}
+```
+
+### **Suscripción desde React Web:**
+```javascript
+// Conexión WebSocket
+const socket = new WebSocket('ws://localhost:8082/ws/notifications');
+
+socket.onmessage = (event) => {
+    const notification = JSON.parse(event.data);
+    // Mostrar notificación en tiempo real
+    showNotification(notification);
+};
+```
+
+### **Suscripción desde React Native:**
+```javascript
+// Usando WebSocket o Socket.io
+import io from 'socket.io-client';
+
+const socket = io('ws://localhost:8082/ws/notifications');
+
+socket.on('notification', (notification) => {
+    // Mostrar notificación push
+    PushNotification.localNotification(notification);
+});
+```
+
+---
+
+## 🎯 **Casos de Uso Recomendados**
+
+### **Para Estudiantes:**
+- Asignación inicial de horarios
+- Cambios en clases programadas
+- Recordatorios de evaluaciones
+- Anuncios académicos importantes
+
+### **Para Maestros:**
+- Confirmación de clases asignadas
+- Cambios en horarios de clases
+- Recordatorios de reuniones
+- Actualizaciones de disponibilidad
+
+### **Para Directores:**
+- Alertas de conflictos de horarios
+- Reportes de uso de recursos
+- Notificaciones de incidentes
+- Actualizaciones administrativas
+
+### **Para Coordinadores:**
+- Cambios globales en el sistema
+- Alertas de mantenimiento
+- Confirmaciones de actualizaciones
+- Reportes de rendimiento
+
+---
+
+## 🚀 **Implementación en Producción**
+
+### **Checklist Pre-Producción:**
+
+- ✅ **Configuración SMTP** validada con Gmail
+- ✅ **Plantillas HTML** probadas en diferentes clientes de correo
+- ✅ **Validaciones de seguridad** implementadas
+- ✅ **Logging configurado** correctamente
+- ✅ **Manejo de errores** robusto
+- ✅ **Documentación completa** disponible
+- ✅ **Pruebas de carga** realizadas
+- ✅ **Monitoreo configurado**
+
+### **Variables de Entorno Requeridas:**
+```bash
+MAIL_USERNAME=tu-email@gmail.com
+MAIL_PASSWORD=tu-app-password-de-gmail
+JWT_SECRET=tu-jwt-secret
+```
+
+### **URLs de Producción:**
 ```bash
 # API REST
 https://tu-dominio.com/api/notifications/
@@ -20,6 +553,17 @@ https://tu-dominio.com/api/notifications/
 # WebSocket
 wss://tu-dominio.com/ws/notifications
 ```
+
+### **Recomendaciones de Producción:**
+
+1. **Configurar límites de envío** por hora/día
+2. **Implementar rate limiting** para evitar spam
+3. **Configurar alertas** para fallos masivos
+4. **Backup de logs** de notificaciones
+5. **Monitoreo 24/7** del servicio de correo
+6. **Documentación de troubleshooting**
+
+---
 
 ## 🎯 **INTEGRACIÓN FRONTEND - ¡CÓDIGO LISTO PARA COPIAR!**
 
@@ -664,204 +1208,13 @@ const sendNotification = async (notificationData) => {
 };
 ```
 
-## ⚡ **INICIO RÁPIDO - 5 MINUTOS**
+---
 
-### **Paso 1: Instalar Dependencias**
-```bash
-# Si usas npm
-npm install react-use-websocket  # Para React Web
-# o
-npm install react-native-websocket  # Para React Native
-```
+## 🧪 **Cómo Probar el Sistema**
 
-### **Paso 2: Copiar el Hook**
-Copia el código del hook `useNotifications` de arriba a tu proyecto.
+### **1. Configuración Inicial**
 
-### **Paso 3: Usar en tu Componente**
-```jsx
-// En tu componente principal
-import { useNotifications } from './hooks/useNotifications';
-
-function App() {
-  const { notifications, unreadCount, markAsRead } = useNotifications(userId, token);
-
-  return (
-    <div>
-      <h1>Notificaciones ({unreadCount})</h1>
-      {notifications.map(notification => (
-        <div key={notification.id} onClick={() => markAsRead(notification.id)}>
-          <h3>{notification.title}</h3>
-          <p>{notification.message}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-```
-
-### **Paso 4: ¡Listo!**
-Tu frontend ya está conectado al sistema de notificaciones. Las notificaciones se actualizarán en tiempo real automáticamente.
-
-## 📋 **ENDPOINTS DISPONIBLES**
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `POST` | `/api/notifications/send` | Enviar correo individual |
-| `POST` | `/api/notifications/send-bulk` | Enviar correos masivos |
-| `POST` | `/api/notifications/send-by-role` | Enviar por rol |
-| `POST` | `/api/notifications/inapp/send` | Enviar notificación In-App |
-| `GET` | `/api/notifications/inapp/user/{id}` | Obtener notificaciones |
-| `PUT` | `/api/notifications/inapp/{id}/read` | Marcar como leída |
-| `GET` | `/api/notifications/inapp/user/{id}/count` | Contador no leídas |
-| `WebSocket` | `ws://localhost:8082/ws/notifications` | Conexión tiempo real |
-
-## 🔐 **Autenticación**
-Todos los endpoints requieren:
-```javascript
-headers: {
-  'Authorization': `Bearer ${tu_jwt_token}`,
-  'Content-Type': 'application/json'
-}
-```
-
-## 🎉 **¡SISTEMA COMPLETO Y LISTO!**
-
-### ✅ **Lo que tienes ahora:**
-
-1. **📧 Sistema de Correo Electrónico**
-   - Envío asíncrono con JavaMailSender
-   - Plantillas HTML personalizadas por rol
-   - Reintentos automáticos ante fallos
-   - Logging completo en base de datos
-
-2. **📱 Notificaciones In-App**
-   - Persistencia en base de datos
-   - Estados de lectura sincronizados
-   - Metadata flexible para acciones
-   - Prioridades configurables
-
-3. **🔄 WebSocket en Tiempo Real**
-   - Comunicación bidireccional
-   - Sincronización instantánea
-   - Reconexión automática
-   - Compatible con React web y React Native
-
-4. **📚 API REST Completa**
-   - 12 endpoints documentados
-   - Swagger/OpenAPI integrado
-   - Manejo de errores robusto
-   - Paginación y filtros
-
-5. **🎯 Integración Frontend**
-   - Hooks personalizados listos para copiar
-   - Componentes de ejemplo
-   - Código para React web y React Native
-   - Manejo de WebSocket incluido
-
-### 🚀 **Próximos Pasos:**
-
-1. **Copia el hook `useNotifications`** a tu proyecto
-2. **Instala las dependencias** necesarias (react-use-websocket)
-3. **Usa el componente** en tu aplicación
-4. **¡Las notificaciones funcionarán automáticamente!**
-
-### 📞 **Soporte:**
-Si tienes alguna duda, todos los endpoints están documentados en Swagger en `/swagger-ui/index.html` y el código está listo para usar.
-
-**¡El sistema de notificaciones está 100% funcional y listo para producción! 🎊**
-
-## Arquitectura del Sistema
-
-### 📁 Archivos Creados y Modificados
-
-#### Modelos (DTOs)
-- **`src/main/java/com/horarios/SGH/DTO/NotificationDTO.java`**
-  - DTO principal para correo electrónico
-  - Incluye validación, variables de plantilla y configuración HTML
-  
-- **`src/main/java/com/horarios/SGH/DTO/InAppNotificationDTO.java`**
-  - DTO para notificaciones In-App en tiempo real
-  - Metadata, prioridades y metadatos adicionales
-
-#### Enums de Notificación
-- **`src/main/java/com/horarios/SGH/Model/NotificationType.java`**
-  - 15 tipos específicos por rol y evento
-  
-- **`src/main/java/com/horarios/SGH/Model/NotificationStatus.java`**
-  - Estados: PENDING, SENT, RETRY, FAILED, CANCELLED, SENDING
-  
-- **`src/main/java/com/horarios/SGH/Model/NotificationPriority.java`**
-  - Prioridades: LOW, MEDIUM, HIGH, CRITICAL con colores e iconos
-
-#### Modelos de Datos
-- **`src/main/java/com/horarios/SGH/Model/NotificationLog.java`**
-  - Logging completo de correos electrónicos
-  - Tracking de intentos, errores y tiempos
-  
-- **`src/main/java/com/horarios/SGH/Model/InAppNotification.java`**
-  - Notificaciones In-App persistentes
-  - Estados de lectura, archivado y metadata
-
-#### Repositorios
-- **`src/main/java/com/horarios/SGH/Repository/INotificationLogRepository.java`**
-  - 12 métodos especializados para correos
-  
-- **`src/main/java/com/horarios/SGH/Repository/IInAppNotificationRepository.java`**
-  - 14 métodos para gestión In-App y tiempo real
-
-#### Servicios
-- **`src/main/java/com/horarios/SGH/Service/NotificationService.java`**
-  - Envío asíncrono, plantillas HTML por rol, reintentos automáticos
-  
-- **`src/main/java/com/horarios/SGH/Service/InAppNotificationService.java`**
-  - Notificaciones In-App con sincronización WebSocket
-  
-- **`src/main/java/com/horarios/SGH/WebSocket/NotificationWebSocketService.java`**
-  - Manejo de conexiones WebSocket en tiempo real
-
-#### Controladores REST
-- **`src/main/java/com/horarios/SGH/Controller/NotificationController.java`**
-  - 12 endpoints para gestión completa del sistema
-
-#### Configuración
-- **`pom.xml`** - Dependencias: JavaMail, FreeMarker, WebSocket, Jackson
-- **`application.properties`** - Configuración SMTP mantenida
-
-### Tablas Creadas
-- **`notification_logs`** - Logs de correos electrónicos
-- **`notification_log_variables`** - Variables de plantilla
-- **`in_app_notifications`** - Notificaciones In-App persistentes
-
-## 🔌 API REST Completa
-
-### Endpoints de Correo Electrónico
-```http
-POST /api/notifications/send              # Envío individual
-POST /api/notifications/send-bulk         # Envío masivo
-POST /api/notifications/send-by-role      # Envío por rol
-POST /api/notifications/retry-failed      # Reintentos
-GET  /api/notifications/email/statistics  # Estadísticas correo
-GET  /api/notifications/email/logs        # Logs paginados
-```
-
-### Endpoints de Notificaciones In-App
-```http
-POST   /api/notifications/inapp/send                    # Envío In-App
-POST   /api/notifications/inapp/send-bulk              # Envío masivo In-App
-POST   /api/notifications/inapp/send-by-role           # Envío por rol In-App
-GET    /api/notifications/inapp/user/{userId}          # Obtener notificaciones usuario
-GET    /api/notifications/inapp/user/{userId}/unread   # Obtener no leídas
-GET    /api/notifications/inapp/user/{userId}/count    # Contador no leídas
-PUT    /api/notifications/inapp/{notificationId}/read  # Marcar como leída
-PUT    /api/notifications/inapp/user/{userId}/read-all # Marcar todas como leídas
-GET    /api/notifications/inapp/user/{userId}/stats    # Estadísticas usuario
-```
-
-## 🧪 Cómo Probar el Sistema
-
-### 1. Configuración Inicial
-
-#### Variables de Entorno para Correo
+#### **Variables de Entorno para Correo**
 ```bash
 # Copia y configura estas variables en tu .env
 MAIL_HOST=smtp.gmail.com
@@ -870,7 +1223,7 @@ MAIL_USERNAME=tu_email@gmail.com
 MAIL_PASSWORD=tu_password_app
 ```
 
-#### Ejemplo de archivo .env
+#### **Ejemplo de archivo .env**
 ```bash
 # Base de datos
 DATABASE_URL=jdbc:mysql://localhost:3306/sgh
@@ -891,9 +1244,9 @@ MAIL_PASSWORD=tu_app_password_aqui
 CORS_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
-### 2. Pruebas de Correo Electrónico
+### **2. Pruebas de Correo Electrónico**
 
-#### Test 1: Envío Individual
+#### **Test 1: Envío Individual**
 ```bash
 curl -X POST http://localhost:8082/api/notifications/send \
   -H "Content-Type: application/json" \
@@ -909,7 +1262,7 @@ curl -X POST http://localhost:8082/api/notifications/send \
   }'
 ```
 
-#### Test 2: Envío por Rol
+#### **Test 2: Envío por Rol**
 ```bash
 curl -X POST http://localhost:8082/api/notifications/send-by-role \
   -H "Content-Type: application/json" \
@@ -926,9 +1279,9 @@ curl -X POST http://localhost:8082/api/notifications/send-by-role \
   }'
 ```
 
-### 3. Pruebas de Notificaciones In-App (Tiempo Real)
+### **3. Pruebas de Notificaciones In-App (Tiempo Real)**
 
-#### Test 3: Envío In-App Individual
+#### **Test 3: Envío In-App Individual**
 ```bash
 curl -X POST http://localhost:8082/api/notifications/inapp/send \
   -H "Content-Type: application/json" \
@@ -953,15 +1306,15 @@ curl -X POST http://localhost:8082/api/notifications/inapp/send \
   }'
 ```
 
-#### Test 4: Obtener Notificaciones de Usuario
+#### **Test 4: Obtener Notificaciones de Usuario**
 ```bash
 curl -X GET "http://localhost:8082/api/notifications/inapp/user/1?page=0&size=10" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-### 4. Pruebas WebSocket (Tiempo Real)
+### **4. Pruebas WebSocket (Tiempo Real)**
 
-#### Conexión WebSocket desde JavaScript/React
+#### **Conexión WebSocket desde JavaScript/React**
 ```javascript
 // Conexión al WebSocket
 const ws = new WebSocket('ws://localhost:8082/ws/notifications');
@@ -978,20 +1331,20 @@ ws.onopen = function() {
 // Recibir notificaciones
 ws.onmessage = function(event) {
     const message = JSON.parse(event.data);
-    
+
     switch(message.type) {
         case 'new_notification':
             console.log('Nueva notificación:', message.data);
             // Mostrar notificación en UI
             showNotification(message.data);
             break;
-            
+
         case 'read_status_update':
             console.log('Estado de lectura actualizado:', message.data);
             // Actualizar UI
             updateNotificationStatus(message.data);
             break;
-            
+
         case 'bulk_read_update':
             console.log('Todas las notificaciones marcadas como leídas');
             // Limpiar contador de no leídas
@@ -1014,7 +1367,7 @@ ws.onclose = function() {
 };
 ```
 
-#### Ejemplo de Notificación en React
+#### **Ejemplo de Notificación en React**
 ```jsx
 import React, { useState, useEffect } from 'react';
 
@@ -1026,10 +1379,10 @@ function NotificationComponent() {
     useEffect(() => {
         // Cargar notificaciones iniciales
         loadInitialNotifications();
-        
+
         // Conectar WebSocket
         connectWebSocket();
-        
+
         return () => {
             if (ws) ws.close();
         };
@@ -1037,7 +1390,7 @@ function NotificationComponent() {
 
     const connectWebSocket = () => {
         const websocket = new WebSocket('ws://localhost:8082/ws/notifications');
-        
+
         websocket.onopen = () => {
             console.log('Conectado a WebSocket');
             // Enviar autenticación
@@ -1050,7 +1403,7 @@ function NotificationComponent() {
 
         websocket.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            
+
             switch(message.type) {
                 case 'new_notification':
                     setNotifications(prev => [message.data, ...prev]);
@@ -1058,10 +1411,10 @@ function NotificationComponent() {
                     // Mostrar toast o modal
                     showToast(message.data.title, message.data.message);
                     break;
-                    
+
                 case 'read_status_update':
-                    setNotifications(prev => 
-                        prev.map(n => n.notificationId === message.data.notificationId 
+                    setNotifications(prev =>
+                        prev.map(n => n.notificationId === message.data.notificationId
                             ? { ...n, isRead: message.data.isRead }
                             : n
                         )
@@ -1070,7 +1423,7 @@ function NotificationComponent() {
                         setUnreadCount(prev => Math.max(0, prev - 1));
                     }
                     break;
-                    
+
                 case 'bulk_read_update':
                     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
                     setUnreadCount(0);
@@ -1122,11 +1475,11 @@ function NotificationComponent() {
             <div className="notification-badge">
                 🔔 {unreadCount > 0 && <span className="count">{unreadCount}</span>}
             </div>
-            
+
             {/* Lista de notificaciones */}
             <div className="notifications-list">
                 {notifications.map(notification => (
-                    <div 
+                    <div
                         key={notification.notificationId}
                         className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
                         onClick={() => markAsRead(notification.notificationId)}
@@ -1142,7 +1495,7 @@ function NotificationComponent() {
                             </span>
                         </div>
                         {notification.actionUrl && (
-                            <button 
+                            <button
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     window.location.href = notification.actionUrl;
@@ -1161,7 +1514,7 @@ function NotificationComponent() {
 export default NotificationComponent;
 ```
 
-#### Ejemplo de WebSocket para React Native
+#### **Ejemplo de WebSocket para React Native**
 ```javascript
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList } from 'react-native';
@@ -1187,7 +1540,7 @@ const NotificationScreen = () => {
                 }}
                 onMessage={(event) => {
                     const message = JSON.parse(event.data);
-                    
+
                     switch(message.type) {
                         case 'new_notification':
                             setNotifications(prev => [message.data, ...prev]);
@@ -1195,16 +1548,16 @@ const NotificationScreen = () => {
                             // Mostrar push notification nativa
                             showNativeNotification(message.data);
                             break;
-                            
+
                         case 'read_status_update':
-                            setNotifications(prev => 
-                                prev.map(n => n.notificationId === message.data.notificationId 
+                            setNotifications(prev =>
+                                prev.map(n => n.notificationId === message.data.notificationId
                                     ? { ...n, isRead: message.data.isRead }
                                     : n
                                 )
                             );
                             break;
-                            
+
                         case 'bulk_read_update':
                             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
                             setUnreadCount(0);
@@ -1231,7 +1584,7 @@ const NotificationScreen = () => {
     return (
         <View style={{ flex: 1 }}>
             {connectWebSocket()}
-            
+
             {/* Header con contador */}
             <View style={styles.header}>
                 <Text style={styles.title}>Notificaciones</Text>
@@ -1241,7 +1594,7 @@ const NotificationScreen = () => {
                     </View>
                 )}
             </View>
-            
+
             {/* Lista de notificaciones */}
             <FlatList
                 data={notifications}
@@ -1276,15 +1629,15 @@ const NotificationScreen = () => {
 };
 ```
 
-### 5. Verificación de Estadísticas
+### **5. Verificación de Estadísticas**
 
-#### Test 5: Estadísticas Generales
+#### **Test 5: Estadísticas Generales**
 ```bash
 curl -X GET http://localhost:8082/api/notifications/inapp/user/1/stats \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-#### Respuesta Esperada
+#### **Respuesta Esperada**
 ```json
 {
   "unreadCount": 5,
@@ -1298,30 +1651,11 @@ curl -X GET http://localhost:8082/api/notifications/inapp/user/1/stats \
 }
 ```
 
-## 🔐 Autenticación y Headers
+---
 
-### Headers Obligatorios
-```bash
-Authorization: Bearer YOUR_JWT_TOKEN
-Content-Type: application/json
-```
+## 🚨 **Troubleshooting**
 
-### Estructura de Respuesta Típica
-```json
-{
-  "success": true,
-  "message": "Notificación enviada exitosamente",
-  "data": {
-    "notificationId": 123,
-    "status": "SENT",
-    "timestamp": "2025-11-12T21:15:00"
-  }
-}
-```
-
-## 🚨 Troubleshooting
-
-### Problemas Comunes
+### **Problemas Comunes**
 
 1. **Error de autenticación**
    - Verificar JWT token válido
@@ -1339,7 +1673,7 @@ Content-Type: application/json
    - Verificar conexión MySQL
    - Comprobar que las tablas se crearon correctamente
 
-### Logs Importantes
+### **Logs Importantes**
 ```bash
 # Logs del sistema
 tail -f logs/spring.log | grep -i notification
@@ -1348,76 +1682,134 @@ tail -f logs/spring.log | grep -i notification
 tail -f application.log | grep -E "(Notification|WebSocket)"
 ```
 
-## ✅ Criterios de Aceptación Cumplidos
+---
 
-- [x] **Correos a 4 roles** con plantillas HTML personalizadas
-- [x] **Envío asíncrono** con reintentos automáticos  
-- [x] **Integración MVC** completa en arquitectura existente
-- [x] **Sin errores de compilación** ni dependencias rotas
-- [x] **Pruebas unitarias** implementadas
-- [x] **Credenciales seguras** via variables de entorno
-- [x] **Notificaciones In-App** en tiempo real
-- [x] **WebSocket** para sincronización instantánea
-- [x] **Compatible con React** web y React Native móvil
-- [x] **API REST** completa y documentada
+## 🔐 **Autenticación y Headers**
 
-## 📱 Características Móviles
+### **Headers Obligatorios**
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
 
-### React Native Integration
-- **WebSocket** compatible con react-native-websocket
-- **Push Notifications** nativas via react-native-push-notification
-- **Offline Support** con almacenamiento local
-- **Background Sync** para sincronización en segundo plano
+### **Estructura de Respuesta Típica**
+```json
+{
+  "success": true,
+  "message": "Notificación enviada exitosamente",
+  "data": {
+    "notificationId": 123,
+    "status": "SENT",
+    "timestamp": "2025-11-12T21:15:00"
+  }
+}
+```
 
-### React Web Integration
-- **Real-time UI** updates sin刷新
-- **Toast Notifications** automáticas
-- **Badge counters** dinámicos
-- **Responsive design** para diferentes pantallas
+---
 
-## Flujo de Funcionamiento Completo
+## 🧪 **Pruebas Implementadas**
 
-### 1. Envío de Notificación (Correo + InApp)
-1. **Sistema recibe solicitud** via API REST
-2. **Valida datos** y permisos del usuario
-3. **Crea registros** en base de datos (logs + notificaciones)
-4. **Envía correo** via JavaMailSender asíncrono
-5. **Envía InApp** via WebSocket en tiempo real
-6. **Actualiza estados** y estadísticas
-7. **Log de resultado** completo
+### **Cobertura de Pruebas:**
+- ✅ Envío de notificaciones individuales
+- ✅ Envío masivo por rol
+- ✅ Manejo de errores y reintentos
+- ✅ Validación de tipos de notificación
+- ✅ Generación de plantillas HTML
+- ✅ WebSocket connections
+- ✅ APIs REST completas
 
-### 2. Recepción WebSocket (Tiempo Real)
-1. **Cliente conecta** a WebSocket endpoint
-2. **Autenticación** con JWT token
-3. **Recepción inmediata** de notificaciones
-4. **Actualización UI** automática
-5. **Confirmación lectura** via API
-6. **Sincronización** con otros dispositivos
+### **Ejecución de Pruebas:**
+```bash
+# Ejecutar todas las pruebas
+mvn test
 
-## Beneficios del Sistema Completo
+# Ejecutar solo pruebas de notificaciones
+mvn test -Dtest=NotificationServiceTest
+```
 
-### Para Correo Electrónico
-- ✅ **Plantillas personalizadas** por rol
-- ✅ **Reintentos automáticos** ante fallos
-- ✅ **Logging detallado** para auditoría
-- ✅ **Estadísticas completas** de entrega
+---
 
-### Para Notificaciones In-App
-- ✅ **Tiempo real** sin refrescar página
-- ✅ **Persistencia** de notificaciones
-- ✅ **Estados de lectura** sincronizados
-- ✅ **Metadata flexible** para acciones
+## 📋 **Uso del Sistema**
 
-### Para WebSocket
-- ✅ **Bidireccional** comunicación
-- ✅ **Reconexión automática** ante fallos
-- ✅ **Manejo de errores** robusto
-- ✅ **Escalable** para múltiples usuarios
+### **Envío Individual:**
+```java
+NotificationDTO notification = new NotificationDTO();
+notification.setRecipientEmail("estudiante@colegio.edu");
+notification.setRecipientName("Juan Pérez");
+notification.setRecipientRole("ESTUDIANTE");
+notification.setNotificationType("STUDENT_SCHEDULE_ASSIGNMENT");
+notification.setSubject("Nuevo Horario Asignado");
+notification.setContent("Se te ha asignado un nuevo horario...");
 
-### Integración Frontend
-- ✅ **React Web** completamente compatible
-- ✅ **React Native** mobile ready
-- ✅ **Ejemplos de código** incluidos
-- ✅ **Fácil implementación** con API REST
+notificationService.sendNotificationAsync(notification);
+```
 
-El sistema está **100% funcional y listo para producción**, proporcionando una experiencia completa de notificaciones tanto por correo como en tiempo real para todas las interfaces del sistema SGH.
+### **Envío por Rol (Coordinador):**
+```java
+notificationService.sendNotificationToRoleAsync(
+    "ESTUDIANTE",
+    NotificationType.STUDENT_SCHEDULE_CHANGE,
+    "Cambio en Horarios",
+    Map.of("fecha", "2024-01-15")
+);
+```
+
+### **Notificaciones In-App:**
+```java
+InAppNotification inApp = new InAppNotification();
+inApp.setUserId(userId);
+inApp.setTitle("Nueva Notificación");
+inApp.setMessage("Tu horario ha sido actualizado");
+inApp.setPriority(NotificationPriority.HIGH);
+
+inAppNotificationService.sendNotification(inApp);
+```
+
+---
+
+## 🔒 **Seguridad y Validación**
+
+### **Validaciones Implementadas:**
+- **Tipo de notificación válido para el rol**
+- **Email válido del destinatario**
+- **Contenido no vacío**
+- **Límite de caracteres en asunto y contenido**
+- **Permisos por rol** (Coordinador tiene control total)
+
+### **Control de Acceso:**
+- Solo coordinadores pueden enviar notificaciones masivas
+- Validación de permisos por rol
+- Logging de todas las operaciones de auditoría
+- No exposición de credenciales en código
+
+---
+
+## 📞 **Soporte y Contacto**
+
+Para soporte técnico o consultas sobre el sistema de notificaciones:
+
+- **Email:** soporte@sgh.edu.co
+- **Portal:** portal.sgh.edu.co/soporte
+- **Teléfono:** (1) 123-4567
+
+---
+
+## 🎉 **Conclusión**
+
+El Sistema de Notificaciones SGH ofrece una experiencia de comunicación institucional moderna, elegante y altamente funcional. Con su diseño responsive, envío asíncrono y logging completo, garantiza una comunicación efectiva y confiable con todos los miembros de la institución educativa.
+
+**Características destacadas:**
+- **100% automatizado** por roles de usuario
+- **Envío dual** (correo + In-App)
+- **Reintentos inteligentes** ante fallos
+- **Plantillas personalizadas** por rol
+- **WebSocket en tiempo real**
+- **APIs REST completas**
+- **Monitoreo avanzado**
+- **Coordinador con control total**
+
+**¡Listo para transformar la comunicación en tu institución educativa!** 🚀🤖📧
+
+---
+
+*Documentación generada automáticamente - Sistema SGH v1.0*
