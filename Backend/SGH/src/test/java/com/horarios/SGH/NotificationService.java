@@ -45,7 +45,7 @@ class NotificationServiceTest {
         notification.setRecipientEmail("test@example.com");
         notification.setRecipientName("Test User");
         notification.setRecipientRole("ESTUDIANTE");
-        notification.setNotificationType("STUDENT_SCHEDULE_ASSIGNMENT");
+        notification.setNotificationType("SCHEDULE_ASSIGNED");
         notification.setSubject("Test Subject");
         notification.setContent("Test content");
         notification.setIsHtml(true);
@@ -71,9 +71,9 @@ class NotificationServiceTest {
         
         // When
         CompletableFuture<Void> result = notificationService.sendNotificationToRoleAsync(
-            "COORDINADOR", 
-            NotificationType.COORDINATOR_GLOBAL_UPDATE, 
-            "Test Subject", 
+            "COORDINADOR",
+            NotificationType.SYSTEM_NOTIFICATION,
+            "Test Subject",
             variables
         );
         
@@ -93,16 +93,16 @@ class NotificationServiceTest {
         notification1.setRecipientEmail("user1@example.com");
         notification1.setRecipientName("User 1");
         notification1.setRecipientRole("ESTUDIANTE");
-        notification1.setNotificationType("STUDENT_SCHEDULE_ASSIGNMENT");
+        notification1.setNotificationType("SCHEDULE_ASSIGNED");
         notification1.setSubject("Test Subject 1");
         notification1.setContent("Test content 1");
         notification1.setIsHtml(true);
-        
+
         NotificationDTO notification2 = new NotificationDTO();
         notification2.setRecipientEmail("user2@example.com");
         notification2.setRecipientName("User 2");
         notification2.setRecipientRole("MAESTRO");
-        notification2.setNotificationType("TEACHER_CLASS_SCHEDULED");
+        notification2.setNotificationType("TEACHER_SCHEDULE_ASSIGNED");
         notification2.setSubject("Test Subject 2");
         notification2.setContent("Test content 2");
         notification2.setIsHtml(true);
@@ -156,7 +156,7 @@ class NotificationServiceTest {
         notification.setRecipientEmail("test@example.com");
         notification.setRecipientName("Test User");
         notification.setRecipientRole("ESTUDIANTE");
-        notification.setNotificationType("STUDENT_SCHEDULE_ASSIGNMENT");
+        notification.setNotificationType("STUDENT_NOTIFICATION");
         
         // Then
         assertNotNull(notification.getRecipientEmail());
@@ -168,11 +168,11 @@ class NotificationServiceTest {
     @Test
     void testNotificationTypeEnum() {
         // Then
-        assertEquals(NotificationType.STUDENT_SCHEDULE_ASSIGNMENT, 
-                    NotificationType.valueOf("STUDENT_SCHEDULE_ASSIGNMENT"));
-        assertEquals(NotificationType.TEACHER_CLASS_SCHEDULED, 
-                    NotificationType.valueOf("TEACHER_CLASS_SCHEDULED"));
-        assertEquals(NotificationType.COORDINATOR_GLOBAL_UPDATE, 
-                    NotificationType.valueOf("COORDINATOR_GLOBAL_UPDATE"));
+        assertEquals(NotificationType.SCHEDULE_ASSIGNED,
+                    NotificationType.valueOf("SCHEDULE_ASSIGNED"));
+        assertEquals(NotificationType.TEACHER_SCHEDULE_ASSIGNED,
+                    NotificationType.valueOf("TEACHER_SCHEDULE_ASSIGNED"));
+        assertEquals(NotificationType.SYSTEM_NOTIFICATION,
+                    NotificationType.valueOf("SYSTEM_NOTIFICATION"));
     }
 }

@@ -4,85 +4,85 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Tipos de notificaciones disponibles en el sistema SGH
- * Cada tipo corresponde a eventos específicos del sistema de gestión de horarios
+ * Tipos de notificaciones específicas para el Sistema de Gestión de Horarios (SGH)
  */
 public enum NotificationType {
-    
-    // Estudiantes - notificaciones sobre asignaciones o cambios en sus horarios
-    STUDENT_SCHEDULE_ASSIGNMENT("Asignación de Horario"),
-    
-    STUDENT_SCHEDULE_CHANGE("Cambio de Horario"),
-    
-    STUDENT_CLASS_CANCELLATION("Cancelación de Clase"),
-    
-    // Maestros - notificaciones sobre clases programadas, modificaciones o cancelaciones
-    TEACHER_CLASS_SCHEDULED("Clase Programada"),
-    
-    TEACHER_CLASS_MODIFIED("Modificación de Clase"),
-    
-    TEACHER_CLASS_CANCELLED("Clase Cancelada"),
-    
-    TEACHER_AVAILABILITY_CHANGED("Cambio de Disponibilidad"),
-    
-    // Directores de Área - alertas sobre disponibilidad de horarios, conflictos o incidencias
-    DIRECTOR_AVAILABILITY_ISSUE("Problema de Disponibilidad"),
 
-    DIRECTOR_SYSTEM_INCIDENT("Incidencia del Sistema"),
+    // Notificaciones para Estudiantes
+    SCHEDULE_ASSIGNED("Horario Asignado"),
+    SCHEDULE_CHANGED("Horario Modificado"),
+    SCHEDULE_CONFLICT("Conflicto de Horario"),
+    WELCOME_STUDENT("Bienvenida Estudiante"),
 
-    // Coordinadores - notificaciones generales, actualizaciones globales, confirmaciones
-    COORDINATOR_GLOBAL_UPDATE("Actualización Global"),
+    // Notificaciones para Maestros
+    TEACHER_SCHEDULE_ASSIGNED("Asignación de Horario Docente"),
+    TEACHER_CONFLICT_DETECTED("Conflicto Detectado"),
+    SCHEDULE_UPDATE_REQUIRED("Actualización de Horario Requerida"),
+    WELCOME_TEACHER("Bienvenida Docente"),
 
-    COORDINATOR_SYSTEM_ALERT("Alerta del Sistema"),
+    // Notificaciones para Directores
+    CRITICAL_SCHEDULE_CONFLICTS("Conflictos Críticos de Horario"),
+    SCHEDULE_OVERVIEW_REPORT("Reporte General de Horarios"),
+    DEPARTMENT_ALERT("Alerta Departamental"),
+    WELCOME_DIRECTOR("Bienvenida Director"),
 
-    COORDINATOR_CHANGE_CONFIRMATION("Confirmación de Cambio"),
-    
-    // Notificaciones generales para todos los roles
-    GENERAL_SYSTEM_NOTIFICATION("Notificación General");
-    
+    // Notificaciones para Coordinadores
+    SYSTEM_MAINTENANCE("Mantenimiento del Sistema"),
+    BULK_SCHEDULE_UPDATE("Actualización Masiva de Horarios"),
+    SYSTEM_NOTIFICATION("Notificación del Sistema"),
+    WELCOME_COORDINATOR("Bienvenida Coordinador");
+
     private final String displayName;
-    
+
     NotificationType(String displayName) {
         this.displayName = displayName;
     }
-    
+
     public String getDisplayName() {
         return displayName;
     }
-    
+
     /**
      * Determina qué roles pueden recibir este tipo de notificación
      */
     public String[] getAllowedRoles() {
         switch (this) {
-            case STUDENT_SCHEDULE_ASSIGNMENT:
-            case STUDENT_SCHEDULE_CHANGE:
-            case STUDENT_CLASS_CANCELLATION:
+            // Estudiantes
+            case SCHEDULE_ASSIGNED:
+            case SCHEDULE_CHANGED:
+            case SCHEDULE_CONFLICT:
+            case WELCOME_STUDENT:
                 return new String[]{"ESTUDIANTE"};
 
-            case TEACHER_CLASS_SCHEDULED:
-            case TEACHER_CLASS_MODIFIED:
-            case TEACHER_CLASS_CANCELLED:
-            case TEACHER_AVAILABILITY_CHANGED:
+            // Maestros
+            case TEACHER_SCHEDULE_ASSIGNED:
+            case TEACHER_CONFLICT_DETECTED:
+            case SCHEDULE_UPDATE_REQUIRED:
+            case WELCOME_TEACHER:
                 return new String[]{"MAESTRO"};
 
-            case DIRECTOR_AVAILABILITY_ISSUE:
-            case DIRECTOR_SYSTEM_INCIDENT:
+            // Directores
+            case CRITICAL_SCHEDULE_CONFLICTS:
+            case SCHEDULE_OVERVIEW_REPORT:
+            case DEPARTMENT_ALERT:
+            case WELCOME_DIRECTOR:
                 return new String[]{"DIRECTOR_DE_AREA"};
 
-            case COORDINATOR_GLOBAL_UPDATE:
-            case COORDINATOR_SYSTEM_ALERT:
-            case COORDINATOR_CHANGE_CONFIRMATION:
+            // Coordinadores
+            case SYSTEM_MAINTENANCE:
+            case BULK_SCHEDULE_UPDATE:
+            case WELCOME_COORDINATOR:
                 return new String[]{"COORDINADOR"};
 
-            case GENERAL_SYSTEM_NOTIFICATION:
+            // Sistema (todos los roles)
+            case SYSTEM_NOTIFICATION:
                 return new String[]{"COORDINADOR", "MAESTRO", "ESTUDIANTE", "DIRECTOR_DE_AREA"};
 
             default:
                 return new String[]{};
         }
     }
-    
+
     /**
      * Obtiene el tipo de notificación basado en el rol
      */
@@ -99,5 +99,76 @@ public enum NotificationType {
                 return false;
             })
             .toArray(NotificationType[]::new);
+    }
+
+    /**
+     * Obtiene el icono correspondiente al tipo de notificación
+     */
+    public String getIcon() {
+        switch (this) {
+            case SCHEDULE_ASSIGNED:
+            case TEACHER_SCHEDULE_ASSIGNED:
+                return "📚";
+            case SCHEDULE_CHANGED:
+            case TEACHER_CONFLICT_DETECTED:
+                return "⚠️";
+            case SCHEDULE_CONFLICT:
+            case CRITICAL_SCHEDULE_CONFLICTS:
+                return "🚨";
+            case WELCOME_STUDENT:
+            case WELCOME_TEACHER:
+            case WELCOME_DIRECTOR:
+            case WELCOME_COORDINATOR:
+                return "🎉";
+            case SYSTEM_MAINTENANCE:
+            case SYSTEM_NOTIFICATION:
+                return "⚙️";
+            case SCHEDULE_OVERVIEW_REPORT:
+                return "📊";
+            case DEPARTMENT_ALERT:
+                return "📢";
+            case BULK_SCHEDULE_UPDATE:
+                return "🔄";
+            case SCHEDULE_UPDATE_REQUIRED:
+                return "🔧";
+            default:
+                return "📧";
+        }
+    }
+
+    /**
+     * Obtiene el color correspondiente al tipo de notificación
+     */
+    public String getColor() {
+        switch (this) {
+            case SCHEDULE_ASSIGNED:
+            case TEACHER_SCHEDULE_ASSIGNED:
+                return "#4CAF50";
+            case SCHEDULE_CHANGED:
+                return "#2196F3";
+            case SCHEDULE_CONFLICT:
+            case TEACHER_CONFLICT_DETECTED:
+                return "#FF9800";
+            case CRITICAL_SCHEDULE_CONFLICTS:
+                return "#F44336";
+            case WELCOME_STUDENT:
+            case WELCOME_TEACHER:
+            case WELCOME_DIRECTOR:
+            case WELCOME_COORDINATOR:
+                return "#9C27B0";
+            case SYSTEM_MAINTENANCE:
+            case SYSTEM_NOTIFICATION:
+                return "#607D8B";
+            case SCHEDULE_OVERVIEW_REPORT:
+                return "#3F51B5";
+            case DEPARTMENT_ALERT:
+                return "#FF5722";
+            case BULK_SCHEDULE_UPDATE:
+                return "#795548";
+            case SCHEDULE_UPDATE_REQUIRED:
+                return "#E91E63";
+            default:
+                return "#9E9E9E";
+        }
     }
 }

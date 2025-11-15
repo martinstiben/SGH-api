@@ -8,13 +8,19 @@ import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.subjects;
 import com.horarios.SGH.Model.teachers;
 import com.horarios.SGH.Model.TeacherSubject;
+import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Repository.IScheduleRepository;
 import com.horarios.SGH.Repository.ITeacherAvailabilityRepository;
 import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
+import com.horarios.SGH.DTO.NotificationDTO;
+import com.horarios.SGH.Model.NotificationType;
+import com.horarios.SGH.DTO.InAppNotificationDTO;
+import com.horarios.SGH.Model.NotificationPriority;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +39,15 @@ public class ScheduleService {
     private final Iteachers teacherRepo;
     private final Isubjects subjectRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private InAppNotificationService inAppNotificationService;
+
+    @Autowired
+    private usersService userService;
 
     private boolean isTeacherAvailable(Integer teacherId, String day, LocalTime start, LocalTime end) {
         try {
@@ -104,6 +119,15 @@ public class ScheduleService {
         }
 
         scheduleRepo.saveAll(entities);
+
+        // Enviar notificaciones después de crear los horarios
+        try {
+            sendScheduleNotifications(entities, "CREATED");
+        } catch (Exception e) {
+            // No fallar la creación si las notificaciones fallan
+            System.err.println("Error enviando notificaciones de creación de horarios: " + e.getMessage());
+        }
+
         return entities.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
@@ -183,6 +207,15 @@ public class ScheduleService {
         existing.setScheduleName(dto.getScheduleName());
 
         schedule saved = scheduleRepo.save(existing);
+
+        // Enviar notificaciones después de actualizar el horario
+        try {
+            sendScheduleNotifications(List.of(saved), "UPDATED");
+        } catch (Exception e) {
+            // No fallar la actualización si las notificaciones fallan
+            System.err.println("Error enviando notificaciones de actualización de horario: " + e.getMessage());
+        }
+
         return toDTO(saved);
     }
 
@@ -226,5 +259,189 @@ public class ScheduleService {
         dto.setSubjectName(s.getSubjectId().getSubjectName());
 
         return dto;
+    }
+
+    /**
+     * Envía notificaciones relacionadas con cambios en horarios
+     */
+    private void sendScheduleNotifications(List<schedule> schedules, String action) {
+        for (schedule s : schedules) {
+            try {
+                // Notificar al profesor sobre la asignación
+                sendTeacherScheduleNotification(s, action);
+
+                // Notificar a los estudiantes del curso sobre el cambio
+                sendStudentsScheduleNotification(s, action);
+
+            } catch (Exception e) {
+                System.err.println("Error enviando notificación para horario " + s.getId() + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Envía notificación al profesor sobre cambios en su horario
+     */
+    private void sendTeacherScheduleNotification(schedule s, String action) {
+        try {
+            // Asumir que teacher.getId() es el userId
+            Integer teacherUserId = s.getTeacherId().getId();
+
+            // ===========================================
+            // 1. ENVIAR NOTIFICACIÓN IN-APP
+            // ===========================================
+            InAppNotificationDTO inAppNotification = new InAppNotificationDTO();
+            inAppNotification.setUserId(teacherUserId);
+            inAppNotification.setNotificationType(NotificationType.TEACHER_SCHEDULE_ASSIGNED.name());
+            inAppNotification.setPriority(NotificationPriority.MEDIUM.name());
+            inAppNotification.setCategory("SCHEDULE");
+
+            String title;
+            String message;
+
+            if ("CREATED".equals(action)) {
+                title = "Nuevo Horario Asignado";
+                message = String.format(
+                    "Se te ha asignado un horario de clase.\n\n" +
+                    "Materia: %s\n" +
+                    "Curso: %s\n" +
+                    "Día: %s\n" +
+                    "Horario: %s - %s",
+                    s.getSubjectId().getSubjectName(),
+                    s.getCourseId().getCourseName(),
+                    s.getDay(),
+                    s.getStartTime().toString(),
+                    s.getEndTime().toString()
+                );
+            } else {
+                title = "Horario Modificado";
+                message = String.format(
+                    "Se ha modificado tu horario de clase.\n\n" +
+                    "Materia: %s\n" +
+                    "Curso: %s\n" +
+                    "Día: %s\n" +
+                    "Horario: %s - %s",
+                    s.getSubjectId().getSubjectName(),
+                    s.getCourseId().getCourseName(),
+                    s.getDay(),
+                    s.getStartTime().toString(),
+                    s.getEndTime().toString()
+                );
+            }
+
+            inAppNotification.setTitle(title);
+            inAppNotification.setMessage(message);
+            inAppNotification.setIcon("📚");
+
+            inAppNotificationService.sendInAppNotificationAsync(inAppNotification);
+
+            // ===========================================
+            // 2. ENVIAR NOTIFICACIÓN POR EMAIL
+            // ===========================================
+            NotificationDTO emailNotification = new NotificationDTO();
+            emailNotification.setRecipientEmail("profesor" + teacherUserId + "@sgh.edu"); // Placeholder - debería ser email real
+            emailNotification.setRecipientName(s.getTeacherId().getTeacherName());
+            emailNotification.setRecipientRole("MAESTRO");
+            emailNotification.setNotificationType(NotificationType.TEACHER_SCHEDULE_ASSIGNED.name());
+            emailNotification.setSubject(title);
+            emailNotification.setContent(message);
+            emailNotification.setSenderName("Sistema SGH");
+            emailNotification.setIsHtml(true);
+
+            notificationService.validateAndPrepareNotification(emailNotification);
+            notificationService.sendNotificationAsync(emailNotification);
+
+        } catch (Exception e) {
+            System.err.println("Error enviando notificación al profesor: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Envía notificación a los coordinadores sobre cambios en el horario
+     */
+    private void sendStudentsScheduleNotification(schedule s, String action) {
+        try {
+            // Enviar notificación al coordinador sobre el cambio de horario
+            List<users> coordinators = userService.findUsersByRole("COORDINADOR");
+
+            if (coordinators.isEmpty()) {
+                System.err.println("No se encontraron coordinadores para enviar notificación");
+                return;
+            }
+
+            // Enviar a todos los coordinadores
+            for (users coordinator : coordinators) {
+                // ===========================================
+                // 1. ENVIAR NOTIFICACIÓN IN-APP
+                // ===========================================
+                InAppNotificationDTO inAppNotification = new InAppNotificationDTO();
+                inAppNotification.setUserId(coordinator.getUserId());
+                inAppNotification.setNotificationType(NotificationType.SYSTEM_NOTIFICATION.name());
+                inAppNotification.setPriority(NotificationPriority.MEDIUM.name());
+                inAppNotification.setCategory("SCHEDULE");
+
+                String title;
+                String message;
+
+                if ("CREATED".equals(action)) {
+                    title = "Nuevo Horario Registrado";
+                    message = String.format(
+                        "Se ha registrado un nuevo horario en el sistema.\n\n" +
+                        "Profesor: %s\n" +
+                        "Materia: %s\n" +
+                        "Curso: %s\n" +
+                        "Día: %s\n" +
+                        "Horario: %s - %s",
+                        s.getTeacherId().getTeacherName(),
+                        s.getSubjectId().getSubjectName(),
+                        s.getCourseId().getCourseName(),
+                        s.getDay(),
+                        s.getStartTime().toString(),
+                        s.getEndTime().toString()
+                    );
+                } else {
+                    title = "Horario Modificado";
+                    message = String.format(
+                        "Se ha modificado un horario en el sistema.\n\n" +
+                        "Profesor: %s\n" +
+                        "Materia: %s\n" +
+                        "Curso: %s\n" +
+                        "Día: %s\n" +
+                        "Horario: %s - %s",
+                        s.getTeacherId().getTeacherName(),
+                        s.getSubjectId().getSubjectName(),
+                        s.getCourseId().getCourseName(),
+                        s.getDay(),
+                        s.getStartTime().toString(),
+                        s.getEndTime().toString()
+                    );
+                }
+
+                inAppNotification.setTitle(title);
+                inAppNotification.setMessage(message);
+                inAppNotification.setIcon("⚙️");
+
+                inAppNotificationService.sendInAppNotificationAsync(inAppNotification);
+
+                // ===========================================
+                // 2. ENVIAR NOTIFICACIÓN POR EMAIL
+                // ===========================================
+                NotificationDTO emailNotification = new NotificationDTO();
+                emailNotification.setRecipientEmail(coordinator.getPerson().getEmail()); // Email real del coordinador
+                emailNotification.setRecipientName(coordinator.getPerson().getFullName());
+                emailNotification.setRecipientRole("COORDINADOR");
+                emailNotification.setNotificationType(NotificationType.SYSTEM_NOTIFICATION.name());
+                emailNotification.setSubject(title);
+                emailNotification.setContent(message);
+                emailNotification.setSenderName("Sistema SGH");
+                emailNotification.setIsHtml(true);
+
+                notificationService.validateAndPrepareNotification(emailNotification);
+                notificationService.sendNotificationAsync(emailNotification);
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error enviando notificación a coordinadores: " + e.getMessage());
+        }
     }
 }

@@ -29,7 +29,7 @@ public class NotificationLog {
     private String recipientRole;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "notification_type", nullable = false)
+    @Column(name = "notification_type", nullable = false, length = 50)
     private NotificationType notificationType;
     
     @Column(name = "subject", nullable = false, length = 500)
