@@ -15,14 +15,19 @@ import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.Roles;
 import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Model.People;
+import com.horarios.SGH.Model.AccountStatus;
+import com.horarios.SGH.Model.NotificationType;
+import com.horarios.SGH.Model.NotificationPriority;
 import com.horarios.SGH.Repository.Iusers;
 import com.horarios.SGH.Repository.IPeopleRepository;
 import com.horarios.SGH.Repository.IRolesRepository;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
+import com.horarios.SGH.Service.usersService;
 import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
+import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.jwt.JwtTokenProvider;
 
 
@@ -42,19 +47,21 @@ public class AuthService {
     private final PasswordEncoder encoder;
     private final AuthenticationManager authManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final InAppNotificationService inAppNotificationService;
 
     @Autowired
     private JavaMailSender mailSender;
 
     public AuthService(Iusers repo,
-                          IPeopleRepository peopleRepo,
-                          IRolesRepository rolesRepo,
-                          Iteachers teacherRepo,
-                          Isubjects subjectRepo,
-                          TeacherSubjectRepository teacherSubjectRepo,
-                          PasswordEncoder encoder,
-                          AuthenticationManager authManager,
-                          JwtTokenProvider jwtTokenProvider) {
+                            IPeopleRepository peopleRepo,
+                            IRolesRepository rolesRepo,
+                            Iteachers teacherRepo,
+                            Isubjects subjectRepo,
+                            TeacherSubjectRepository teacherSubjectRepo,
+                            PasswordEncoder encoder,
+                            AuthenticationManager authManager,
+                            JwtTokenProvider jwtTokenProvider,
+                            InAppNotificationService inAppNotificationService) {
         this.repo = repo;
         this.peopleRepo = peopleRepo;
         this.rolesRepo = rolesRepo;
@@ -64,38 +71,55 @@ public class AuthService {
         this.encoder = encoder;
         this.authManager = authManager;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.inAppNotificationService = inAppNotificationService;
     }
 
     public String register(String name, String email, String rawPassword, Role role) {
-        // Validar entradas usando ValidationUtils
-        ValidationUtils.validateName(name);
-        ValidationUtils.validateEmail(email);
-        ValidationUtils.validatePassword(rawPassword);
+        try {
+            // Validar entradas usando ValidationUtils
+            ValidationUtils.validateName(name);
+            ValidationUtils.validateEmail(email);
+            ValidationUtils.validatePassword(rawPassword);
 
-        if (role == null) {
-            throw new IllegalArgumentException("El rol no puede ser nulo");
+            if (role == null) {
+                throw new IllegalArgumentException("El rol no puede ser nulo");
+            }
+
+            // Verificar que el email no esté en uso
+            peopleRepo.findByEmail(email).ifPresent(p -> {
+                throw new IllegalStateException("El correo electrónico ya está en uso");
+            });
+
+            // Obtener o crear persona
+            People person = peopleRepo.findByEmail(email).orElseGet(() -> {
+                People newPerson = new People(name.trim(), email.trim().toLowerCase());
+                return peopleRepo.save(newPerson);
+            });
+
+            // Obtener rol
+            Roles userRole = rolesRepo.findByRoleName(role.name())
+                .orElseThrow(() -> new IllegalStateException("Rol no encontrado: " + role.name()));
+
+            // Crear y guardar el nuevo usuario con estado pendiente de aprobación
+            users newUser = new users(person, userRole, encoder.encode(rawPassword));
+            newUser.setAccountStatus(AccountStatus.PENDING_APPROVAL);
+            users savedUser = repo.save(newUser);
+
+            System.out.println("Usuario registrado exitosamente: " + savedUser.getUserId());
+
+            // Enviar notificación a todos los coordinadores (no bloquear el registro si falla)
+            try {
+                notifyCoordinatorsOfNewUser(savedUser);
+            } catch (Exception e) {
+                System.err.println("Error notificando coordinadores, pero registro exitoso: " + e.getMessage());
+            }
+
+            return "Usuario registrado correctamente. Pendiente de aprobación por el coordinador.";
+        } catch (Exception e) {
+            System.err.println("Error en registro: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
-
-        // Verificar que el email no esté en uso
-        peopleRepo.findByEmail(email).ifPresent(p -> {
-            throw new IllegalStateException("El correo electrónico ya está en uso");
-        });
-
-        // Obtener o crear persona
-        People person = peopleRepo.findByEmail(email).orElseGet(() -> {
-            People newPerson = new People(name.trim(), email.trim().toLowerCase());
-            return peopleRepo.save(newPerson);
-        });
-
-        // Obtener rol
-        Roles userRole = rolesRepo.findByRoleName(role.name())
-            .orElseThrow(() -> new IllegalStateException("Rol no encontrado: " + role.name()));
-
-        // Crear y guardar el nuevo usuario
-        users newUser = new users(person, userRole, encoder.encode(rawPassword));
-        repo.save(newUser);
-
-        return "Usuario registrado correctamente";
     }
 
 
@@ -177,6 +201,11 @@ public class AuthService {
         // Verificar expiración
         if (user.getCodeExpiration().isBefore(java.time.LocalDateTime.now())) {
             throw new RuntimeException("Código de verificación expirado");
+        }
+
+        // Verificar que la cuenta esté activa (aprobada)
+        if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw new RuntimeException("Su cuenta está pendiente de aprobación por el coordinador");
         }
 
         // Limpiar código usado y generar token
@@ -328,5 +357,150 @@ public class AuthService {
 
         user.getPerson().setEmail(newEmail.trim().toLowerCase());
         peopleRepo.save(user.getPerson());
+    }
+
+    /**
+     * Notifica a todos los coordinadores sobre un nuevo usuario pendiente de aprobación
+     */
+    private void notifyCoordinatorsOfNewUser(users newUser) {
+        try {
+            System.out.println("Buscando coordinadores para notificar...");
+            java.util.List<users> coordinators = repo.findByRoleNameWithDetails("COORDINADOR");
+            System.out.println("Encontrados " + coordinators.size() + " coordinadores");
+
+            for (users coordinator : coordinators) {
+                System.out.println("Enviando notificación al coordinador: " + coordinator.getUserId());
+                InAppNotificationDTO notification = new InAppNotificationDTO();
+                notification.setUserId(coordinator.getUserId());
+                notification.setNotificationType(NotificationType.COORDINATOR_USER_REGISTRATION_PENDING.name());
+                notification.setTitle("Nuevo usuario pendiente de aprobación");
+                notification.setMessage(String.format(
+                    "El usuario %s (%s) con rol %s solicita registro en el sistema.",
+                    newUser.getPerson() != null ? newUser.getPerson().getFullName() : "N/A",
+                    newUser.getPerson() != null ? newUser.getPerson().getEmail() : "N/A",
+                    newUser.getRole() != null ? newUser.getRole().getRoleName() : "N/A"
+                ));
+                notification.setPriority("HIGH");
+                notification.setCategory("user_registration");
+                notification.setActionUrl("/admin/users/pending");
+                notification.setActionText("Revisar solicitudes");
+
+                // Enviar notificación usando el servicio
+                inAppNotificationService.sendInAppNotificationAsync(notification)
+                    .exceptionally(ex -> {
+                        System.err.println("Error enviando notificación al coordinador " + coordinator.getUserId() + ": " + ex.getMessage());
+                        return null;
+                    });
+            }
+        } catch (Exception e) {
+            // Log error but don't fail registration
+            System.err.println("Error notificando coordinadores: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Aprueba un usuario pendiente de aprobación
+     */
+    public String approveUser(int userId) {
+        users user = repo.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (user.getAccountStatus() != AccountStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("El usuario no está pendiente de aprobación");
+        }
+
+        user.setAccountStatus(AccountStatus.ACTIVE);
+        repo.save(user);
+
+        // Notificar al usuario
+        notifyUserApproval(user);
+
+        return "Usuario aprobado exitosamente";
+    }
+
+    /**
+     * Rechaza un usuario pendiente de aprobación
+     */
+    public String rejectUser(int userId, String reason) {
+        users user = repo.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (user.getAccountStatus() != AccountStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("El usuario no está pendiente de aprobación");
+        }
+
+        user.setAccountStatus(AccountStatus.INACTIVE);
+        repo.save(user);
+
+        // Notificar al usuario
+        notifyUserRejection(user, reason);
+
+        return "Usuario rechazado";
+    }
+
+    /**
+     * Notifica al usuario que su registro fue aprobado
+     */
+    private void notifyUserApproval(users user) {
+        try {
+            InAppNotificationDTO notification = new InAppNotificationDTO();
+            notification.setUserId(user.getUserId());
+            notification.setNotificationType(NotificationType.USER_REGISTRATION_APPROVED.name());
+            notification.setTitle("¡Registro aprobado!");
+            notification.setMessage("Su solicitud de registro ha sido aprobada. Ya puede iniciar sesión en el sistema.");
+            notification.setPriority("HIGH");
+            notification.setCategory("user_registration");
+
+            inAppNotificationService.sendInAppNotificationAsync(notification)
+                .exceptionally(ex -> {
+                    System.err.println("Error notificando aprobación al usuario " + user.getUserId() + ": " + ex.getMessage());
+                    return null;
+                });
+        } catch (Exception e) {
+            System.err.println("Error notificando aprobación al usuario: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Notifica al usuario que su registro fue rechazado
+     */
+    private void notifyUserRejection(users user, String reason) {
+        try {
+            InAppNotificationDTO notification = new InAppNotificationDTO();
+            notification.setUserId(user.getUserId());
+            notification.setNotificationType(NotificationType.USER_REGISTRATION_REJECTED.name());
+            notification.setTitle("Registro rechazado");
+            notification.setMessage(String.format(
+                "Su solicitud de registro ha sido rechazada.%s",
+                reason != null && !reason.trim().isEmpty() ? " Motivo: " + reason : ""
+            ));
+            notification.setPriority("MEDIUM");
+            notification.setCategory("user_registration");
+
+            inAppNotificationService.sendInAppNotificationAsync(notification)
+                .exceptionally(ex -> {
+                    System.err.println("Error notificando rechazo al usuario " + user.getUserId() + ": " + ex.getMessage());
+                    return null;
+                });
+        } catch (Exception e) {
+            System.err.println("Error notificando rechazo al usuario: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Obtiene lista de usuarios pendientes de aprobación
+     */
+    public java.util.List<users> getPendingUsers() {
+        try {
+            System.out.println("Buscando usuarios pendientes de aprobación...");
+            java.util.List<users> pendingUsers = repo.findByAccountStatusWithDetails(AccountStatus.PENDING_APPROVAL);
+            System.out.println("Encontrados " + pendingUsers.size() + " usuarios pendientes");
+            return pendingUsers;
+        } catch (Exception e) {
+            System.err.println("Error obteniendo usuarios pendientes: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

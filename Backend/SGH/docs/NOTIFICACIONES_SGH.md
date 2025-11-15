@@ -565,6 +565,106 @@ wss://tu-dominio.com/ws/notifications
 
 ---
 
+## 👥 **Sistema de Aprobación de Usuarios**
+
+### **Flujo de Registro y Aprobación**
+
+El sistema implementa un flujo de aprobación de usuarios donde:
+
+1. **Registro**: Los usuarios se registran con estado `PENDING_APPROVAL`
+2. **Notificación**: Se envía notificación automática a todos los coordinadores
+3. **Revisión**: Los coordinadores pueden ver usuarios pendientes y aprobar/rechazar
+4. **Activación**: Solo usuarios aprobados pueden iniciar sesión
+
+### **Nuevos Tipos de Notificación para Coordinadores**
+
+#### **`COORDINATOR_USER_REGISTRATION_PENDING`**
+- **Propósito:** Notificar nuevos usuarios pendientes de aprobación
+- **Destinatarios:** Todos los usuarios con rol COORDINADOR
+- **Prioridad:** HIGH
+- **Acción:** "Revisar solicitudes"
+
+#### **`COORDINATOR_USER_APPROVED`**
+- **Propósito:** Confirmar aprobación de usuario
+- **Destinatarios:** Coordinadores que aprobaron
+- **Prioridad:** MEDIUM
+
+#### **`COORDINATOR_USER_REJECTED`**
+- **Propósito:** Confirmar rechazo de usuario
+- **Destinatarios:** Coordinadores que rechazaron
+- **Prioridad:** MEDIUM
+
+### **Nuevos Tipos de Notificación para Usuarios**
+
+#### **`USER_REGISTRATION_APPROVED`**
+- **Propósito:** Informar al usuario que su registro fue aprobado
+- **Destinatarios:** Usuario aprobado
+- **Prioridad:** HIGH
+- **Mensaje:** "¡Registro aprobado! Ya puede iniciar sesión en el sistema."
+
+#### **`USER_REGISTRATION_REJECTED`**
+- **Propósito:** Informar al usuario que su registro fue rechazado
+- **Destinatarios:** Usuario rechazado
+- **Prioridad:** MEDIUM
+- **Mensaje:** "Su solicitud de registro ha sido rechazada."
+
+### **Nuevos Endpoints de API**
+
+#### **Obtener Usuarios Pendientes** (Solo Coordinadores)
+```http
+GET /auth/pending-users
+Authorization: Bearer {token}
+```
+
+#### **Aprobar Usuario** (Solo Coordinadores)
+```http
+POST /auth/approve-user/{userId}
+Authorization: Bearer {token}
+```
+
+#### **Rechazar Usuario** (Solo Coordinadores)
+```http
+POST /auth/reject-user/{userId}
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "reason": "Motivo opcional del rechazo"
+}
+```
+
+### **Estados de Cuenta**
+
+| Estado | Descripción | Puede Iniciar Sesión |
+|--------|-------------|----------------------|
+| `ACTIVE` | Cuenta activa y aprobada | ✅ Sí |
+| `PENDING_APPROVAL` | Pendiente de aprobación por coordinador | ❌ No |
+| `BLOCKED` | Cuenta bloqueada | ❌ No |
+| `INACTIVE` | Cuenta inactiva | ❌ No |
+
+### **Flujo de Trabajo**
+
+```mermaid
+graph TD
+    A[Usuario se registra] --> B[Estado: PENDING_APPROVAL]
+    B --> C[Notificación automática a coordinadores]
+    C --> D{Coordinador revisa}
+    D --> E[Aprueba] --> F[Estado: ACTIVE]
+    D --> G[Rechaza] --> H[Estado: INACTIVE]
+    F --> I[Usuario puede iniciar sesión]
+    H --> J[Usuario recibe notificación de rechazo]
+    I --> K[Usuario recibe notificación de aprobación]
+```
+
+### **Validaciones de Seguridad**
+
+- Solo coordinadores pueden aprobar/rechazar usuarios
+- Verificación de estado de cuenta en login
+- Logging completo de todas las operaciones de aprobación
+- Notificaciones automáticas para auditoría
+
+---
+
 ## 🎯 **INTEGRACIÓN FRONTEND - ¡CÓDIGO LISTO PARA COPIAR!**
 
 ### **React Web - Hook Personalizado**

@@ -684,14 +684,19 @@ public class NotificationController {
             });
             
             types.put("COORDINADOR", new String[]{
-                "COORDINATOR_GLOBAL_UPDATE", 
-                "COORDINATOR_SYSTEM_ALERT", 
-                "COORDINATOR_CHANGE_CONFIRMATION", 
-                "COORDINATOR_MAINTENANCE_ALERT"
+                "COORDINATOR_GLOBAL_UPDATE",
+                "COORDINATOR_SYSTEM_ALERT",
+                "COORDINATOR_CHANGE_CONFIRMATION",
+                "COORDINATOR_MAINTENANCE_ALERT",
+                "COORDINATOR_USER_REGISTRATION_PENDING",
+                "COORDINATOR_USER_APPROVED",
+                "COORDINATOR_USER_REJECTED"
             });
             
             types.put("GENERAL", new String[]{
-                "GENERAL_SYSTEM_NOTIFICATION"
+                "GENERAL_SYSTEM_NOTIFICATION",
+                "USER_REGISTRATION_APPROVED",
+                "USER_REGISTRATION_REJECTED"
             });
             
             return ResponseEntity.ok(types);
