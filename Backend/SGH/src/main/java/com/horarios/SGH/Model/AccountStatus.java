@@ -6,5 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public enum AccountStatus {
     @Schema(description = "Cuenta activa") ACTIVE,
     @Schema(description = "Cuenta bloqueada") BLOCKED,
-    @Schema(description = "Cuenta inactiva") INACTIVE
+    @Schema(description = "Cuenta inactiva") INACTIVE,
+    @Schema(description = "Cuenta pendiente de aprobación") PENDING_APPROVAL
 }
