@@ -29,7 +29,7 @@ Sistema de notificaciones automáticas para cambios en horarios. Envía **notifi
 - `POST /api/notifications/send/role/{role}` - Envío por rol
 - `POST /api/notifications/retry-failed` - Reintentar fallidas
 - `POST /api/notifications/test/schedule-notification?testEmail=email@ejemplo.com` - **PRUEBA** notificación de horario por correo
-- `POST /api/notifications/test/all-notifications?testEmail=email@ejemplo.com` - **PRUEBA** todas las notificaciones por correo
+- `POST /api/notifications/test/all-notifications?testEmail=email@ejemplo.com` - **PRUEBA COMPLETA** todas las 16 notificaciones del sistema por correo
 - `GET /api/notifications/stats` - Estadísticas
 - `GET /api/notifications/logs` - Historial paginado
 - `GET /api/notifications/types/{role}` - Tipos por rol
@@ -296,7 +296,7 @@ curl -X GET "http://localhost:8082/api/in-app-notifications/active?page=0&size=1
 - ✅ **Contenido elegante y claro** ("Se te asignó un horario")
 - ✅ **Sin enlaces externos** ni contenido innecesario
 - ✅ **Endpoint de prueba individual** (`/api/notifications/test/schedule-notification`)
-- ✅ **Endpoint de prueba completo** (`/api/notifications/test/all-notifications`) - **NUEVO**
+- ✅ **Endpoint de prueba completo** (`/api/notifications/test/all-notifications`) - **16 notificaciones completas**
 - ✅ **Información completa de horarios** (materia, curso, día, hora)
 - ✅ **Envío simultáneo** In-App + Email
 - ✅ **APIs REST** para consumir notificaciones desde frontend

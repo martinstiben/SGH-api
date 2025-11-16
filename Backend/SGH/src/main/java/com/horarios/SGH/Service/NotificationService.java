@@ -249,12 +249,10 @@ public class NotificationService {
      */
     private String generateHtmlContent(NotificationDTO notification) {
         try {
-            if (notification.getIsHtml() && notification.getContent() != null && !notification.getContent().isEmpty()) {
-                return notification.getContent();
-            }
-            
-            return generateRoleBasedHtmlContent(notification);
-            
+            // Siempre usar plantillas especializadas basadas en el tipo de notificación
+            // Esto asegura que se apliquen los estilos correctos
+            return generateTypeBasedHtmlContent(notification);
+
         } catch (Exception e) {
             log.warn("Error al generar contenido HTML, usando contenido por defecto: {}", e.getMessage());
             return generateDefaultHtmlContent(notification);
@@ -262,22 +260,22 @@ public class NotificationService {
     }
     
     /**
-     * Genera contenido HTML basado en rol del destinatario
+     * Genera contenido HTML basado en el tipo de notificación
      */
-    private String generateRoleBasedHtmlContent(NotificationDTO notification) {
-        String recipientRole = notification.getRecipientRole();
+    private String generateTypeBasedHtmlContent(NotificationDTO notification) {
+        NotificationType type = NotificationType.valueOf(notification.getNotificationType());
 
-        switch (recipientRole) {
-            case "ESTUDIANTE":
-                return generateStudentHtmlContent(notification);
-            case "MAESTRO":
-                return generateTeacherHtmlContent(notification);
-            case "DIRECTOR_DE_AREA":
-                return generateDirectorHtmlContent(notification);
-            case "COORDINADOR":
-                return generateCoordinatorHtmlContent(notification);
+        switch (type) {
+            case TEACHER_SCHEDULE_ASSIGNED:
+                return generateTeacherScheduleHtml(notification);
+            case SCHEDULE_ASSIGNED:
+                return generateStudentScheduleHtml(notification);
+            case SYSTEM_ALERT:
+                return generateSystemAlertHtml(notification);
+            case SYSTEM_NOTIFICATION:
+                return generateSystemNotificationHtml(notification);
             default:
-                return generateGeneralHtmlContent(notification);
+                return generateDefaultHtmlContent(notification);
         }
     }
 
@@ -302,7 +300,7 @@ public class NotificationService {
                     .content { padding: 30px 25px; }
                     .notification-card { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 25px; margin-bottom: 25px; border-left: 4px solid #4CAF50; }
                     .notification-title { color: #2c3e50; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
-                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; white-space: pre-line; }
                     .info-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
                     .info-table td { padding: 12px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
                     .info-table td:first-child { font-weight: bold; color: #6c757d; font-size: 12px; text-transform: uppercase; width: 40%%; }
@@ -396,7 +394,7 @@ public class NotificationService {
                     .content { padding: 30px 25px; }
                     .notification-card { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 25px; margin-bottom: 25px; border-left: 4px solid #2196F3; }
                     .notification-title { color: #2c3e50; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
-                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; white-space: pre-line; }
                     .info-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
                     .info-table td { padding: 12px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
                     .info-table td:first-child { font-weight: bold; color: #6c757d; font-size: 12px; text-transform: uppercase; width: 40%%; }
@@ -439,7 +437,8 @@ public class NotificationService {
                             </table>
 
                             <div class="action-section">
-                                <div class="action-text">📋 Esta notificación contiene información sobre tu horario</div>
+                                <div class="action-text">📋 Esta notificación contiene información importante sobre tu horario docente</div>
+                                <a href="#" class="action-button">Acceder al Sistema</a>
                             </div>
                         </div>
                     </div>
@@ -489,7 +488,7 @@ public class NotificationService {
                     .content { padding: 30px 25px; }
                     .notification-card { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 25px; margin-bottom: 25px; border-left: 4px solid #9C27B0; }
                     .notification-title { color: #2c3e50; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
-                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; white-space: pre-line; }
                     .priority-badge { display: inline-block; background-color: #FF5722; color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 15px; }
                     .info-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
                     .info-table td { padding: 12px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
@@ -585,7 +584,7 @@ public class NotificationService {
                     .content { padding: 30px 25px; }
                     .notification-card { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 25px; margin-bottom: 25px; border-left: 4px solid #FF5722; }
                     .notification-title { color: #2c3e50; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
-                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; white-space: pre-line; }
                     .system-status { background-color: #fff3e0; border: 1px solid #ffe0b2; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align: center; }
                     .status-indicator { display: inline-block; width: 12px; height: 12px; background: #FF5722; border-radius: 50%%; margin-right: 8px; animation: pulse 2s infinite; }
                     @keyframes pulse { 0%% { box-shadow: 0 0 0 0 rgba(255, 87, 34, 0.7); } 70%% { box-shadow: 0 0 0 10px rgba(255, 87, 34, 0); } 100%% { box-shadow: 0 0 0 0 rgba(255, 87, 34, 0); } }
@@ -744,10 +743,219 @@ public class NotificationService {
     }
 
     /**
+     * Plantilla HTML para asignación de horario docente
+     */
+    private String generateTeacherScheduleHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Nueva Asignación de Clase</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+                    .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background: #2196F3; color: white; padding: 30px 25px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 24px; }
+                    .content { padding: 30px 25px; }
+                    .notification-card { background: #f8f9fa; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0; border-radius: 4px; }
+                    .footer { background: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 12px; }
+                    .action-button { display: inline-block; background: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>👨‍🏫 Nueva Asignación de Clase</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                    </div>
+                    <div class="content">
+                        <div class="notification-card">
+                            <h2>%s</h2>
+                            <p>%s</p>
+                            <p><strong>Destinatario:</strong> %s</p>
+                            <p><strong>Fecha:</strong> %s</p>
+                        </div>
+                        <a href="#" class="action-button">Acceder al Sistema</a>
+                    </div>
+                    <div class="footer">
+                        <p>Sistema de Gestión de Horarios Académicos - Institución Educativa</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
+    /**
+     * Plantilla HTML para asignación de horario estudiantil
+     */
+    private String generateStudentScheduleHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Horario Asignado</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+                    .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background: #4CAF50; color: white; padding: 30px 25px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 24px; }
+                    .content { padding: 30px 25px; }
+                    .notification-card { background: #f8f9fa; border-left: 4px solid #4CAF50; padding: 20px; margin: 20px 0; border-radius: 4px; }
+                    .footer { background: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 12px; }
+                    .action-button { display: inline-block; background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>📚 Horario Asignado</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                    </div>
+                    <div class="content">
+                        <div class="notification-card">
+                            <h2>%s</h2>
+                            <p>%s</p>
+                            <p><strong>Destinatario:</strong> %s</p>
+                            <p><strong>Fecha:</strong> %s</p>
+                        </div>
+                        <a href="#" class="action-button">Ver mi Horario</a>
+                    </div>
+                    <div class="footer">
+                        <p>Sistema de Gestión de Horarios Académicos - Institución Educativa</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
+    /**
+     * Plantilla HTML para alertas del sistema (Directores)
+     */
+    private String generateSystemAlertHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Alerta Crítica del Sistema</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+                    .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background: #F44336; color: white; padding: 30px 25px; text-align: center; position: relative; }
+                    .header h1 { margin: 0; font-size: 24px; }
+                    .alert-badge { background: #FFC107; color: #333; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; margin-top: 10px; }
+                    .content { padding: 30px 25px; }
+                    .notification-card { background: #ffebee; border-left: 4px solid #F44336; padding: 20px; margin: 20px 0; border-radius: 4px; }
+                    .urgent-indicator { color: #F44336; font-weight: bold; font-size: 14px; margin-bottom: 10px; }
+                    .footer { background: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 12px; }
+                    .action-button { display: inline-block; background: #F44336; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🚨 Alerta Crítica del Sistema</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                        <div class="alert-badge">⚠️ ATENCIÓN INMEDIATA</div>
+                    </div>
+                    <div class="content">
+                        <div class="notification-card">
+                            <div class="urgent-indicator">🔴 ALERTA DE ALTA PRIORIDAD</div>
+                            <h2>%s</h2>
+                            <p>%s</p>
+                            <p><strong>Destinatario:</strong> %s</p>
+                            <p><strong>Fecha:</strong> %s</p>
+                            <p><strong>Requiere:</strong> Acción inmediata del director</p>
+                        </div>
+                        <a href="#" class="action-button">Revisar Sistema Urgente</a>
+                    </div>
+                    <div class="footer">
+                        <p>Sistema de Gestión de Horarios Académicos - Institución Educativa</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
+    /**
+     * Plantilla HTML para notificaciones del sistema (Coordinadores)
+     */
+    private String generateSystemNotificationHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Notificación del Sistema</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+                    .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background: #FF9800; color: white; padding: 30px 25px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 24px; }
+                    .content { padding: 30px 25px; }
+                    .notification-card { background: #fff3e0; border-left: 4px solid #FF9800; padding: 20px; margin: 20px 0; border-radius: 4px; }
+                    .footer { background: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 12px; }
+                    .action-button { display: inline-block; background: #FF9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>📢 Notificación del Sistema</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                    </div>
+                    <div class="content">
+                        <div class="notification-card">
+                            <h2>%s</h2>
+                            <p>%s</p>
+                            <p><strong>Destinatario:</strong> %s</p>
+                            <p><strong>Fecha:</strong> %s</p>
+                        </div>
+                        <a href="#" class="action-button">Acceder al Panel</a>
+                    </div>
+                    <div class="footer">
+                        <p>Sistema de Gestión de Horarios Académicos - Institución Educativa</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
+    /**
      * Genera contenido HTML por defecto
      */
     private String generateDefaultHtmlContent(NotificationDTO notification) {
-        return generateGeneralHtmlContent(notification);
+        return generateSystemNotificationHtml(notification);
     }
 
     /**

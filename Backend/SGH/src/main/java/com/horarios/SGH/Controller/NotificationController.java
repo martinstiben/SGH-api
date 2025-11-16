@@ -287,43 +287,57 @@ public class NotificationController {
      */
     @PostMapping("/test/all-notifications")
     @PreAuthorize("hasRole('COORDINADOR')")
-    @Operation(summary = "Enviar todas las notificaciones de prueba por correo",
-                description = "Envía todas las notificaciones disponibles del sistema por correo electrónico para testing - SOLO PARA TESTING")
+    @Operation(summary = "Enviar TODAS las notificaciones del sistema por correo",
+                description = "Envía todas las notificaciones disponibles del sistema SGH por correo electrónico para testing completo - SOLO PARA TESTING")
     public ResponseEntity<?> testAllNotifications(@RequestParam String testEmail) {
         try {
-            log.info("Enviando TODAS las notificaciones de prueba a: {}", testEmail);
+            log.info("Enviando TODAS las notificaciones disponibles del sistema SGH a: {}", testEmail);
 
             List<CompletableFuture<Void>> futures = new ArrayList<>();
 
             // ========================================
-            // NOTIFICACIONES DINÁMICAS DEL SISTEMA SGH
+            // DATOS DINÁMICOS PARA PRUEBAS REALISTAS
             // ========================================
-
-            // Obtener datos dinámicos del sistema para las pruebas
-            String[] subjects = {"Matemáticas III", "Física II", "Química Orgánica", "Programación I"};
-            String[] courses = {"Ingeniería de Sistemas", "Ingeniería Civil", "Medicina", "Administración"};
-            String[] teachers = {"Dr. Juan Pérez", "Dra. María González", "Prof. Carlos Rodríguez", "Lic. Ana López"};
+            String[] subjects = {"Matemáticas III", "Física II", "Química Orgánica", "Programación I", "Cálculo Diferencial", "Estadística"};
+            String[] courses = {"Ingeniería de Sistemas", "Ingeniería Civil", "Medicina", "Administración", "Psicología", "Derecho"};
+            String[] teachers = {"Dr. Juan Pérez", "Dra. María González", "Prof. Carlos Rodríguez", "Lic. Ana López", "MSc. Roberto Silva"};
             String[] days = {"LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"};
-            String[] times = {"08:00 - 10:00", "10:00 - 12:00", "14:00 - 16:00", "16:00 - 18:00"};
+            String[] times = {"08:00 - 10:00", "10:00 - 12:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"};
 
-            // Generar datos aleatorios para las pruebas (no hardcodeados)
+            // Generar datos aleatorios para las pruebas
             String randomSubject = subjects[(int)(Math.random() * subjects.length)];
             String randomCourse = courses[(int)(Math.random() * courses.length)];
             String randomTeacher = teachers[(int)(Math.random() * teachers.length)];
             String randomDay = days[(int)(Math.random() * days.length)];
             String randomTime = times[(int)(Math.random() * times.length)];
 
-            // 1. TEACHER_SCHEDULE_ASSIGNED - Asignación de horario docente (MAESTRO)
-            futures.add(sendTestNotificationAsync(testEmail, "MAESTRO", NotificationType.TEACHER_SCHEDULE_ASSIGNED,
-                "📚 Nuevo Horario de Clase Asignado - SGH",
-                String.format("¡Hola Profesor!\n\nSe le ha asignado una nueva clase en el Sistema de Gestión de Horarios:\n\n📖 Materia: %s\n🏫 Curso: %s\n📅 Día: %s\n⏰ Horario: %s\n\nPor favor, revise los detalles y confirme su disponibilidad.\n\n💡 Acceda al sistema web para ver su horario completo: https://sgh.edu.co/profesor/horarios",
-                    randomSubject, randomCourse, randomDay, randomTime)));
+            // ========================================
+            // NOTIFICACIONES PRINCIPALES DEL SISTEMA (4 tipos)
+            // ========================================
 
-            // 2. SYSTEM_NOTIFICATION - Notificación del sistema (COORDINADOR)
+            // 1. TEACHER_SCHEDULE_ASSIGNED - Asignación de clase a profesor
+            futures.add(sendTestNotificationAsync(testEmail, "MAESTRO", NotificationType.TEACHER_SCHEDULE_ASSIGNED,
+                "👨‍🏫 Nueva Asignación de Clase - Materia Asignada",
+                String.format("Estimado profesor,\n\nSe le ha asignado una nueva clase en el Sistema de Gestión de Horarios:\n\n📚 MATERIA: %s\n🏫 CURSO: %s\n📅 DÍA: %s\n⏰ HORARIO: %s\n🏢 AULA: A-%d\n\nEsta asignación ha sido realizada por el coordinador académico.\n\nPor favor, revise los detalles y confirme su disponibilidad para esta clase.\n\nIMPORTANTE: Si tiene algún conflicto de horario, notifique inmediatamente al coordinador.",
+                    randomSubject, randomCourse, randomDay, randomTime, (int)(Math.random() * 50) + 101)));
+
+            // 2. SCHEDULE_ASSIGNED - Horario asignado a estudiante
+            futures.add(sendTestNotificationAsync(testEmail, "ESTUDIANTE", NotificationType.SCHEDULE_ASSIGNED,
+                "📚 Tu Horario Académico ha sido Asignado",
+                String.format("¡Hola estudiante!\n\nTu horario académico para este semestre ha sido asignado exitosamente:\n\n📖 MATERIA: %s\n👨‍🏫 PROFESOR: %s\n🏫 CURSO: %s\n📅 DÍA: %s\n⏰ HORARIO: %s\n🏢 AULA: B-%d\n\nEste horario está disponible en tu portal estudiantil.\n\nIMPORTANTE:\n• Revisa tu horario completo en el sistema\n• Anota las fechas importantes\n• Si tienes algún conflicto, contacta a tu coordinador\n\n¡Te deseamos éxito en tus estudios!",
+                    randomSubject, randomTeacher, randomCourse, randomDay, randomTime, (int)(Math.random() * 30) + 201)));
+
+            // 3. SYSTEM_ALERT - Alerta crítica para directores
+            futures.add(sendTestNotificationAsync(testEmail, "DIRECTOR_DE_AREA", NotificationType.SYSTEM_ALERT,
+                "🚨 ALERTA CRÍTICA: Conflicto de Horarios Detectado",
+                String.format("DIRECTOR DE ÁREA,\n\n¡ATENCIÓN INMEDIATA REQUERIDA!\n\nEl sistema ha detectado un conflicto crítico de horarios que requiere su intervención:\n\n⚠️ TIPO DE CONFLICTO: Superposición de clases\n👨‍🏫 PROFESOR AFECTADO: %s\n📚 MATERIA: %s\n👥 ESTUDIANTES IMPACTADOS: %d estudiantes\n🏫 CURSO: %s\n⏰ HORARIO CONFLICTIVO: %s\n\nDETALLES:\n• Conflicto detectado en aula A-%d\n• Afecta al horario de %s\n• Requiere reprogramación inmediata\n\nACCIONES NECESARIAS:\n1. Revisar el conflicto en el panel administrativo\n2. Coordinar con el profesor afectado\n3. Reasignar aula o horario\n4. Notificar a los estudiantes\n\nEsta alerta tiene prioridad CRÍTICA. Se requiere resolución en las próximas 2 horas.",
+                    randomTeacher, randomSubject, (int)(Math.random() * 25) + 15, randomCourse, randomTime, (int)(Math.random() * 50) + 101, randomDay)));
+
+            // 4. SYSTEM_NOTIFICATION - Notificación del sistema para coordinadores
             futures.add(sendTestNotificationAsync(testEmail, "COORDINADOR", NotificationType.SYSTEM_NOTIFICATION,
-                "⚙️ Nuevo Horario Registrado - Sistema SGH",
-                String.format("¡Atención Coordinador!\n\nSe ha registrado un nuevo horario en el Sistema de Gestión de Horarios:\n\n👨‍🏫 Profesor: %s\n📖 Materia: %s\n🏫 Curso: %s\n📅 Día: %s\n⏰ Horario: %s\n\nEl horario ha sido asignado correctamente y el profesor ha sido notificado.\n\n💡 Acceda al panel administrativo para revisar todos los horarios: https://sgh.edu.co/coordinador/horarios",
-                    randomTeacher, randomSubject, randomCourse, randomDay, randomTime)));
+                "📢 Actualización del Sistema: Nuevo Horario Registrado",
+                String.format("COORDINADOR ACADÉMICO,\n\nEl Sistema de Gestión de Horarios informa:\n\n✅ NUEVO HORARIO REGISTRADO\n\n📊 DETALLES DE LA ASIGNACIÓN:\n• Profesor: %s\n• Materia: %s\n• Curso: %s\n• Día: %s\n• Horario: %s\n• Aula asignada: C-%d\n\n📈 ESTADÍSTICAS ACTUALES:\n• Total de horarios activos: %d\n• Profesores con horario completo: %d\n• Aulas ocupadas hoy: %d\n• Conflictos pendientes: %d\n\nEsta asignación se realizó correctamente y está disponible en el sistema.\n\nPara más detalles, acceda al panel de administración.",
+                    randomTeacher, randomSubject, randomCourse, randomDay, randomTime, (int)(Math.random() * 20) + 301, (int)(Math.random() * 200) + 150, (int)(Math.random() * 15) + 10, (int)(Math.random() * 10) + 5, (int)(Math.random() * 3))));
 
             // Esperar a que todas las notificaciones se envíen
             CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
@@ -331,15 +345,17 @@ public class NotificationController {
             return ResponseEntity.accepted()
                     .body(Map.of(
                         "success", true,
-                        "message", "Notificaciones reales del Sistema SGH enviadas por correo",
+                        "message", "Notificaciones principales del Sistema SGH enviadas por correo",
                         "testEmail", testEmail,
                         "totalNotifications", futures.size(),
-                        "notificationsSent", List.of(
-                            "TEACHER_SCHEDULE_ASSIGNED (MAESTRO) - Nueva clase asignada",
-                            "SYSTEM_NOTIFICATION (COORDINADOR) - Horario registrado"
+                        "notificationsByRole", Map.of(
+                            "MAESTRO", List.of("TEACHER_SCHEDULE_ASSIGNED"),
+                            "ESTUDIANTE", List.of("SCHEDULE_ASSIGNED"),
+                            "DIRECTOR_DE_AREA", List.of("SYSTEM_ALERT"),
+                            "COORDINADOR", List.of("SYSTEM_NOTIFICATION")
                         ),
-                        "note", "Estas son las notificaciones que se envían automáticamente en el sistema real",
-                        "status", "SENDING_REAL_NOTIFICATIONS"
+                        "note", "Se enviaron las 4 notificaciones principales automatizadas del sistema SGH",
+                        "status", "SENDING_CORE_SYSTEM_NOTIFICATIONS"
                     ));
 
         } catch (Exception e) {

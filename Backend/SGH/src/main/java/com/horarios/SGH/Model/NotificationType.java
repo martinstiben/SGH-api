@@ -4,33 +4,15 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Tipos de notificaciones específicas para el Sistema de Gestión de Horarios (SGH)
+ * Tipos de notificaciones esenciales para el Sistema de Gestión de Horarios (SGH)
  */
 public enum NotificationType {
 
-    // Notificaciones para Estudiantes
-    SCHEDULE_ASSIGNED("Horario Asignado"),
-    SCHEDULE_CHANGED("Horario Modificado"),
-    SCHEDULE_CONFLICT("Conflicto de Horario"),
-    WELCOME_STUDENT("Bienvenida Estudiante"),
-
-    // Notificaciones para Maestros
-    TEACHER_SCHEDULE_ASSIGNED("Asignación de Horario Docente"),
-    TEACHER_CONFLICT_DETECTED("Conflicto Detectado"),
-    SCHEDULE_UPDATE_REQUIRED("Actualización de Horario Requerida"),
-    WELCOME_TEACHER("Bienvenida Docente"),
-
-    // Notificaciones para Directores
-    CRITICAL_SCHEDULE_CONFLICTS("Conflictos Críticos de Horario"),
-    SCHEDULE_OVERVIEW_REPORT("Reporte General de Horarios"),
-    DEPARTMENT_ALERT("Alerta Departamental"),
-    WELCOME_DIRECTOR("Bienvenida Director"),
-
-    // Notificaciones para Coordinadores
-    SYSTEM_MAINTENANCE("Mantenimiento del Sistema"),
-    BULK_SCHEDULE_UPDATE("Actualización Masiva de Horarios"),
-    SYSTEM_NOTIFICATION("Notificación del Sistema"),
-    WELCOME_COORDINATOR("Bienvenida Coordinador");
+    // Notificaciones principales automatizadas
+    TEACHER_SCHEDULE_ASSIGNED("Nueva Asignación de Clase"),
+    SCHEDULE_ASSIGNED("Horario Académico Asignado"),
+    SYSTEM_ALERT("Alerta del Sistema"),
+    SYSTEM_NOTIFICATION("Notificación del Sistema");
 
     private final String displayName;
 
@@ -47,36 +29,21 @@ public enum NotificationType {
      */
     public String[] getAllowedRoles() {
         switch (this) {
-            // Estudiantes
-            case SCHEDULE_ASSIGNED:
-            case SCHEDULE_CHANGED:
-            case SCHEDULE_CONFLICT:
-            case WELCOME_STUDENT:
-                return new String[]{"ESTUDIANTE"};
-
-            // Maestros
+            // Profesores - notificaciones de asignación de clases
             case TEACHER_SCHEDULE_ASSIGNED:
-            case TEACHER_CONFLICT_DETECTED:
-            case SCHEDULE_UPDATE_REQUIRED:
-            case WELCOME_TEACHER:
                 return new String[]{"MAESTRO"};
 
-            // Directores
-            case CRITICAL_SCHEDULE_CONFLICTS:
-            case SCHEDULE_OVERVIEW_REPORT:
-            case DEPARTMENT_ALERT:
-            case WELCOME_DIRECTOR:
+            // Estudiantes - notificaciones de horarios
+            case SCHEDULE_ASSIGNED:
+                return new String[]{"ESTUDIANTE"};
+
+            // Directores - alertas críticas del sistema
+            case SYSTEM_ALERT:
                 return new String[]{"DIRECTOR_DE_AREA"};
 
-            // Coordinadores
-            case SYSTEM_MAINTENANCE:
-            case BULK_SCHEDULE_UPDATE:
-            case WELCOME_COORDINATOR:
-                return new String[]{"COORDINADOR"};
-
-            // Sistema (todos los roles)
+            // Sistema - notificaciones generales para coordinadores
             case SYSTEM_NOTIFICATION:
-                return new String[]{"COORDINADOR", "MAESTRO", "ESTUDIANTE", "DIRECTOR_DE_AREA"};
+                return new String[]{"COORDINADOR"};
 
             default:
                 return new String[]{};
@@ -106,31 +73,14 @@ public enum NotificationType {
      */
     public String getIcon() {
         switch (this) {
-            case SCHEDULE_ASSIGNED:
             case TEACHER_SCHEDULE_ASSIGNED:
+                return "👨‍🏫";
+            case SCHEDULE_ASSIGNED:
                 return "📚";
-            case SCHEDULE_CHANGED:
-            case TEACHER_CONFLICT_DETECTED:
-                return "⚠️";
-            case SCHEDULE_CONFLICT:
-            case CRITICAL_SCHEDULE_CONFLICTS:
+            case SYSTEM_ALERT:
                 return "🚨";
-            case WELCOME_STUDENT:
-            case WELCOME_TEACHER:
-            case WELCOME_DIRECTOR:
-            case WELCOME_COORDINATOR:
-                return "🎉";
-            case SYSTEM_MAINTENANCE:
             case SYSTEM_NOTIFICATION:
-                return "⚙️";
-            case SCHEDULE_OVERVIEW_REPORT:
-                return "📊";
-            case DEPARTMENT_ALERT:
                 return "📢";
-            case BULK_SCHEDULE_UPDATE:
-                return "🔄";
-            case SCHEDULE_UPDATE_REQUIRED:
-                return "🔧";
             default:
                 return "📧";
         }
@@ -141,32 +91,14 @@ public enum NotificationType {
      */
     public String getColor() {
         switch (this) {
-            case SCHEDULE_ASSIGNED:
             case TEACHER_SCHEDULE_ASSIGNED:
-                return "#4CAF50";
-            case SCHEDULE_CHANGED:
-                return "#2196F3";
-            case SCHEDULE_CONFLICT:
-            case TEACHER_CONFLICT_DETECTED:
-                return "#FF9800";
-            case CRITICAL_SCHEDULE_CONFLICTS:
-                return "#F44336";
-            case WELCOME_STUDENT:
-            case WELCOME_TEACHER:
-            case WELCOME_DIRECTOR:
-            case WELCOME_COORDINATOR:
-                return "#9C27B0";
-            case SYSTEM_MAINTENANCE:
+                return "#2196F3"; // Azul para profesores
+            case SCHEDULE_ASSIGNED:
+                return "#4CAF50"; // Verde para estudiantes
+            case SYSTEM_ALERT:
+                return "#F44336"; // Rojo para alertas directores
             case SYSTEM_NOTIFICATION:
-                return "#607D8B";
-            case SCHEDULE_OVERVIEW_REPORT:
-                return "#3F51B5";
-            case DEPARTMENT_ALERT:
-                return "#FF5722";
-            case BULK_SCHEDULE_UPDATE:
-                return "#795548";
-            case SCHEDULE_UPDATE_REQUIRED:
-                return "#E91E63";
+                return "#FF9800"; // Naranja para coordinadores
             default:
                 return "#9E9E9E";
         }
