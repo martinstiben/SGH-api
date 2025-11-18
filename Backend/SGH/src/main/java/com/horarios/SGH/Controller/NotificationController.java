@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -224,15 +225,45 @@ public class NotificationController {
                 description = "Obtiene los tipos de notificación disponibles para un rol específico")
     public ResponseEntity<?> getNotificationTypesForRole(@PathVariable String role) {
         try {
-            NotificationType[] types = NotificationType.getTypesForRole(role);
+            java.util.Map<String, String[]> types = new HashMap<>();
 
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "role", role,
-                "availableTypes", types,
-                "count", types.length
-            ));
+            // Agrupar tipos por rol
+            types.put("ESTUDIANTE", new String[]{
+                "STUDENT_SCHEDULE_ASSIGNMENT",
+                "STUDENT_SCHEDULE_CHANGE",
+                "STUDENT_CLASS_CANCELLATION"
+            });
 
+            types.put("MAESTRO", new String[]{
+                "TEACHER_CLASS_SCHEDULED",
+                "TEACHER_CLASS_MODIFIED",
+                "TEACHER_CLASS_CANCELLED",
+                "TEACHER_AVAILABILITY_CHANGED"
+            });
+
+            types.put("DIRECTOR_DE_AREA", new String[]{
+                "DIRECTOR_SCHEDULE_CONFLICT",
+                "DIRECTOR_AVAILABILITY_ISSUE",
+                "DIRECTOR_SYSTEM_INCIDENT"
+            });
+
+            types.put("COORDINADOR", new String[]{
+                "COORDINATOR_GLOBAL_UPDATE",
+                "COORDINATOR_SYSTEM_ALERT",
+                "COORDINATOR_CHANGE_CONFIRMATION",
+                "COORDINATOR_MAINTENANCE_ALERT",
+                "COORDINATOR_USER_REGISTRATION_PENDING",
+                "COORDINATOR_USER_APPROVED",
+                "COORDINATOR_USER_REJECTED"
+            });
+
+            types.put("GENERAL", new String[]{
+                "GENERAL_SYSTEM_NOTIFICATION",
+                "USER_REGISTRATION_APPROVED",
+                "USER_REGISTRATION_REJECTED"
+            });
+
+            return ResponseEntity.ok(types);
         } catch (Exception e) {
             log.error("Error al obtener tipos de notificación para rol {}: {}", role, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

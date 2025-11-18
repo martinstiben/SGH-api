@@ -203,4 +203,73 @@ public class AuthController {
                 return role.name();
         }
     }
+
+    @GetMapping("/pending-users")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(summary = "Obtener usuarios pendientes de aprobación", description = "Obtiene la lista de usuarios que están pendientes de aprobación por el coordinador")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Lista obtenida exitosamente")
+    })
+    public ResponseEntity<?> getPendingUsers() {
+        try {
+            var pendingUsers = service.getPendingUsers();
+            var result = pendingUsers.stream()
+                .map(user -> {
+                    // Validar que las relaciones no sean null
+                    String name = (user.getPerson() != null) ? user.getPerson().getFullName() : "N/A";
+                    String email = (user.getPerson() != null) ? user.getPerson().getEmail() : "N/A";
+                    String role = (user.getRole() != null) ? user.getRole().getRoleName() : "N/A";
+
+                    return Map.of(
+                        "userId", user.getUserId(),
+                        "name", name,
+                        "email", email,
+                        "role", role,
+                        "createdAt", user.getCreatedAt()
+                    );
+                })
+                .toList();
+            return ResponseEntity.ok(Map.of("pendingUsers", result));
+        } catch (Exception e) {
+            e.printStackTrace(); // Para debugging
+            return ResponseEntity.status(500).body(Map.of("error", "Error obteniendo usuarios pendientes: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/approve-user/{userId}")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(summary = "Aprobar usuario", description = "Aprueba un usuario pendiente de aprobación")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario aprobado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en la aprobación")
+    })
+    public ResponseEntity<?> approveUser(@PathVariable int userId) {
+        try {
+            String message = service.approveUser(userId);
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+        }
+    }
+
+    @PostMapping("/reject-user/{userId}")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(summary = "Rechazar usuario", description = "Rechaza un usuario pendiente de aprobación")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario rechazado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en el rechazo")
+    })
+    public ResponseEntity<?> rejectUser(@PathVariable int userId, @RequestBody Map<String, String> request) {
+        try {
+            String reason = request.get("reason");
+            String message = service.rejectUser(userId, reason);
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+        }
+    }
 }

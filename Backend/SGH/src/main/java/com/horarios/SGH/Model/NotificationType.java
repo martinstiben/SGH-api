@@ -12,8 +12,28 @@ public enum NotificationType {
     TEACHER_SCHEDULE_ASSIGNED("Nueva Asignación de Clase"),
     SCHEDULE_ASSIGNED("Horario Académico Asignado"),
     SYSTEM_ALERT("Alerta del Sistema"),
-    SYSTEM_NOTIFICATION("Notificación del Sistema");
+    SYSTEM_NOTIFICATION("Notificación del Sistema"),
 
+    // Coordinadores - notificaciones generales, actualizaciones globales, confirmaciones
+    COORDINATOR_GLOBAL_UPDATE("Actualización Global"),
+
+    COORDINATOR_SYSTEM_ALERT("Alerta del Sistema"),
+
+    COORDINATOR_CHANGE_CONFIRMATION("Confirmación de Cambio"),
+
+    COORDINATOR_USER_REGISTRATION_PENDING("Usuario Pendiente de Aprobación"),
+
+    COORDINATOR_USER_APPROVED("Usuario Aprobado"),
+
+    COORDINATOR_USER_REJECTED("Usuario Rechazado"),
+
+    // Notificaciones generales para todos los roles
+    GENERAL_SYSTEM_NOTIFICATION("Notificación General"),
+
+    // Notificaciones de registro y aprobación de usuarios
+    USER_REGISTRATION_APPROVED("Registro Aprobado"),
+
+    USER_REGISTRATION_REJECTED("Registro Rechazado");
     private final String displayName;
 
     NotificationType(String displayName) {
@@ -45,6 +65,20 @@ public enum NotificationType {
             case SYSTEM_NOTIFICATION:
                 return new String[]{"COORDINADOR"};
 
+            case COORDINATOR_GLOBAL_UPDATE:
+            case COORDINATOR_SYSTEM_ALERT:
+            case COORDINATOR_CHANGE_CONFIRMATION:
+            case COORDINATOR_USER_REGISTRATION_PENDING:
+            case COORDINATOR_USER_APPROVED:
+            case COORDINATOR_USER_REJECTED:
+                return new String[]{"COORDINADOR"};
+
+            case GENERAL_SYSTEM_NOTIFICATION:
+                return new String[]{"COORDINADOR", "MAESTRO", "ESTUDIANTE", "DIRECTOR_DE_AREA"};
+
+            case USER_REGISTRATION_APPROVED:
+            case USER_REGISTRATION_REJECTED:
+                return new String[]{"COORDINADOR", "MAESTRO", "ESTUDIANTE", "DIRECTOR_DE_AREA"};
             default:
                 return new String[]{};
         }

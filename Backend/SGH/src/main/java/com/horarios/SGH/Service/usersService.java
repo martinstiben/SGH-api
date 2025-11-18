@@ -73,9 +73,8 @@ public class usersService {
      */
     public java.util.List<users> findUsersByRole(String roleName) {
         try {
-            return usersRepository.findAll().stream()
-                .filter(user -> user.getRole().getRoleName().equals(roleName))
-                .toList();
+            // Usar consulta optimizada que carga las relaciones
+            return usersRepository.findByRoleNameWithDetails(roleName);
         } catch (Exception e) {
             throw new RuntimeException("Error al obtener usuarios por rol: " + roleName + ", Error: " + e.getMessage());
         }
