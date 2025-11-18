@@ -4,7 +4,7 @@
 USE sgh_db; -- Cambia por el nombre de tu base de datos
 
 -- Alterar la columna account_status para que tenga suficiente longitud
-ALTER TABLE users MODIFY COLUMN account_status VARCHAR(20) NOT NULL;
+ALTER TABLE users MODIFY COLUMN account_status VARCHAR(15) NOT NULL;
 
 -- Verificar que el cambio se aplicó correctamente
 DESCRIBE users;
