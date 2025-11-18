@@ -1,6 +1,7 @@
 package com.horarios.SGH.Service;
 
 import com.horarios.SGH.DTO.ScheduleHistoryDTO;
+import com.horarios.SGH.DTO.CourseWithoutAvailabilityDTO;
 import com.horarios.SGH.Model.*;
 import com.horarios.SGH.Model.schedule;
 import com.horarios.SGH.Repository.*;
@@ -52,29 +53,47 @@ public class ScheduleGenerationService {
             if (days < 0) throw new IllegalArgumentException("El rango de fechas es inválido");
 
             int totalGenerated = 0;
+            List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability = new ArrayList<>();
 
             if (!request.isDryRun()) {
                 // Real schedule generation for courses
-                totalGenerated = generateSchedulesForPeriod(request.getPeriodStart(), request.getPeriodEnd(), request.getParams());
+                GenerationResult result = generateSchedulesForPeriod(request.getPeriodStart(), request.getPeriodEnd(), request.getParams());
+                totalGenerated = result.getTotalGenerated();
+                coursesWithoutAvailability = result.getCoursesWithoutAvailability();
             } else {
                 // Simulation: count courses without assigned schedule
                 List<courses> coursesWithoutSchedule = getCoursesWithoutSchedule();
                 totalGenerated = coursesWithoutSchedule.size();
+                
+                // En modo simulación, también detectar cursos sin disponibilidad
+                SimulationResult simulationResult = analyzeCoursesWithoutAvailability(request.getPeriodStart(), request.getPeriodEnd());
+                coursesWithoutAvailability = simulationResult.getCoursesWithoutAvailability();
             }
 
             history.setStatus("SUCCESS");
             history.setTotalGenerated(totalGenerated);
-            history.setMessage("Generación completada exitosamente");
+            history.setMessage(buildSuccessMessage(totalGenerated, coursesWithoutAvailability.size()));
             history.setExecutedAt(LocalDateTime.now());
             historyRepository.save(history);
+
+            // Retornar DTO con información de cursos sin disponibilidad
+            ScheduleHistoryDTO response = toDTO(history);
+            response.setCoursesWithoutAvailability(coursesWithoutAvailability);
+            response.setTotalCoursesWithoutAvailability(coursesWithoutAvailability.size());
+            
+            return response;
         } catch (Exception ex) {
             history.setStatus("FAILED");
             history.setMessage(ex.getMessage() != null ? ex.getMessage() : "Error en la generación");
             history.setExecutedAt(LocalDateTime.now());
             historyRepository.save(history);
+            
+            ScheduleHistoryDTO response = toDTO(history);
+            response.setCoursesWithoutAvailability(new ArrayList<>());
+            response.setTotalCoursesWithoutAvailability(0);
+            
+            return response;
         }
-
-        return toDTO(history);
     }
 
     private void validate(ScheduleHistoryDTO r) {
@@ -88,27 +107,61 @@ public class ScheduleGenerationService {
         if (days > 366) {
             throw new IllegalArgumentException("El rango máximo permitido es 366 días");
         }
-        // Si !r.isForce(): agregar validación de solapamientos según tu regla si aplica.
     }
 
+    /**
+     * Resultado de la generación de horarios
+     */
+    private static class GenerationResult {
+        private int totalGenerated;
+        private List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability;
+
+        public GenerationResult(int totalGenerated, List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability) {
+            this.totalGenerated = totalGenerated;
+            this.coursesWithoutAvailability = coursesWithoutAvailability;
+        }
+
+        public int getTotalGenerated() { return totalGenerated; }
+        public List<CourseWithoutAvailabilityDTO> getCoursesWithoutAvailability() { return coursesWithoutAvailability; }
+    }
 
     /**
-     * Genera horarios automáticamente para cursos sin asignación.
-     * REGLAS ESTRICTAS:
-     * - Solo asigna cursos que no tienen horario
-     * - Usa ÚNICAMENTE el profesor asignado al curso
-     * - Cada profesor debe estar asociado a UNA sola materia
-     * - No busca profesores alternativos
+     * Resultado de la simulación
      */
-    private int generateSchedulesForPeriod(LocalDate startDate, LocalDate endDate, String params) {
+    private static class SimulationResult {
+        private List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability;
+
+        public SimulationResult(List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability) {
+            this.coursesWithoutAvailability = coursesWithoutAvailability;
+        }
+
+        public List<CourseWithoutAvailabilityDTO> getCoursesWithoutAvailability() { return coursesWithoutAvailability; }
+    }
+
+    /**
+     * Genera horarios automáticamente para cursos sin asignación y detecta cursos sin disponibilidad
+     */
+    private GenerationResult generateSchedulesForPeriod(LocalDate startDate, LocalDate endDate, String params) {
         List<courses> coursesWithoutSchedule = getCoursesWithoutSchedule();
         List<schedule> generatedSchedules = new ArrayList<>();
+        List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability = new ArrayList<>();
         int totalGenerated = 0;
 
         List<String> daysInPeriod = getUniqueDaysInPeriod(startDate, endDate);
 
         for (courses course : coursesWithoutSchedule) {
-            if (course.getTeacherSubject() == null) continue; // Saltar cursos sin profesor/materia asignada
+            if (course.getTeacherSubject() == null) {
+                // Curso sin profesor/materia asignada
+                coursesWithoutAvailability.add(new CourseWithoutAvailabilityDTO(
+                    course.getId(),
+                    course.getCourseName(),
+                    null,
+                    "Sin profesor asignado",
+                    "NO_TEACHER_ASSIGNED",
+                    "El curso " + course.getCourseName() + " no tiene un profesor y materia asignados"
+                ));
+                continue;
+            }
 
             teachers assignedTeacher = course.getTeacherSubject().getTeacher();
             subjects subject = course.getTeacherSubject().getSubject();
@@ -134,14 +187,111 @@ public class ScheduleGenerationService {
                 }
             }
 
-            // If course could not be assigned, continue with next one (not critical error)
+            // Si el curso no pudo ser asignado, analizar el motivo
+            if (!courseAssigned) {
+                CourseWithoutAvailabilityDTO unavailabilityInfo = analyzeCourseUnavailability(course, assignedTeacher, daysInPeriod);
+                if (unavailabilityInfo != null) {
+                    coursesWithoutAvailability.add(unavailabilityInfo);
+                }
+            }
         }
 
         if (!generatedSchedules.isEmpty()) {
             scheduleRepo.saveAll(generatedSchedules);
         }
 
-        return totalGenerated;
+        return new GenerationResult(totalGenerated, coursesWithoutAvailability);
+    }
+
+    /**
+     * Analiza la disponibilidad de cursos en modo simulación
+     */
+    private SimulationResult analyzeCoursesWithoutAvailability(LocalDate startDate, LocalDate endDate) {
+        List<courses> coursesWithoutSchedule = getCoursesWithoutSchedule();
+        List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability = new ArrayList<>();
+        List<String> daysInPeriod = getUniqueDaysInPeriod(startDate, endDate);
+
+        for (courses course : coursesWithoutSchedule) {
+            if (course.getTeacherSubject() == null) {
+                coursesWithoutAvailability.add(new CourseWithoutAvailabilityDTO(
+                    course.getId(),
+                    course.getCourseName(),
+                    null,
+                    "Sin profesor asignado",
+                    "NO_TEACHER_ASSIGNED",
+                    "El curso " + course.getCourseName() + " no tiene un profesor y materia asignados"
+                ));
+                continue;
+            }
+
+            teachers assignedTeacher = course.getTeacherSubject().getTeacher();
+            CourseWithoutAvailabilityDTO unavailabilityInfo = analyzeCourseUnavailability(course, assignedTeacher, daysInPeriod);
+            if (unavailabilityInfo != null) {
+                coursesWithoutAvailability.add(unavailabilityInfo);
+            }
+        }
+
+        return new SimulationResult(coursesWithoutAvailability);
+    }
+
+    /**
+     * Analiza por qué un curso no tiene disponibilidad
+     */
+    private CourseWithoutAvailabilityDTO analyzeCourseUnavailability(courses course, teachers teacher, List<String> daysInPeriod) {
+        // Verificar si el profesor tiene disponibilidad definida para algún día
+        boolean hasAnyAvailability = false;
+        List<String> daysWithoutAvailability = new ArrayList<>();
+
+        for (String dayName : daysInPeriod) {
+            List<TeacherAvailability> availabilities = availabilityRepo.findByTeacher_IdAndDay(teacher.getId(), Days.valueOf(dayName));
+            if (availabilities.isEmpty() || !availabilities.stream().anyMatch(TeacherAvailability::hasValidSchedule)) {
+                daysWithoutAvailability.add(dayName);
+            } else {
+                hasAnyAvailability = true;
+            }
+        }
+
+        if (!hasAnyAvailability) {
+            return new CourseWithoutAvailabilityDTO(
+                course.getId(),
+                course.getCourseName(),
+                teacher.getId(),
+                teacher.getTeacherName(),
+                "NO_AVAILABILITY_DEFINED",
+                "El profesor " + teacher.getTeacherName() + " no tiene disponibilidad configurada para ningún día: " + 
+                String.join(", ", daysWithoutAvailability)
+            );
+        }
+
+        // Verificar conflictos con horarios existentes
+        for (String dayName : daysInPeriod) {
+            List<schedule> existingSchedules = scheduleRepo.findByTeacherId(teacher.getId());
+            List<schedule> daySchedules = existingSchedules.stream()
+                .filter(s -> dayName.equals(s.getDay()))
+                .collect(Collectors.toList());
+
+            if (!daySchedules.isEmpty()) {
+                return new CourseWithoutAvailabilityDTO(
+                    course.getId(),
+                    course.getCourseName(),
+                    teacher.getId(),
+                    teacher.getTeacherName(),
+                    "CONFLICTS_WITH_EXISTING",
+                    "El profesor " + teacher.getTeacherName() + " tiene conflictos de horario existentes el día " + dayName
+                );
+            }
+        }
+
+        // Si llegamos aquí, no se encontró disponibilidad por otros motivos
+        return new CourseWithoutAvailabilityDTO(
+            course.getId(),
+            course.getCourseName(),
+            teacher.getId(),
+            teacher.getTeacherName(),
+            "NO_TIME_SLOTS_AVAILABLE",
+            "No se encontraron espacios de tiempo disponibles para el profesor " + teacher.getTeacherName() + 
+            " en los días: " + String.join(", ", daysInPeriod)
+        );
     }
 
     private List<courses> getCoursesWithoutSchedule() {
@@ -265,6 +415,15 @@ public class ScheduleGenerationService {
                 (slot.getStartTime().isBefore(existing.getEndTime()) &&
                  slot.getEndTime().isAfter(existing.getStartTime()))
             );
+    }
+
+    private String buildSuccessMessage(int totalGenerated, int totalWithoutAvailability) {
+        if (totalWithoutAvailability == 0) {
+            return "Generación completada exitosamente. " + totalGenerated + " horarios generados.";
+        } else {
+            return String.format("Generación completada. %d horarios generados, %d cursos sin disponibilidad de profesores.", 
+                totalGenerated, totalWithoutAvailability);
+        }
     }
 
     private ScheduleHistoryDTO toDTO(schedule_history h) {

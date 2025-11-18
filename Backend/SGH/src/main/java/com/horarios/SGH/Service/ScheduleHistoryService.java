@@ -38,6 +38,13 @@ public class ScheduleHistoryService {
         dto.setDryRun(h.isDryRun());
         dto.setForce(h.isForce());
         dto.setParams(h.getParams());
+        
+        // Nota: Los campos coursesWithoutAvailability y totalCoursesWithoutAvailability 
+        // se establecen solo en el ScheduleGenerationService durante la generación actual,
+        // ya que no están almacenados en la base de datos
+        dto.setCoursesWithoutAvailability(null);
+        dto.setTotalCoursesWithoutAvailability(0);
+        
         return dto;
     }
 }
