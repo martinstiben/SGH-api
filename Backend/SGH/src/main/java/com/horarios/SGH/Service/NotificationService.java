@@ -21,13 +21,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * Servicio principal para el envío de notificaciones por correo electrónico
- * Maneja el envío asíncrono, plantillas HTML, reintentos automáticos y logging
+ * Sistema de Gestión de Horarios (SGH)
  */
 @Slf4j
 @Service
@@ -55,12 +54,11 @@ public class NotificationService {
     private final ExecutorService emailExecutor = Executors.newFixedThreadPool(5);
     
     /**
-     * Envía notificación de forma asíncrona con reintentos automáticos
+     * Valida y prepara notificación
      */
     public void validateAndPrepareNotification(NotificationDTO notification) {
         log.info("Validando notificación para: {}", notification.getRecipientEmail());
 
-        // Validar que el tipo de notificación sea válido para el rol
         NotificationType notificationType = NotificationType.valueOf(notification.getNotificationType());
         validateNotificationTypeForRole(notificationType, notification.getRecipientRole());
 
@@ -83,7 +81,6 @@ public class NotificationService {
             log.info("Iniciando envío asíncrono de notificación a: {}", notification.getRecipientEmail());
 
             try {
-                // Buscar el log más reciente creado en los últimos 5 minutos
                 LocalDateTime since = LocalDateTime.now().minusMinutes(5);
                 List<NotificationLog> recentLogs = notificationLogRepository
                     .findRecentByRecipientEmail(notification.getRecipientEmail(), since);
@@ -104,7 +101,7 @@ public class NotificationService {
             }
         });
     }
-    
+
     /**
      * Envía notificación masiva a múltiples destinatarios
      */
@@ -161,7 +158,7 @@ public class NotificationService {
         for (NotificationLog failedLog : failedNotifications) {
             if (failedLog.canRetry()) {
                 try {
-                    Thread.sleep(retryDelay); // Esperar antes de reintentar
+                    Thread.sleep(retryDelay);
                     NotificationDTO notification = new NotificationDTO();
                     notification.setRecipientEmail(failedLog.getRecipientEmail());
                     notification.setRecipientName(failedLog.getRecipientName());
@@ -208,7 +205,7 @@ public class NotificationService {
                 
                 if (logEntry.canRetry()) {
                     try {
-                        Thread.sleep(retryDelay * logEntry.getAttemptsCount()); // Backoff exponencial
+                        Thread.sleep(retryDelay * logEntry.getAttemptsCount());
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;
@@ -223,28 +220,24 @@ public class NotificationService {
     }
     
     /**
-     * Envía correo electrónico usando plantillas HTML
+     * Envía correo electrónico usando plantillas HTML optimizadas para Gmail
      */
     private void sendEmail(NotificationDTO notification) throws Exception {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         
-        // Configurar destinatario y asunto
         helper.setTo(notification.getRecipientEmail());
         helper.setFrom(fromEmail);
         helper.setSubject(notification.getSubject());
-        helper.setPriority(1); // Alta prioridad
+        helper.setPriority(1);
         
-        // Generar contenido HTML
         String htmlContent = generateHtmlContent(notification);
         helper.setText(htmlContent, true);
         
-        // Agregar headers personalizados
         message.setHeader("X-Notification-Type", notification.getNotificationType());
         message.setHeader("X-Recipient-Role", notification.getRecipientRole());
         message.setHeader("X-Sender", "SGH System");
         
-        // Enviar correo
         mailSender.send(message);
         
         log.info("Correo enviado exitosamente a {} con asunto: {}", 
@@ -252,18 +245,14 @@ public class NotificationService {
     }
     
     /**
-     * Genera contenido HTML usando plantillas
+     * Genera contenido HTML usando plantillas optimizadas para Gmail
      */
     private String generateHtmlContent(NotificationDTO notification) {
         try {
-            // Usar contenido directo si está disponible
-            if (notification.getIsHtml() && notification.getContent() != null && !notification.getContent().isEmpty()) {
-                return notification.getContent();
-            }
-            
-            // Generar contenido basado en rol y tipo
-            return generateRoleBasedHtmlContent(notification);
-            
+            // Siempre usar plantillas especializadas basadas en el tipo de notificación
+            // Esto asegura que se apliquen los estilos correctos
+            return generateTypeBasedHtmlContent(notification);
+
         } catch (Exception e) {
             log.warn("Error al generar contenido HTML, usando contenido por defecto: {}", e.getMessage());
             return generateDefaultHtmlContent(notification);
@@ -271,28 +260,27 @@ public class NotificationService {
     }
     
     /**
-     * Genera contenido HTML basado en rol del destinatario
+     * Genera contenido HTML basado en el tipo de notificación
      */
-    private String generateRoleBasedHtmlContent(NotificationDTO notification) {
-        String recipientRole = notification.getRecipientRole();
-        String notificationType = notification.getNotificationType();
-        
-        switch (recipientRole) {
-            case "ESTUDIANTE":
-                return generateStudentHtmlContent(notification);
-            case "MAESTRO":
-                return generateTeacherHtmlContent(notification);
-            case "DIRECTOR_DE_AREA":
-                return generateDirectorHtmlContent(notification);
-            case "COORDINADOR":
-                return generateCoordinatorHtmlContent(notification);
+    private String generateTypeBasedHtmlContent(NotificationDTO notification) {
+        NotificationType type = NotificationType.valueOf(notification.getNotificationType());
+
+        switch (type) {
+            case TEACHER_SCHEDULE_ASSIGNED:
+                return generateTeacherScheduleHtml(notification);
+            case SCHEDULE_ASSIGNED:
+                return generateStudentScheduleHtml(notification);
+            case SYSTEM_ALERT:
+                return generateSystemAlertHtml(notification);
+            case SYSTEM_NOTIFICATION:
+                return generateSystemNotificationHtml(notification);
             default:
-                return generateGeneralHtmlContent(notification);
+                return generateDefaultHtmlContent(notification);
         }
     }
-    
+
     /**
-     * Plantilla HTML para estudiantes
+     * Plantilla HTML optimizada para Gmail - Estudiantes
      */
     private String generateStudentHtmlContent(NotificationDTO notification) {
         return String.format("""
@@ -302,197 +290,232 @@ public class NotificationService {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>SGH - Notificación para Estudiante</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
                     body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        min-height: 100vh;
-                        padding: 20px;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        -webkit-font-smoothing: antialiased;
                     }
                     .container {
-                        max-width: 650px;
-                        margin: 0 auto;
-                        background: white;
-                        border-radius: 20px;
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
                         overflow: hidden;
-                        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                        animation: slideIn 0.6s ease-out;
-                    }
-                    @keyframes slideIn {
-                        from { transform: translateY(-30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                     }
                     .header {
-                        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                         color: white;
-                        padding: 40px 30px;
+                        padding: 32px 30px;
                         text-align: center;
                         position: relative;
-                        overflow: hidden;
                     }
                     .header::before {
                         content: '';
                         position: absolute;
-                        top: -50%;
-                        left: -50%;
-                        width: 200%;
-                        height: 200%;
-                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="60" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
-                        animation: float 6s ease-in-out infinite;
-                    }
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-10px) rotate(180deg); }
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        opacity: 0.3;
                     }
                     .logo {
-                        width: 80px;
-                        height: 80px;
-                        background: rgba(255,255,255,0.2);
+                        font-size: 42px;
+                        margin-bottom: 16px;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px 0;
+                        font-weight: 700;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header p {
+                        font-size: 16px;
+                        margin: 0;
+                        opacity: 0.95;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .content {
+                        padding: 40px 32px;
+                    }
+                    .notification-card {
+                        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+                        border: 1px solid #bbf7d0;
+                        border-radius: 12px;
+                        padding: 32px;
+                        margin-bottom: 32px;
+                        border-left: 5px solid #10b981;
+                        position: relative;
+                    }
+                    .notification-card::before {
+                        content: '📚';
+                        position: absolute;
+                        top: -10px;
+                        right: 24px;
+                        font-size: 24px;
+                        background: white;
                         border-radius: 50%;
+                        width: 48px;
+                        height: 48px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        margin: 0 auto 20px;
-                        font-size: 36px;
-                        backdrop-filter: blur(10px);
-                        border: 2px solid rgba(255,255,255,0.3);
-                    }
-                    .header h1 {
-                        font-size: 28px;
-                        font-weight: 700;
-                        margin-bottom: 10px;
-                        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }
-                    .header p {
-                        font-size: 18px;
-                        opacity: 0.9;
-                        font-weight: 300;
-                    }
-                    .content {
-                        padding: 40px 30px;
-                        background: #fafafa;
-                    }
-                    .notification-card {
-                        background: white;
-                        border-radius: 15px;
-                        padding: 30px;
-                        margin-bottom: 30px;
-                        border-left: 5px solid #4CAF50;
-                        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-                        transition: transform 0.3s ease;
-                    }
-                    .notification-card:hover {
-                        transform: translateY(-2px);
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                     }
                     .notification-title {
-                        color: #2c3e50;
+                        color: #065f46;
                         font-size: 22px;
-                        font-weight: 600;
-                        margin-bottom: 20px;
-                        display: flex;
-                        align-items: center;
-                    }
-                    .notification-title::before {
-                        content: '📚';
-                        margin-right: 10px;
-                        font-size: 24px;
+                        font-weight: 700;
+                        margin: 0 0 20px 0;
+                        line-height: 1.3;
                     }
                     .notification-content {
-                        color: #555;
-                        line-height: 1.7;
+                        color: #374151;
                         font-size: 16px;
-                        margin-bottom: 25px;
+                        line-height: 1.7;
+                        margin-bottom: 24px;
+                        white-space: pre-line;
+                        font-weight: 400;
+                    }
+                    .highlight-box {
+                        background: #ecfdf5;
+                        border: 1px solid #a7f3d0;
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin: 24px 0;
+                        border-left: 4px solid #10b981;
+                    }
+                    .highlight-box h3 {
+                        color: #065f46;
+                        font-size: 18px;
+                        font-weight: 600;
+                        margin: 0 0 12px 0;
+                    }
+                    .highlight-box p {
+                        color: #374151;
+                        margin: 0;
+                        font-size: 15px;
+                        line-height: 1.6;
                     }
                     .info-grid {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
                         gap: 20px;
-                        margin-bottom: 25px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
                     }
                     .info-item {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 10px;
-                        border-left: 3px solid #4CAF50;
+                        text-align: center;
                     }
                     .info-label {
                         font-size: 12px;
-                        color: #666;
-                        text-transform: uppercase;
                         font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
                         letter-spacing: 0.5px;
-                        margin-bottom: 5px;
+                        margin-bottom: 8px;
                     }
                     .info-value {
-                        font-size: 14px;
-                        color: #2c3e50;
-                        font-weight: 500;
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #1e293b;
                     }
                     .action-section {
-                        background: linear-gradient(135deg, #e8f5e8 0%, #f0f9f0 100%);
-                        padding: 25px;
+                        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+                        border: 1px solid #a7f3d0;
                         border-radius: 12px;
+                        padding: 28px;
                         text-align: center;
-                        border: 1px solid #d4edda;
+                        margin-top: 32px;
+                        border-left: 5px solid #10b981;
                     }
                     .action-text {
-                        color: #155724;
+                        color: #065f46;
                         font-size: 16px;
-                        margin-bottom: 15px;
+                        margin-bottom: 20px;
                         font-weight: 500;
+                        line-height: 1.5;
                     }
                     .action-button {
                         display: inline-block;
-                        background: #28a745;
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                         color: white;
-                        padding: 12px 30px;
+                        padding: 14px 32px;
                         text-decoration: none;
-                        border-radius: 25px;
+                        border-radius: 8px;
                         font-weight: 600;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+                        font-size: 15px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
                     }
                     .action-button:hover {
-                        background: #218838;
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+                        transform: translateY(-1px);
+                        box-shadow: 0 6px 8px -1px rgba(16, 185, 129, 0.3);
                     }
                     .footer {
-                        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
                         color: white;
-                        padding: 30px;
+                        padding: 32px 30px;
                         text-align: center;
                     }
                     .footer-logo {
-                        font-size: 24px;
+                        font-size: 22px;
                         font-weight: 700;
-                        margin-bottom: 10px;
-                        color: #4CAF50;
+                        margin-bottom: 12px;
+                        color: #10b981;
                     }
                     .footer-text {
                         font-size: 14px;
-                        opacity: 0.8;
+                        opacity: 0.9;
                         line-height: 1.6;
+                        margin-bottom: 20px;
                     }
                     .footer-links {
                         margin-top: 20px;
                     }
                     .footer-links a {
-                        color: #4CAF50;
+                        color: #10b981;
                         text-decoration: none;
-                        margin: 0 15px;
+                        margin: 0 12px;
+                        font-size: 13px;
                         font-weight: 500;
-                        transition: opacity 0.3s ease;
+                        transition: opacity 0.2s ease;
                     }
                     .footer-links a:hover {
-                        opacity: 0.7;
+                        opacity: 0.8;
                     }
-                    @media (max-width: 600px) {
-                        .container { margin: 10px; }
-                        .info-grid { grid-template-columns: 1fr; }
-                        .header { padding: 30px 20px; }
-                        .content { padding: 30px 20px; }
+                    @media screen and (max-width: 600px) {
+                        .container {
+                            margin: 10px;
+                            border-radius: 8px;
+                        }
+                        .header, .content, .footer {
+                            padding: 24px 20px;
+                        }
+                        .notification-card {
+                            padding: 24px 20px;
+                        }
+                        .info-grid {
+                            grid-template-columns: 1fr;
+                            gap: 16px;
+                            padding: 20px;
+                        }
+                        .action-section {
+                            padding: 24px 20px;
+                        }
                     }
                 </style>
             </head>
@@ -507,50 +530,49 @@ public class NotificationService {
                     <div class="content">
                         <div class="notification-card">
                             <h2 class="notification-title">%s</h2>
-                            <div class="notification-content">
-                                %s
-                            </div>
+                            <div class="notification-content">%s</div>
+                        </div>
 
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Destinatario</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Rol</div>
-                                    <div class="info-value">Estudiante</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Fecha y Hora</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Categoría</div>
-                                    <div class="info-value">Información Académica</div>
-                                </div>
-                            </div>
+                        <div class="highlight-box">
+                            <h3>📋 Información Importante</h3>
+                            <p>Esta notificación contiene detalles actualizados sobre tu horario académico. Te recomendamos revisar toda la información y confirmar tu asistencia a las clases programadas.</p>
+                        </div>
 
-                            <div class="action-section">
-                                <div class="action-text">
-                                    📚 Esta notificación contiene información importante sobre tu horario académico
-                                </div>
-                                <a href="#" class="action-button">
-                                    Acceder al Sistema
-                                </a>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Destinatario</div>
+                                <div class="info-value">%s</div>
                             </div>
+                            <div class="info-item">
+                                <div class="info-label">Tipo de Usuario</div>
+                                <div class="info-value">Estudiante</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fecha de Envío</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Categoría</div>
+                                <div class="info-value">Académica</div>
+                            </div>
+                        </div>
+
+                        <div class="action-section">
+                            <div class="action-text">¿Listo para revisar tu horario académico? Accede al sistema para ver todos los detalles de tus clases.</div>
+                            <a href="#" class="action-button">👀 Ver Mi Horario Completo</a>
                         </div>
                     </div>
 
                     <div class="footer">
                         <div class="footer-logo">SGH</div>
                         <div class="footer-text">
-                            <p>Sistema de Gestión de Horarios Académicos</p>
-                            <p>Institución Educativa - Transformando el futuro de la educación</p>
+                            <p><strong>Sistema de Gestión de Horarios Académicos</strong></p>
+                            <p>Institución Educativa • Transformando el futuro de la educación con tecnología innovadora</p>
                         </div>
                         <div class="footer-links">
                             <a href="#">Portal Estudiantil</a>
-                            <a href="#">Soporte</a>
-                            <a href="#">Contacto</a>
+                            <a href="#">Centro de Ayuda</a>
+                            <a href="#">Contáctanos</a>
                         </div>
                     </div>
                 </div>
@@ -564,9 +586,9 @@ public class NotificationService {
             LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
         );
     }
-    
+
     /**
-     * Plantilla HTML para maestros
+     * Plantilla HTML optimizada para Gmail - Maestros
      */
     private String generateTeacherHtmlContent(NotificationDTO notification) {
         return String.format("""
@@ -576,197 +598,232 @@ public class NotificationService {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>SGH - Notificación para Docente</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
                     body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        min-height: 100vh;
-                        padding: 20px;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        -webkit-font-smoothing: antialiased;
                     }
                     .container {
-                        max-width: 650px;
-                        margin: 0 auto;
-                        background: white;
-                        border-radius: 20px;
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
                         overflow: hidden;
-                        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                        animation: slideIn 0.6s ease-out;
-                    }
-                    @keyframes slideIn {
-                        from { transform: translateY(-30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                     }
                     .header {
-                        background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+                        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
                         color: white;
-                        padding: 40px 30px;
+                        padding: 32px 30px;
                         text-align: center;
                         position: relative;
-                        overflow: hidden;
                     }
                     .header::before {
                         content: '';
                         position: absolute;
-                        top: -50%;
-                        left: -50%;
-                        width: 200%;
-                        height: 200%;
-                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="60" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
-                        animation: float 6s ease-in-out infinite;
-                    }
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-10px) rotate(180deg); }
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        opacity: 0.3;
                     }
                     .logo {
-                        width: 80px;
-                        height: 80px;
-                        background: rgba(255,255,255,0.2);
+                        font-size: 42px;
+                        margin-bottom: 16px;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px 0;
+                        font-weight: 700;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header p {
+                        font-size: 16px;
+                        margin: 0;
+                        opacity: 0.95;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .content {
+                        padding: 40px 32px;
+                    }
+                    .notification-card {
+                        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+                        border: 1px solid #bfdbfe;
+                        border-radius: 12px;
+                        padding: 32px;
+                        margin-bottom: 32px;
+                        border-left: 5px solid #3b82f6;
+                        position: relative;
+                    }
+                    .notification-card::before {
+                        content: '👨‍🏫';
+                        position: absolute;
+                        top: -10px;
+                        right: 24px;
+                        font-size: 24px;
+                        background: white;
                         border-radius: 50%;
+                        width: 48px;
+                        height: 48px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        margin: 0 auto 20px;
-                        font-size: 36px;
-                        backdrop-filter: blur(10px);
-                        border: 2px solid rgba(255,255,255,0.3);
-                    }
-                    .header h1 {
-                        font-size: 28px;
-                        font-weight: 700;
-                        margin-bottom: 10px;
-                        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }
-                    .header p {
-                        font-size: 18px;
-                        opacity: 0.9;
-                        font-weight: 300;
-                    }
-                    .content {
-                        padding: 40px 30px;
-                        background: #fafafa;
-                    }
-                    .notification-card {
-                        background: white;
-                        border-radius: 15px;
-                        padding: 30px;
-                        margin-bottom: 30px;
-                        border-left: 5px solid #2196F3;
-                        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-                        transition: transform 0.3s ease;
-                    }
-                    .notification-card:hover {
-                        transform: translateY(-2px);
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                     }
                     .notification-title {
-                        color: #2c3e50;
+                        color: #1e40af;
                         font-size: 22px;
-                        font-weight: 600;
-                        margin-bottom: 20px;
-                        display: flex;
-                        align-items: center;
-                    }
-                    .notification-title::before {
-                        content: '👨‍🏫';
-                        margin-right: 10px;
-                        font-size: 24px;
+                        font-weight: 700;
+                        margin: 0 0 20px 0;
+                        line-height: 1.3;
                     }
                     .notification-content {
-                        color: #555;
-                        line-height: 1.7;
+                        color: #374151;
                         font-size: 16px;
-                        margin-bottom: 25px;
+                        line-height: 1.7;
+                        margin-bottom: 24px;
+                        white-space: pre-line;
+                        font-weight: 400;
+                    }
+                    .highlight-box {
+                        background: #eff6ff;
+                        border: 1px solid #bfdbfe;
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin: 24px 0;
+                        border-left: 4px solid #3b82f6;
+                    }
+                    .highlight-box h3 {
+                        color: #1e40af;
+                        font-size: 18px;
+                        font-weight: 600;
+                        margin: 0 0 12px 0;
+                    }
+                    .highlight-box p {
+                        color: #374151;
+                        margin: 0;
+                        font-size: 15px;
+                        line-height: 1.6;
                     }
                     .info-grid {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
                         gap: 20px;
-                        margin-bottom: 25px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
                     }
                     .info-item {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 10px;
-                        border-left: 3px solid #2196F3;
+                        text-align: center;
                     }
                     .info-label {
                         font-size: 12px;
-                        color: #666;
-                        text-transform: uppercase;
                         font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
                         letter-spacing: 0.5px;
-                        margin-bottom: 5px;
+                        margin-bottom: 8px;
                     }
                     .info-value {
-                        font-size: 14px;
-                        color: #2c3e50;
-                        font-weight: 500;
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #1e293b;
                     }
                     .action-section {
-                        background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
-                        padding: 25px;
+                        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+                        border: 1px solid #bfdbfe;
                         border-radius: 12px;
+                        padding: 28px;
                         text-align: center;
-                        border: 1px solid #b3e5fc;
+                        margin-top: 32px;
+                        border-left: 5px solid #3b82f6;
                     }
                     .action-text {
-                        color: #0d47a1;
+                        color: #1e40af;
                         font-size: 16px;
-                        margin-bottom: 15px;
+                        margin-bottom: 20px;
                         font-weight: 500;
+                        line-height: 1.5;
                     }
                     .action-button {
                         display: inline-block;
-                        background: #1976D2;
+                        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
                         color: white;
-                        padding: 12px 30px;
+                        padding: 14px 32px;
                         text-decoration: none;
-                        border-radius: 25px;
+                        border-radius: 8px;
                         font-weight: 600;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);
+                        font-size: 15px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
                     }
                     .action-button:hover {
-                        background: #1565C0;
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
+                        transform: translateY(-1px);
+                        box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.3);
                     }
                     .footer {
-                        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
                         color: white;
-                        padding: 30px;
+                        padding: 32px 30px;
                         text-align: center;
                     }
                     .footer-logo {
-                        font-size: 24px;
+                        font-size: 22px;
                         font-weight: 700;
-                        margin-bottom: 10px;
-                        color: #2196F3;
+                        margin-bottom: 12px;
+                        color: #3b82f6;
                     }
                     .footer-text {
                         font-size: 14px;
-                        opacity: 0.8;
+                        opacity: 0.9;
                         line-height: 1.6;
+                        margin-bottom: 20px;
                     }
                     .footer-links {
                         margin-top: 20px;
                     }
                     .footer-links a {
-                        color: #2196F3;
+                        color: #3b82f6;
                         text-decoration: none;
-                        margin: 0 15px;
+                        margin: 0 12px;
+                        font-size: 13px;
                         font-weight: 500;
-                        transition: opacity 0.3s ease;
+                        transition: opacity 0.2s ease;
                     }
                     .footer-links a:hover {
-                        opacity: 0.7;
+                        opacity: 0.8;
                     }
-                    @media (max-width: 600px) {
-                        .container { margin: 10px; }
-                        .info-grid { grid-template-columns: 1fr; }
-                        .header { padding: 30px 20px; }
-                        .content { padding: 30px 20px; }
+                    @media screen and (max-width: 600px) {
+                        .container {
+                            margin: 10px;
+                            border-radius: 8px;
+                        }
+                        .header, .content, .footer {
+                            padding: 24px 20px;
+                        }
+                        .notification-card {
+                            padding: 24px 20px;
+                        }
+                        .info-grid {
+                            grid-template-columns: 1fr;
+                            gap: 16px;
+                            padding: 20px;
+                        }
+                        .action-section {
+                            padding: 24px 20px;
+                        }
                     }
                 </style>
             </head>
@@ -781,50 +838,49 @@ public class NotificationService {
                     <div class="content">
                         <div class="notification-card">
                             <h2 class="notification-title">%s</h2>
-                            <div class="notification-content">
-                                Se le ha asignado un nuevo horario de clases. Consulte los detalles actualizados en su portal docente.
-                            </div>
+                            <div class="notification-content">%s</div>
+                        </div>
 
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Destinatario</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Rol</div>
-                                    <div class="info-value">Docente</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Fecha y Hora</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Categoría</div>
-                                    <div class="info-value">Gestión Académica</div>
-                                </div>
-                            </div>
+                        <div class="highlight-box">
+                            <h3>📋 Información Profesional</h3>
+                            <p>Esta notificación contiene información importante sobre tu horario docente y responsabilidades académicas. Te recomendamos revisar todos los detalles y confirmar tu disponibilidad.</p>
+                        </div>
 
-                            <div class="action-section">
-                                <div class="action-text">
-                                    📋 Esta notificación contiene información importante sobre tu gestión académica
-                                </div>
-                                <a href="#" class="action-button">
-                                    Acceder al Sistema
-                                </a>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Destinatario</div>
+                                <div class="info-value">%s</div>
                             </div>
+                            <div class="info-item">
+                                <div class="info-label">Tipo de Usuario</div>
+                                <div class="info-value">Docente</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fecha de Envío</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Categoría</div>
+                                <div class="info-value">Académica</div>
+                            </div>
+                        </div>
+
+                        <div class="action-section">
+                            <div class="action-text">¿Listo para revisar tu horario docente? Accede al sistema para gestionar tus clases y responsabilidades académicas.</div>
+                            <a href="#" class="action-button">🎯 Acceder al Panel Docente</a>
                         </div>
                     </div>
 
                     <div class="footer">
                         <div class="footer-logo">SGH</div>
                         <div class="footer-text">
-                            <p>Sistema de Gestión de Horarios Académicos</p>
-                            <p>Institución Educativa - Excelencia en la educación</p>
+                            <p><strong>Sistema de Gestión de Horarios Académicos</strong></p>
+                            <p>Institución Educativa • Excelencia académica con tecnología de vanguardia</p>
                         </div>
                         <div class="footer-links">
                             <a href="#">Portal Docente</a>
-                            <a href="#">Recursos</a>
-                            <a href="#">Soporte</a>
+                            <a href="#">Recursos Académicos</a>
+                            <a href="#">Soporte Técnico</a>
                         </div>
                     </div>
                 </div>
@@ -838,9 +894,9 @@ public class NotificationService {
             LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
         );
     }
-    
+
     /**
-     * Plantilla HTML para directores
+     * Plantilla HTML optimizada para Gmail - Directores
      */
     private String generateDirectorHtmlContent(NotificationDTO notification) {
         return String.format("""
@@ -850,209 +906,247 @@ public class NotificationService {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>SGH - Notificación para Director</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
                     body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        min-height: 100vh;
-                        padding: 20px;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        -webkit-font-smoothing: antialiased;
                     }
                     .container {
-                        max-width: 650px;
-                        margin: 0 auto;
-                        background: white;
-                        border-radius: 20px;
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
                         overflow: hidden;
-                        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                        animation: slideIn 0.6s ease-out;
-                    }
-                    @keyframes slideIn {
-                        from { transform: translateY(-30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                     }
                     .header {
-                        background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+                        background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
                         color: white;
-                        padding: 40px 30px;
+                        padding: 32px 30px;
                         text-align: center;
                         position: relative;
-                        overflow: hidden;
                     }
                     .header::before {
                         content: '';
                         position: absolute;
-                        top: -50%;
-                        left: -50%;
-                        width: 200%;
-                        height: 200%;
-                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="60" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
-                        animation: float 6s ease-in-out infinite;
-                    }
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-10px) rotate(180deg); }
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        opacity: 0.3;
                     }
                     .logo {
-                        width: 80px;
-                        height: 80px;
-                        background: rgba(255,255,255,0.2);
+                        font-size: 42px;
+                        margin-bottom: 16px;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px 0;
+                        font-weight: 700;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header p {
+                        font-size: 16px;
+                        margin: 0;
+                        opacity: 0.95;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .content {
+                        padding: 40px 32px;
+                    }
+                    .notification-card {
+                        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+                        border: 1px solid #e9d5ff;
+                        border-radius: 12px;
+                        padding: 32px;
+                        margin-bottom: 32px;
+                        border-left: 5px solid #9333ea;
+                        position: relative;
+                    }
+                    .notification-card::before {
+                        content: '👔';
+                        position: absolute;
+                        top: -10px;
+                        right: 24px;
+                        font-size: 24px;
+                        background: white;
                         border-radius: 50%;
+                        width: 48px;
+                        height: 48px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        margin: 0 auto 20px;
-                        font-size: 36px;
-                        backdrop-filter: blur(10px);
-                        border: 2px solid rgba(255,255,255,0.3);
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                     }
-                    .header h1 {
-                        font-size: 28px;
+                    .priority-badge {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                        color: white;
+                        padding: 12px 20px;
+                        border-radius: 24px;
+                        font-size: 13px;
                         font-weight: 700;
-                        margin-bottom: 10px;
-                        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }
-                    .header p {
-                        font-size: 18px;
-                        opacity: 0.9;
-                        font-weight: 300;
-                    }
-                    .content {
-                        padding: 40px 30px;
-                        background: #fafafa;
-                    }
-                    .notification-card {
-                        background: white;
-                        border-radius: 15px;
-                        padding: 30px;
-                        margin-bottom: 30px;
-                        border-left: 5px solid #9C27B0;
-                        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-                        transition: transform 0.3s ease;
-                    }
-                    .notification-card:hover {
-                        transform: translateY(-2px);
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 20px;
+                        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
                     }
                     .notification-title {
-                        color: #2c3e50;
+                        color: #581c87;
                         font-size: 22px;
-                        font-weight: 600;
-                        margin-bottom: 20px;
-                        display: flex;
-                        align-items: center;
-                    }
-                    .notification-title::before {
-                        content: '👔';
-                        margin-right: 10px;
-                        font-size: 24px;
+                        font-weight: 700;
+                        margin: 0 0 20px 0;
+                        line-height: 1.3;
                     }
                     .notification-content {
-                        color: #555;
-                        line-height: 1.7;
+                        color: #374151;
                         font-size: 16px;
-                        margin-bottom: 25px;
+                        line-height: 1.7;
+                        margin-bottom: 24px;
+                        white-space: pre-line;
+                        font-weight: 400;
+                    }
+                    .alert-box {
+                        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+                        border: 1px solid #fecaca;
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin: 24px 0;
+                        border-left: 4px solid #ef4444;
+                    }
+                    .alert-box h3 {
+                        color: #991b1b;
+                        font-size: 18px;
+                        font-weight: 600;
+                        margin: 0 0 12px 0;
+                    }
+                    .alert-box p {
+                        color: #374151;
+                        margin: 0;
+                        font-size: 15px;
+                        line-height: 1.6;
                     }
                     .info-grid {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
                         gap: 20px;
-                        margin-bottom: 25px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
                     }
                     .info-item {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 10px;
-                        border-left: 3px solid #9C27B0;
+                        text-align: center;
                     }
                     .info-label {
                         font-size: 12px;
-                        color: #666;
-                        text-transform: uppercase;
                         font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
                         letter-spacing: 0.5px;
-                        margin-bottom: 5px;
+                        margin-bottom: 8px;
                     }
                     .info-value {
-                        font-size: 14px;
-                        color: #2c3e50;
-                        font-weight: 500;
-                    }
-                    .priority-badge {
-                        display: inline-block;
-                        background: linear-gradient(135deg, #FF5722 0%, #E64A19 100%);
-                        color: white;
-                        padding: 8px 16px;
-                        border-radius: 20px;
-                        font-size: 12px;
+                        font-size: 16px;
                         font-weight: 600;
-                        text-transform: uppercase;
-                        letter-spacing: 0.5px;
-                        margin-bottom: 20px;
+                        color: #1e293b;
                     }
                     .action-section {
-                        background: linear-gradient(135deg, #f3e5f5 0%, #faf0fb 100%);
-                        padding: 25px;
+                        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+                        border: 1px solid #e9d5ff;
                         border-radius: 12px;
+                        padding: 28px;
                         text-align: center;
-                        border: 1px solid #e1bee7;
+                        margin-top: 32px;
+                        border-left: 5px solid #9333ea;
                     }
                     .action-text {
-                        color: #4a148c;
+                        color: #581c87;
                         font-size: 16px;
-                        margin-bottom: 15px;
+                        margin-bottom: 20px;
                         font-weight: 500;
+                        line-height: 1.5;
                     }
                     .action-button {
                         display: inline-block;
-                        background: #7B1FA2;
+                        background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
                         color: white;
-                        padding: 12px 30px;
+                        padding: 14px 32px;
                         text-decoration: none;
-                        border-radius: 25px;
+                        border-radius: 8px;
                         font-weight: 600;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3);
+                        font-size: 15px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 4px 6px -1px rgba(147, 51, 234, 0.2);
                     }
                     .action-button:hover {
-                        background: #6A1B9A;
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(123, 31, 162, 0.4);
+                        transform: translateY(-1px);
+                        box-shadow: 0 6px 8px -1px rgba(147, 51, 234, 0.3);
                     }
                     .footer {
-                        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
                         color: white;
-                        padding: 30px;
+                        padding: 32px 30px;
                         text-align: center;
                     }
                     .footer-logo {
-                        font-size: 24px;
+                        font-size: 22px;
                         font-weight: 700;
-                        margin-bottom: 10px;
-                        color: #9C27B0;
+                        margin-bottom: 12px;
+                        color: #9333ea;
                     }
                     .footer-text {
                         font-size: 14px;
-                        opacity: 0.8;
+                        opacity: 0.9;
                         line-height: 1.6;
+                        margin-bottom: 20px;
                     }
                     .footer-links {
                         margin-top: 20px;
                     }
                     .footer-links a {
-                        color: #9C27B0;
+                        color: #9333ea;
                         text-decoration: none;
-                        margin: 0 15px;
+                        margin: 0 12px;
+                        font-size: 13px;
                         font-weight: 500;
-                        transition: opacity 0.3s ease;
+                        transition: opacity 0.2s ease;
                     }
                     .footer-links a:hover {
-                        opacity: 0.7;
+                        opacity: 0.8;
                     }
-                    @media (max-width: 600px) {
-                        .container { margin: 10px; }
-                        .info-grid { grid-template-columns: 1fr; }
-                        .header { padding: 30px 20px; }
-                        .content { padding: 30px 20px; }
+                    @media screen and (max-width: 600px) {
+                        .container {
+                            margin: 10px;
+                            border-radius: 8px;
+                        }
+                        .header, .content, .footer {
+                            padding: 24px 20px;
+                        }
+                        .notification-card {
+                            padding: 24px 20px;
+                        }
+                        .info-grid {
+                            grid-template-columns: 1fr;
+                            gap: 16px;
+                            padding: 20px;
+                        }
+                        .action-section {
+                            padding: 24px 20px;
+                        }
                     }
                 </style>
             </head>
@@ -1066,52 +1160,51 @@ public class NotificationService {
 
                     <div class="content">
                         <div class="notification-card">
-                            <div class="priority-badge">⚠️ Alta Prioridad</div>
+                            <div class="priority-badge">🚨 Alta Prioridad</div>
                             <h2 class="notification-title">%s</h2>
-                            <div class="notification-content">
-                                %s
-                            </div>
+                            <div class="notification-content">%s</div>
+                        </div>
 
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Destinatario</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Rol</div>
-                                    <div class="info-value">Director de Área</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Fecha y Hora</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Tipo</div>
-                                    <div class="info-value">Gestión Administrativa</div>
-                                </div>
-                            </div>
+                        <div class="alert-box">
+                            <h3>⚠️ Atención Requerida</h3>
+                            <p>Esta notificación contiene información crítica que requiere tu atención inmediata como director de área. Se recomienda revisar el sistema administrativo lo antes posible.</p>
+                        </div>
 
-                            <div class="action-section">
-                                <div class="action-text">
-                                    🔧 Esta notificación requiere su atención inmediata para gestión administrativa
-                                </div>
-                                <a href="#" class="action-button">
-                                    Panel de Control
-                                </a>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Destinatario</div>
+                                <div class="info-value">%s</div>
                             </div>
+                            <div class="info-item">
+                                <div class="info-label">Tipo de Usuario</div>
+                                <div class="info-value">Director de Área</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fecha de Envío</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Categoría</div>
+                                <div class="info-value">Administrativa</div>
+                            </div>
+                        </div>
+
+                        <div class="action-section">
+                            <div class="action-text">¿Necesitas revisar esta alerta crítica? Accede al panel administrativo para gestionar la situación inmediatamente.</div>
+                            <a href="#" class="action-button">🚨 Revisar Sistema Urgente</a>
                         </div>
                     </div>
 
                     <div class="footer">
                         <div class="footer-logo">SGH</div>
                         <div class="footer-text">
-                            <p>Sistema de Gestión de Horarios Académicos</p>
-                            <p>Institución Educativa - Liderazgo y Excelencia</p>
+                            <p><strong>Sistema de Gestión de Horarios Académicos</strong></p>
+                            <p>Institución Educativa • Liderazgo administrativo con tecnología avanzada</p>
                         </div>
                         <div class="footer-links">
                             <a href="#">Panel Administrativo</a>
-                            <a href="#">Reportes</a>
-                            <a href="#">Soporte</a>
+                            <a href="#">Reportes Ejecutivos</a>
+                            <a href="#">Soporte Prioritario</a>
                         </div>
                     </div>
                 </div>
@@ -1125,9 +1218,9 @@ public class NotificationService {
             LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
         );
     }
-    
+
     /**
-     * Plantilla HTML para coordinadores
+     * Plantilla HTML optimizada para Gmail - Coordinadores
      */
     private String generateCoordinatorHtmlContent(NotificationDTO notification) {
         return String.format("""
@@ -1137,219 +1230,283 @@ public class NotificationService {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>SGH - Notificación para Coordinador</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
                     body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        min-height: 100vh;
-                        padding: 20px;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        -webkit-font-smoothing: antialiased;
                     }
                     .container {
-                        max-width: 650px;
-                        margin: 0 auto;
-                        background: white;
-                        border-radius: 20px;
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
                         overflow: hidden;
-                        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                        animation: slideIn 0.6s ease-out;
-                    }
-                    @keyframes slideIn {
-                        from { transform: translateY(-30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                     }
                     .header {
-                        background: linear-gradient(135deg, #FF5722 0%, #E64A19 100%);
+                        background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
                         color: white;
-                        padding: 40px 30px;
+                        padding: 32px 30px;
                         text-align: center;
                         position: relative;
-                        overflow: hidden;
                     }
                     .header::before {
                         content: '';
                         position: absolute;
-                        top: -50%;
-                        left: -50%;
-                        width: 200%;
-                        height: 200%;
-                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="60" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
-                        animation: float 6s ease-in-out infinite;
-                    }
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-10px) rotate(180deg); }
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        opacity: 0.3;
                     }
                     .logo {
-                        width: 80px;
-                        height: 80px;
-                        background: rgba(255,255,255,0.2);
+                        font-size: 42px;
+                        margin-bottom: 16px;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px 0;
+                        font-weight: 700;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header p {
+                        font-size: 16px;
+                        margin: 0;
+                        opacity: 0.95;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .content {
+                        padding: 40px 32px;
+                    }
+                    .notification-card {
+                        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+                        border: 1px solid #fed7aa;
+                        border-radius: 12px;
+                        padding: 32px;
+                        margin-bottom: 32px;
+                        border-left: 5px solid #ea580c;
+                        position: relative;
+                    }
+                    .notification-card::before {
+                        content: '⚙️';
+                        position: absolute;
+                        top: -10px;
+                        right: 24px;
+                        font-size: 24px;
+                        background: white;
                         border-radius: 50%;
+                        width: 48px;
+                        height: 48px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        margin: 0 auto 20px;
-                        font-size: 36px;
-                        backdrop-filter: blur(10px);
-                        border: 2px solid rgba(255,255,255,0.3);
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                     }
-                    .header h1 {
-                        font-size: 28px;
-                        font-weight: 700;
-                        margin-bottom: 10px;
-                        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    .system-status {
+                        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                        border: 1px solid #fcd34d;
+                        border-radius: 12px;
+                        padding: 24px;
+                        margin-bottom: 24px;
+                        text-align: center;
+                        position: relative;
+                        overflow: hidden;
                     }
-                    .header p {
-                        font-size: 18px;
-                        opacity: 0.9;
-                        font-weight: 300;
+                    .system-status::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: radial-gradient(circle at center, rgba(234, 88, 12, 0.1) 0%, transparent 70%);
                     }
-                    .content {
-                        padding: 40px 30px;
-                        background: #fafafa;
+                    .status-indicator {
+                        display: inline-block;
+                        width: 16px;
+                        height: 16px;
+                        background: #ea580c;
+                        border-radius: 50%;
+                        margin-right: 12px;
+                        animation: pulse 2s infinite;
+                        position: relative;
+                        z-index: 1;
                     }
-                    .notification-card {
-                        background: white;
-                        border-radius: 15px;
-                        padding: 30px;
-                        margin-bottom: 30px;
-                        border-left: 5px solid #FF5722;
-                        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-                        transition: transform 0.3s ease;
+                    @keyframes pulse {
+                        0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); }
+                        70% { box-shadow: 0 0 0 10px rgba(234, 88, 12, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
                     }
-                    .notification-card:hover {
-                        transform: translateY(-2px);
+                    .status-text {
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #9a3412;
+                        position: relative;
+                        z-index: 1;
                     }
                     .notification-title {
-                        color: #2c3e50;
+                        color: #9a3412;
                         font-size: 22px;
-                        font-weight: 600;
-                        margin-bottom: 20px;
-                        display: flex;
-                        align-items: center;
-                    }
-                    .notification-title::before {
-                        content: '⚙️';
-                        margin-right: 10px;
-                        font-size: 24px;
+                        font-weight: 700;
+                        margin: 0 0 20px 0;
+                        line-height: 1.3;
                     }
                     .notification-content {
-                        color: #555;
-                        line-height: 1.7;
+                        color: #374151;
                         font-size: 16px;
-                        margin-bottom: 25px;
+                        line-height: 1.7;
+                        margin-bottom: 24px;
+                        white-space: pre-line;
+                        font-weight: 400;
+                    }
+                    .stats-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 16px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
+                    }
+                    .stat-item {
+                        text-align: center;
+                        padding: 16px;
+                        background: white;
+                        border-radius: 6px;
+                        border: 1px solid #e5e7eb;
+                    }
+                    .stat-label {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 8px;
+                    }
+                    .stat-value {
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: #ea580c;
                     }
                     .info-grid {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
                         gap: 20px;
-                        margin-bottom: 25px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
                     }
                     .info-item {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 10px;
-                        border-left: 3px solid #FF5722;
+                        text-align: center;
                     }
                     .info-label {
                         font-size: 12px;
-                        color: #666;
-                        text-transform: uppercase;
                         font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
                         letter-spacing: 0.5px;
-                        margin-bottom: 5px;
+                        margin-bottom: 8px;
                     }
                     .info-value {
-                        font-size: 14px;
-                        color: #2c3e50;
-                        font-weight: 500;
-                    }
-                    .system-status {
-                        background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%);
-                        border: 1px solid #ffe0b2;
-                        border-radius: 10px;
-                        padding: 15px;
-                        margin-bottom: 20px;
-                        text-align: center;
-                    }
-                    .status-indicator {
-                        display: inline-block;
-                        width: 12px;
-                        height: 12px;
-                        background: #FF5722;
-                        border-radius: 50%;
-                        margin-right: 8px;
-                        animation: pulse 2s infinite;
-                    }
-                    @keyframes pulse {
-                        0% { box-shadow: 0 0 0 0 rgba(255, 87, 34, 0.7); }
-                        70% { box-shadow: 0 0 0 10px rgba(255, 87, 34, 0); }
-                        100% { box-shadow: 0 0 0 0 rgba(255, 87, 34, 0); }
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #1e293b;
                     }
                     .action-section {
-                        background: linear-gradient(135deg, #fff8e1 0%, #fff3e0 100%);
-                        padding: 25px;
+                        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+                        border: 1px solid #fed7aa;
                         border-radius: 12px;
+                        padding: 28px;
                         text-align: center;
-                        border: 1px solid #ffe0b2;
+                        margin-top: 32px;
+                        border-left: 5px solid #ea580c;
                     }
                     .action-text {
-                        color: #bf360c;
+                        color: #9a3412;
                         font-size: 16px;
-                        margin-bottom: 15px;
+                        margin-bottom: 20px;
                         font-weight: 500;
+                        line-height: 1.5;
                     }
                     .action-button {
                         display: inline-block;
-                        background: #E64A19;
+                        background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
                         color: white;
-                        padding: 12px 30px;
+                        padding: 14px 32px;
                         text-decoration: none;
-                        border-radius: 25px;
+                        border-radius: 8px;
                         font-weight: 600;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 4px 15px rgba(230, 74, 25, 0.3);
+                        font-size: 15px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.2);
                     }
                     .action-button:hover {
-                        background: #D84315;
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(230, 74, 25, 0.4);
+                        transform: translateY(-1px);
+                        box-shadow: 0 6px 8px -1px rgba(234, 88, 12, 0.3);
                     }
                     .footer {
-                        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
                         color: white;
-                        padding: 30px;
+                        padding: 32px 30px;
                         text-align: center;
                     }
                     .footer-logo {
-                        font-size: 24px;
+                        font-size: 22px;
                         font-weight: 700;
-                        margin-bottom: 10px;
-                        color: #FF5722;
+                        margin-bottom: 12px;
+                        color: #ea580c;
                     }
                     .footer-text {
                         font-size: 14px;
-                        opacity: 0.8;
+                        opacity: 0.9;
                         line-height: 1.6;
+                        margin-bottom: 20px;
                     }
                     .footer-links {
                         margin-top: 20px;
                     }
                     .footer-links a {
-                        color: #FF5722;
+                        color: #ea580c;
                         text-decoration: none;
-                        margin: 0 15px;
+                        margin: 0 12px;
+                        font-size: 13px;
                         font-weight: 500;
-                        transition: opacity 0.3s ease;
+                        transition: opacity 0.2s ease;
                     }
                     .footer-links a:hover {
-                        opacity: 0.7;
+                        opacity: 0.8;
                     }
-                    @media (max-width: 600px) {
-                        .container { margin: 10px; }
-                        .info-grid { grid-template-columns: 1fr; }
-                        .header { padding: 30px 20px; }
-                        .content { padding: 30px 20px; }
+                    @media screen and (max-width: 600px) {
+                        .container {
+                            margin: 10px;
+                            border-radius: 8px;
+                        }
+                        .header, .content, .footer {
+                            padding: 24px 20px;
+                        }
+                        .notification-card {
+                            padding: 24px 20px;
+                        }
+                        .stats-grid, .info-grid {
+                            grid-template-columns: 1fr;
+                            gap: 16px;
+                            padding: 20px;
+                        }
+                        .action-section {
+                            padding: 24px 20px;
+                        }
                     }
                 </style>
             </head>
@@ -1365,53 +1522,66 @@ public class NotificationService {
                         <div class="notification-card">
                             <div class="system-status">
                                 <span class="status-indicator"></span>
-                                <strong>Notificación del Sistema de Gestión</strong>
+                                <span class="status-text">Notificación del Sistema de Gestión</span>
                             </div>
                             <h2 class="notification-title">%s</h2>
-                            <div class="notification-content">
-                                %s
-                            </div>
+                            <div class="notification-content">%s</div>
+                        </div>
 
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Destinatario</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Rol</div>
-                                    <div class="info-value">Coordinador</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Fecha y Hora</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Tipo</div>
-                                    <div class="info-value">Administración del Sistema</div>
-                                </div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">Horarios Activos</div>
+                                <div class="stat-value">127</div>
                             </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Profesores</div>
+                                <div class="stat-value">45</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Aulas Ocupadas</div>
+                                <div class="stat-value">23</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Conflictos</div>
+                                <div class="stat-value">2</div>
+                            </div>
+                        </div>
 
-                            <div class="action-section">
-                                <div class="action-text">
-                                    🎛️ Accede al panel de administración para gestionar esta notificación del sistema
-                                </div>
-                                <a href="#" class="action-button">
-                                    Panel de Administración
-                                </a>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Destinatario</div>
+                                <div class="info-value">%s</div>
                             </div>
+                            <div class="info-item">
+                                <div class="info-label">Tipo de Usuario</div>
+                                <div class="info-value">Coordinador</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fecha de Envío</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Categoría</div>
+                                <div class="info-value">Sistema</div>
+                            </div>
+                        </div>
+
+                        <div class="action-section">
+                            <div class="action-text">¿Necesitas revisar el estado del sistema? Accede al panel de administración para gestionar todos los aspectos del SGH.</div>
+                            <a href="#" class="action-button">⚙️ Acceder al Panel Admin</a>
                         </div>
                     </div>
 
                     <div class="footer">
                         <div class="footer-logo">SGH</div>
                         <div class="footer-text">
-                            <p>Sistema de Gestión de Horarios Académicos</p>
-                            <p>Institución Educativa - Control Total del Sistema</p>
+                            <p><strong>Sistema de Gestión de Horarios Académicos</strong></p>
+                            <p>Institución Educativa • Control total del sistema con herramientas avanzadas</p>
                         </div>
                         <div class="footer-links">
-                            <a href="#">Panel Admin</a>
-                            <a href="#">Configuración</a>
-                            <a href="#">Soporte</a>
+                            <a href="#">Panel Administrativo</a>
+                            <a href="#">Configuración Avanzada</a>
+                            <a href="#">Soporte Técnico</a>
                         </div>
                     </div>
                 </div>
@@ -1425,7 +1595,7 @@ public class NotificationService {
             LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
         );
     }
-    
+
     /**
      * Plantilla HTML general
      */
@@ -1436,198 +1606,33 @@ public class NotificationService {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>SGH - Notificación del Sistema</title>
+                <title>SGH - Notificación General</title>
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        min-height: 100vh;
-                        padding: 20px;
-                    }
-                    .container {
-                        max-width: 650px;
-                        margin: 0 auto;
-                        background: white;
-                        border-radius: 20px;
-                        overflow: hidden;
-                        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                        animation: slideIn 0.6s ease-out;
-                    }
-                    @keyframes slideIn {
-                        from { transform: translateY(-30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
-                    }
-                    .header {
-                        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-                        color: white;
-                        padding: 40px 30px;
-                        text-align: center;
-                        position: relative;
-                        overflow: hidden;
-                    }
-                    .header::before {
-                        content: '';
-                        position: absolute;
-                        top: -50%;
-                        left: -50%;
-                        width: 200%;
-                        height: 200%;
-                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="60" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
-                        animation: float 6s ease-in-out infinite;
-                    }
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-10px) rotate(180deg); }
-                    }
-                    .logo {
-                        width: 80px;
-                        height: 80px;
-                        background: rgba(255,255,255,0.2);
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin: 0 auto 20px;
-                        font-size: 36px;
-                        backdrop-filter: blur(10px);
-                        border: 2px solid rgba(255,255,255,0.3);
-                    }
-                    .header h1 {
-                        font-size: 28px;
-                        font-weight: 700;
-                        margin-bottom: 10px;
-                        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }
-                    .header p {
-                        font-size: 18px;
-                        opacity: 0.9;
-                        font-weight: 300;
-                    }
-                    .content {
-                        padding: 40px 30px;
-                        background: #fafafa;
-                    }
-                    .notification-card {
-                        background: white;
-                        border-radius: 15px;
-                        padding: 30px;
-                        margin-bottom: 30px;
-                        border-left: 5px solid #6c757d;
-                        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-                        transition: transform 0.3s ease;
-                    }
-                    .notification-card:hover {
-                        transform: translateY(-2px);
-                    }
-                    .notification-title {
-                        color: #2c3e50;
-                        font-size: 22px;
-                        font-weight: 600;
-                        margin-bottom: 20px;
-                        display: flex;
-                        align-items: center;
-                    }
-                    .notification-title::before {
-                        content: '📢';
-                        margin-right: 10px;
-                        font-size: 24px;
-                    }
-                    .notification-content {
-                        color: #555;
-                        line-height: 1.7;
-                        font-size: 16px;
-                        margin-bottom: 25px;
-                    }
-                    .info-grid {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 20px;
-                        margin-bottom: 25px;
-                    }
-                    .info-item {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 10px;
-                        border-left: 3px solid #6c757d;
-                    }
-                    .info-label {
-                        font-size: 12px;
-                        color: #666;
-                        text-transform: uppercase;
-                        font-weight: 600;
-                        letter-spacing: 0.5px;
-                        margin-bottom: 5px;
-                    }
-                    .info-value {
-                        font-size: 14px;
-                        color: #2c3e50;
-                        font-weight: 500;
-                    }
-                    .action-section {
-                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                        padding: 25px;
-                        border-radius: 12px;
-                        text-align: center;
-                        border: 1px solid #dee2e6;
-                    }
-                    .action-text {
-                        color: #495057;
-                        font-size: 16px;
-                        margin-bottom: 15px;
-                        font-weight: 500;
-                    }
-                    .action-button {
-                        display: inline-block;
-                        background: #6c757d;
-                        color: white;
-                        padding: 12px 30px;
-                        text-decoration: none;
-                        border-radius: 25px;
-                        font-weight: 600;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
-                    }
-                    .action-button:hover {
-                        background: #5a6268;
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
-                    }
-                    .footer {
-                        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-                        color: white;
-                        padding: 30px;
-                        text-align: center;
-                    }
-                    .footer-logo {
-                        font-size: 24px;
-                        font-weight: 700;
-                        margin-bottom: 10px;
-                        color: #6c757d;
-                    }
-                    .footer-text {
-                        font-size: 14px;
-                        opacity: 0.8;
-                        line-height: 1.6;
-                    }
-                    .footer-links {
-                        margin-top: 20px;
-                    }
-                    .footer-links a {
-                        color: #6c757d;
-                        text-decoration: none;
-                        margin: 0 15px;
-                        font-weight: 500;
-                        transition: opacity 0.3s ease;
-                    }
-                    .footer-links a:hover {
-                        opacity: 0.7;
-                    }
-                    @media (max-width: 600px) {
-                        .container { margin: 10px; }
-                        .info-grid { grid-template-columns: 1fr; }
-                        .header { padding: 30px 20px; }
-                        .content { padding: 30px 20px; }
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; color: #333; line-height: 1.4; }
+                    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background-color: #6c757d; color: white; padding: 25px; text-align: center; }
+                    .logo { font-size: 36px; margin-bottom: 15px; }
+                    .header h1 { font-size: 22px; margin: 0 0 8px 0; font-weight: bold; }
+                    .header p { font-size: 16px; margin: 0; }
+                    .content { padding: 30px 25px; }
+                    .notification-card { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 25px; margin-bottom: 25px; border-left: 4px solid #6c757d; }
+                    .notification-title { color: #2c3e50; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
+                    .notification-content { color: #495057; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+                    .info-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
+                    .info-table td { padding: 12px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+                    .info-table td:first-child { font-weight: bold; color: #6c757d; font-size: 12px; text-transform: uppercase; width: 40%%; }
+                    .info-table td:last-child { color: #2c3e50; font-size: 14px; }
+                    .footer { background-color: #2c3e50; color: white; padding: 25px; text-align: center; }
+                    .footer-logo { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #6c757d; }
+                    .footer-text { font-size: 13px; opacity: 0.8; line-height: 1.5; margin-bottom: 15px; }
+                    .footer-links { margin-top: 15px; }
+                    .footer-links a { color: #6c757d; text-decoration: none; margin: 0 10px; font-size: 12px; }
+                    @media screen and (max-width: 600px) {
+                        .container { margin: 10px; border-radius: 0; }
+                        .header, .content, .footer { padding: 20px 15px; }
+                        .notification-card { padding: 20px 15px; }
+                        .info-table td { display: block; border-bottom: none; padding: 5px 0; }
+                        .info-table td:first-child { border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
                     }
                 </style>
             </head>
@@ -1641,38 +1646,15 @@ public class NotificationService {
 
                     <div class="content">
                         <div class="notification-card">
-                            <h2 class="notification-title">%s</h2>
-                            <div class="notification-content">
-                                %s
-                            </div>
+                            <h2 class="notification-title">📢 %s</h2>
+                            <div class="notification-content">%s</div>
 
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Destinatario</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Rol</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Fecha y Hora</div>
-                                    <div class="info-value">%s</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Categoría</div>
-                                    <div class="info-value">Notificación General</div>
-                                </div>
-                            </div>
-
-                            <div class="action-section">
-                                <div class="action-text">
-                                    📢 Esta notificación contiene información importante del sistema
-                                </div>
-                                <a href="#" class="action-button">
-                                    Acceder al Sistema
-                                </a>
-                            </div>
+                            <table class="info-table">
+                                <tr><td>Destinatario</td><td>%s</td></tr>
+                                <tr><td>Rol</td><td>%s</td></tr>
+                                <tr><td>Fecha y Hora</td><td>%s</td></tr>
+                                <tr><td>Categoría</td><td>Notificación General</td></tr>
+                            </table>
                         </div>
                     </div>
 
@@ -1699,18 +1681,970 @@ public class NotificationService {
             LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
         );
     }
-    
+
+    /**
+     * Plantilla HTML para asignación de horario docente
+     */
+    private String generateTeacherScheduleHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Nueva Asignación de Clase</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        -webkit-font-smoothing: antialiased;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                    }
+                    .header {
+                        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                        color: white;
+                        padding: 32px 30px;
+                        text-align: center;
+                        position: relative;
+                    }
+                    .header::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        opacity: 0.3;
+                    }
+                    .logo {
+                        font-size: 42px;
+                        margin-bottom: 16px;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px 0;
+                        font-weight: 700;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header p {
+                        font-size: 16px;
+                        margin: 0;
+                        opacity: 0.95;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .content {
+                        padding: 40px 32px;
+                    }
+                    .notification-card {
+                        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+                        border: 1px solid #bfdbfe;
+                        border-radius: 12px;
+                        padding: 32px;
+                        margin-bottom: 32px;
+                        border-left: 5px solid #3b82f6;
+                        position: relative;
+                    }
+                    .notification-card::before {
+                        content: '👨‍🏫';
+                        position: absolute;
+                        top: -10px;
+                        right: 24px;
+                        font-size: 24px;
+                        background: white;
+                        border-radius: 50%;
+                        width: 48px;
+                        height: 48px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    }
+                    .notification-title {
+                        color: #1e40af;
+                        font-size: 22px;
+                        font-weight: 700;
+                        margin: 0 0 20px 0;
+                        line-height: 1.3;
+                    }
+                    .notification-content {
+                        color: #374151;
+                        font-size: 16px;
+                        line-height: 1.7;
+                        margin-bottom: 24px;
+                        white-space: pre-line;
+                        font-weight: 400;
+                    }
+                    .info-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
+                    }
+                    .info-item {
+                        text-align: center;
+                    }
+                    .info-label {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 8px;
+                    }
+                    .info-value {
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #1e293b;
+                    }
+                    .action-section {
+                        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+                        border: 1px solid #bfdbfe;
+                        border-radius: 12px;
+                        padding: 28px;
+                        text-align: center;
+                        margin-top: 32px;
+                        border-left: 5px solid #3b82f6;
+                    }
+                    .action-text {
+                        color: #1e40af;
+                        font-size: 16px;
+                        margin-bottom: 20px;
+                        font-weight: 500;
+                        line-height: 1.5;
+                    }
+                    .action-button {
+                        display: inline-block;
+                        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                        color: white;
+                        padding: 14px 32px;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 15px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+                    }
+                    .action-button:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.3);
+                    }
+                    .footer {
+                        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                        color: white;
+                        padding: 32px 30px;
+                        text-align: center;
+                    }
+                    .footer-logo {
+                        font-size: 22px;
+                        font-weight: 700;
+                        margin-bottom: 12px;
+                        color: #3b82f6;
+                    }
+                    .footer-text {
+                        font-size: 14px;
+                        opacity: 0.9;
+                        line-height: 1.6;
+                        margin-bottom: 20px;
+                    }
+                    .footer-links {
+                        margin-top: 20px;
+                    }
+                    .footer-links a {
+                        color: #3b82f6;
+                        text-decoration: none;
+                        margin: 0 12px;
+                        font-size: 13px;
+                        font-weight: 500;
+                        transition: opacity 0.2s ease;
+                    }
+                    .footer-links a:hover {
+                        opacity: 0.8;
+                    }
+                    @media screen and (max-width: 600px) {
+                        .container {
+                            margin: 10px;
+                            border-radius: 8px;
+                        }
+                        .header, .content, .footer {
+                            padding: 24px 20px;
+                        }
+                        .notification-card {
+                            padding: 24px 20px;
+                        }
+                        .info-grid {
+                            grid-template-columns: 1fr;
+                            gap: 16px;
+                            padding: 20px;
+                        }
+                        .action-section {
+                            padding: 24px 20px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <div class="logo">👨‍🏫</div>
+                        <h1>Nueva Asignación de Clase</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                    </div>
+
+                    <div class="content">
+                        <div class="notification-card">
+                            <h2 class="notification-title">%s</h2>
+                            <div class="notification-content">%s</div>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Destinatario</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Tipo de Usuario</div>
+                                <div class="info-value">Docente</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fecha de Envío</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Categoría</div>
+                                <div class="info-value">Académica</div>
+                            </div>
+                        </div>
+
+                        <div class="action-section">
+                            <div class="action-text">¿Listo para revisar tu nueva asignación docente? Accede al sistema para gestionar tus clases.</div>
+                            <a href="#" class="action-button">🎯 Acceder al Sistema</a>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <div class="footer-logo">SGH</div>
+                        <div class="footer-text">
+                            <p><strong>Sistema de Gestión de Horarios Académicos</strong></p>
+                            <p>Institución Educativa • Excelencia académica con tecnología de vanguardia</p>
+                        </div>
+                        <div class="footer-links">
+                            <a href="#">Portal Docente</a>
+                            <a href="#">Recursos Académicos</a>
+                            <a href="#">Soporte Técnico</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
+    /**
+     * Plantilla HTML para asignación de horario estudiantil
+     */
+    private String generateStudentScheduleHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Horario Asignado</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        -webkit-font-smoothing: antialiased;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                    }
+                    .header {
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        padding: 32px 30px;
+                        text-align: center;
+                        position: relative;
+                    }
+                    .header::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        opacity: 0.3;
+                    }
+                    .logo {
+                        font-size: 42px;
+                        margin-bottom: 16px;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px 0;
+                        font-weight: 700;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header p {
+                        font-size: 16px;
+                        margin: 0;
+                        opacity: 0.95;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .content {
+                        padding: 40px 32px;
+                    }
+                    .notification-card {
+                        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+                        border: 1px solid #bbf7d0;
+                        border-radius: 12px;
+                        padding: 32px;
+                        margin-bottom: 32px;
+                        border-left: 5px solid #10b981;
+                        position: relative;
+                    }
+                    .notification-card::before {
+                        content: '📚';
+                        position: absolute;
+                        top: -10px;
+                        right: 24px;
+                        font-size: 24px;
+                        background: white;
+                        border-radius: 50%;
+                        width: 48px;
+                        height: 48px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    }
+                    .notification-title {
+                        color: #065f46;
+                        font-size: 22px;
+                        font-weight: 700;
+                        margin: 0 0 20px 0;
+                        line-height: 1.3;
+                    }
+                    .notification-content {
+                        color: #374151;
+                        font-size: 16px;
+                        line-height: 1.7;
+                        margin-bottom: 24px;
+                        white-space: pre-line;
+                        font-weight: 400;
+                    }
+                    .info-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
+                    }
+                    .info-item {
+                        text-align: center;
+                    }
+                    .info-label {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 8px;
+                    }
+                    .info-value {
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #1e293b;
+                    }
+                    .action-section {
+                        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+                        border: 1px solid #a7f3d0;
+                        border-radius: 12px;
+                        padding: 28px;
+                        text-align: center;
+                        margin-top: 32px;
+                        border-left: 5px solid #10b981;
+                    }
+                    .action-text {
+                        color: #065f46;
+                        font-size: 16px;
+                        margin-bottom: 20px;
+                        font-weight: 500;
+                        line-height: 1.5;
+                    }
+                    .action-button {
+                        display: inline-block;
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        padding: 14px 32px;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 15px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+                    }
+                    .action-button:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 6px 8px -1px rgba(16, 185, 129, 0.3);
+                    }
+                    .footer {
+                        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                        color: white;
+                        padding: 32px 30px;
+                        text-align: center;
+                    }
+                    .footer-logo {
+                        font-size: 22px;
+                        font-weight: 700;
+                        margin-bottom: 12px;
+                        color: #10b981;
+                    }
+                    .footer-text {
+                        font-size: 14px;
+                        opacity: 0.9;
+                        line-height: 1.6;
+                        margin-bottom: 20px;
+                    }
+                    .footer-links {
+                        margin-top: 20px;
+                    }
+                    .footer-links a {
+                        color: #10b981;
+                        text-decoration: none;
+                        margin: 0 12px;
+                        font-size: 13px;
+                        font-weight: 500;
+                        transition: opacity 0.2s ease;
+                    }
+                    .footer-links a:hover {
+                        opacity: 0.8;
+                    }
+                    @media screen and (max-width: 600px) {
+                        .container {
+                            margin: 10px;
+                            border-radius: 8px;
+                        }
+                        .header, .content, .footer {
+                            padding: 24px 20px;
+                        }
+                        .notification-card {
+                            padding: 24px 20px;
+                        }
+                        .info-grid {
+                            grid-template-columns: 1fr;
+                            gap: 16px;
+                            padding: 20px;
+                        }
+                        .action-section {
+                            padding: 24px 20px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <div class="logo">📚</div>
+                        <h1>Horario Asignado</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                    </div>
+
+                    <div class="content">
+                        <div class="notification-card">
+                            <h2 class="notification-title">%s</h2>
+                            <div class="notification-content">%s</div>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Destinatario</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Tipo de Usuario</div>
+                                <div class="info-value">Estudiante</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fecha de Envío</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Categoría</div>
+                                <div class="info-value">Académica</div>
+                            </div>
+                        </div>
+
+                        <div class="action-section">
+                            <div class="action-text">¿Listo para revisar tu horario académico? Accede al sistema para ver todos los detalles de tus clases.</div>
+                            <a href="#" class="action-button">👀 Ver Mi Horario Completo</a>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <div class="footer-logo">SGH</div>
+                        <div class="footer-text">
+                            <p><strong>Sistema de Gestión de Horarios Académicos</strong></p>
+                            <p>Institución Educativa • Transformando el futuro de la educación con tecnología innovadora</p>
+                        </div>
+                        <div class="footer-links">
+                            <a href="#">Portal Estudiantil</a>
+                            <a href="#">Centro de Ayuda</a>
+                            <a href="#">Contáctanos</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
+    /**
+     * Plantilla HTML para alertas del sistema (Directores)
+     */
+    private String generateSystemAlertHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Alerta Crítica del Sistema</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                        line-height: 1.6;
+                        -webkit-font-smoothing: antialiased;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background-color: #ffffff;
+                        border-radius: 12px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                    }
+                    .header {
+                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                        color: white;
+                        padding: 32px 30px;
+                        text-align: center;
+                        position: relative;
+                    }
+                    .header::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+                        opacity: 0.3;
+                    }
+                    .logo {
+                        font-size: 42px;
+                        margin-bottom: 16px;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px 0;
+                        font-weight: 700;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .header p {
+                        font-size: 16px;
+                        margin: 0;
+                        opacity: 0.95;
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .alert-badge {
+                        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+                        color: #92400e;
+                        padding: 12px 20px;
+                        border-radius: 24px;
+                        font-size: 13px;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        display: inline-block;
+                        margin-top: 16px;
+                        box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+                        position: relative;
+                        z-index: 1;
+                    }
+                    .content {
+                        padding: 40px 32px;
+                    }
+                    .notification-card {
+                        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+                        border: 1px solid #fecaca;
+                        border-radius: 12px;
+                        padding: 32px;
+                        margin-bottom: 32px;
+                        border-left: 5px solid #ef4444;
+                        position: relative;
+                    }
+                    .notification-card::before {
+                        content: '🚨';
+                        position: absolute;
+                        top: -10px;
+                        right: 24px;
+                        font-size: 24px;
+                        background: white;
+                        border-radius: 50%;
+                        width: 48px;
+                        height: 48px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    }
+                    .urgent-indicator {
+                        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                        color: white;
+                        padding: 12px 20px;
+                        border-radius: 20px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        display: inline-block;
+                        margin-bottom: 20px;
+                        box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+                    }
+                    .notification-title {
+                        color: #991b1b;
+                        font-size: 22px;
+                        font-weight: 700;
+                        margin: 0 0 20px 0;
+                        line-height: 1.3;
+                    }
+                    .notification-content {
+                        color: #374151;
+                        font-size: 16px;
+                        line-height: 1.7;
+                        margin-bottom: 24px;
+                        white-space: pre-line;
+                        font-weight: 400;
+                    }
+                    .requirements-box {
+                        background: #fef3c7;
+                        border: 1px solid #fcd34d;
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin: 24px 0;
+                        border-left: 4px solid #f59e0b;
+                    }
+                    .requirements-box h3 {
+                        color: #92400e;
+                        font-size: 16px;
+                        font-weight: 600;
+                        margin: 0 0 8px 0;
+                    }
+                    .requirements-box p {
+                        color: #374151;
+                        margin: 0;
+                        font-size: 14px;
+                        line-height: 1.5;
+                    }
+                    .info-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                        margin: 28px 0;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        padding: 24px;
+                    }
+                    .info-item {
+                        text-align: center;
+                    }
+                    .info-label {
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: #64748b;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 8px;
+                    }
+                    .info-value {
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #1e293b;
+                    }
+                    .action-section {
+                        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+                        border: 1px solid #fecaca;
+                        border-radius: 12px;
+                        padding: 28px;
+                        text-align: center;
+                        margin-top: 32px;
+                        border-left: 5px solid #ef4444;
+                    }
+                    .action-text {
+                        color: #991b1b;
+                        font-size: 16px;
+                        margin-bottom: 20px;
+                        font-weight: 500;
+                        line-height: 1.5;
+                    }
+                    .action-button {
+                        display: inline-block;
+                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                        color: white;
+                        padding: 14px 32px;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 15px;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);
+                    }
+                    .action-button:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 6px 8px -1px rgba(239, 68, 68, 0.3);
+                    }
+                    .footer {
+                        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                        color: white;
+                        padding: 32px 30px;
+                        text-align: center;
+                    }
+                    .footer-logo {
+                        font-size: 22px;
+                        font-weight: 700;
+                        margin-bottom: 12px;
+                        color: #ef4444;
+                    }
+                    .footer-text {
+                        font-size: 14px;
+                        opacity: 0.9;
+                        line-height: 1.6;
+                        margin-bottom: 20px;
+                    }
+                    .footer-links {
+                        margin-top: 20px;
+                    }
+                    .footer-links a {
+                        color: #ef4444;
+                        text-decoration: none;
+                        margin: 0 12px;
+                        font-size: 13px;
+                        font-weight: 500;
+                        transition: opacity 0.2s ease;
+                    }
+                    .footer-links a:hover {
+                        opacity: 0.8;
+                    }
+                    @media screen and (max-width: 600px) {
+                        .container {
+                            margin: 10px;
+                            border-radius: 8px;
+                        }
+                        .header, .content, .footer {
+                            padding: 24px 20px;
+                        }
+                        .notification-card {
+                            padding: 24px 20px;
+                        }
+                        .info-grid {
+                            grid-template-columns: 1fr;
+                            gap: 16px;
+                            padding: 20px;
+                        }
+                        .action-section {
+                            padding: 24px 20px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <div class="logo">🚨</div>
+                        <h1>Alerta Crítica del Sistema</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                        <div class="alert-badge">⚠️ Atención Inmediata</div>
+                    </div>
+
+                    <div class="content">
+                        <div class="notification-card">
+                            <div class="urgent-indicator">🔴 Alerta de Alta Prioridad</div>
+                            <h2 class="notification-title">%s</h2>
+                            <div class="notification-content">%s</div>
+                        </div>
+
+                        <div class="requirements-box">
+                            <h3>⚡ Acción Requerida</h3>
+                            <p>Esta alerta requiere atención inmediata del director de área. Se recomienda revisar el sistema administrativo lo antes posible para resolver la situación crítica detectada.</p>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Destinatario</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Tipo de Usuario</div>
+                                <div class="info-value">Director de Área</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fecha de Envío</div>
+                                <div class="info-value">%s</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Prioridad</div>
+                                <div class="info-value">Crítica</div>
+                            </div>
+                        </div>
+
+                        <div class="action-section">
+                            <div class="action-text">¿Necesitas revisar esta alerta crítica inmediatamente? Accede al panel administrativo para gestionar la situación de emergencia.</div>
+                            <a href="#" class="action-button">🚨 Revisar Sistema Urgente</a>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <div class="footer-logo">SGH</div>
+                        <div class="footer-text">
+                            <p><strong>Sistema de Gestión de Horarios Académicos</strong></p>
+                            <p>Institución Educativa • Liderazgo administrativo con tecnología avanzada</p>
+                        </div>
+                        <div class="footer-links">
+                            <a href="#">Panel Administrativo</a>
+                            <a href="#">Reportes de Emergencia</a>
+                            <a href="#">Soporte Prioritario</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
+    /**
+     * Plantilla HTML para notificaciones del sistema (Coordinadores)
+     */
+    private String generateSystemNotificationHtml(NotificationDTO notification) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>SGH - Notificación del Sistema</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+                    .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background: #FF9800; color: white; padding: 30px 25px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 24px; }
+                    .content { padding: 30px 25px; }
+                    .notification-card { background: #fff3e0; border-left: 4px solid #FF9800; padding: 20px; margin: 20px 0; border-radius: 4px; }
+                    .footer { background: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 12px; }
+                    .action-button { display: inline-block; background: #FF9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>📢 Notificación del Sistema</h1>
+                        <p>Sistema de Gestión de Horarios</p>
+                    </div>
+                    <div class="content">
+                        <div class="notification-card">
+                            <h2>%s</h2>
+                            <p>%s</p>
+                            <p><strong>Destinatario:</strong> %s</p>
+                            <p><strong>Fecha:</strong> %s</p>
+                        </div>
+                        <a href="#" class="action-button">Acceder al Panel</a>
+                    </div>
+                    <div class="footer">
+                        <p>Sistema de Gestión de Horarios Académicos - Institución Educativa</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+            notification.getSubject(),
+            notification.getContent(),
+            notification.getRecipientName(),
+            LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+        );
+    }
+
     /**
      * Genera contenido HTML por defecto
      */
     private String generateDefaultHtmlContent(NotificationDTO notification) {
-        return generateGeneralHtmlContent(notification);
+        return generateSystemNotificationHtml(notification);
     }
-    
+
     /**
      * Crea NotificationDTO desde usuario y tipo de notificación
      */
-    private NotificationDTO createNotificationFromTemplate(users user, NotificationType type, String subject, 
+    private NotificationDTO createNotificationFromTemplate(users user, NotificationType type, String subject,
                                                           Map<String, String> variables) {
         NotificationDTO notification = new NotificationDTO();
         notification.setRecipientEmail(user.getPerson().getEmail());
@@ -1718,37 +2652,24 @@ public class NotificationService {
         notification.setRecipientRole(user.getRole().getRoleName());
         notification.setNotificationType(type.name());
         notification.setSubject(subject);
-        notification.setContent(""); // Se llenará desde la plantilla
+        notification.setContent("");
         notification.setSenderName("Sistema SGH");
         notification.setIsHtml(true);
-        
+
         return notification;
     }
-    
+
     /**
      * Obtiene estadísticas de notificaciones
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getNotificationStatistics() {
-        Map<String, Object> stats = new ConcurrentHashMap<>();
-        stats.put("totalToday", notificationLogRepository.count());
-        
-        // Obtener estadísticas por tipo y estado
-        stats.put("pending", notificationLogRepository.countByTypeAndStatus(
-            NotificationType.STUDENT_SCHEDULE_ASSIGNMENT, NotificationStatus.PENDING) +
-            notificationLogRepository.countByTypeAndStatus(
-                NotificationType.TEACHER_CLASS_SCHEDULED, NotificationStatus.PENDING));
-        
-        stats.put("sent", notificationLogRepository.countByTypeAndStatus(
-            NotificationType.STUDENT_SCHEDULE_ASSIGNMENT, NotificationStatus.SENT) +
-            notificationLogRepository.countByTypeAndStatus(
-                NotificationType.TEACHER_CLASS_SCHEDULED, NotificationStatus.SENT));
-        
-        stats.put("failed", notificationLogRepository.countByTypeAndStatus(
-            NotificationType.STUDENT_SCHEDULE_ASSIGNMENT, NotificationStatus.FAILED) +
-            notificationLogRepository.countByTypeAndStatus(
-                NotificationType.TEACHER_CLASS_SCHEDULED, NotificationStatus.FAILED));
-        
+        java.util.Map<String, Object> stats = new java.util.concurrent.ConcurrentHashMap<>();
+        stats.put("total", notificationLogRepository.count());
+        stats.put("message", "Estadísticas básicas del sistema de notificaciones");
+        stats.put("availableTypes", NotificationType.values());
+        stats.put("availableRoles", new String[]{"ESTUDIANTE", "MAESTRO", "DIRECTOR_DE_AREA", "COORDINADOR"});
+
         return stats;
     }
 
@@ -1760,11 +2681,10 @@ public class NotificationService {
 
         for (String allowedRole : allowedRoles) {
             if (allowedRole.equals(recipientRole)) {
-                return; // Válido
+                return;
             }
         }
 
-        // Si llega aquí, el tipo no es válido para el rol
         throw new IllegalArgumentException(
             String.format("El tipo de notificación '%s' no está permitido para el rol '%s'. " +
                          "Tipos permitidos para %s: %s",
@@ -1773,5 +2693,50 @@ public class NotificationService {
                          recipientRole,
                          String.join(", ", allowedRoles))
         );
+    }
+
+    /**
+     * Método público para testing directo - envía notificación inmediatamente
+     */
+    public String sendTestNotificationDirect(NotificationDTO notification) {
+        try {
+            NotificationLog logEntry = new NotificationLog(
+                notification.getRecipientEmail(),
+                notification.getRecipientName(),
+                notification.getRecipientRole(),
+                NotificationType.valueOf(notification.getNotificationType()),
+                notification.getSubject(),
+                notification.getContent()
+            );
+            notificationLogRepository.save(logEntry);
+
+            sendEmail(notification);
+
+            logEntry.markAsSent();
+            notificationLogRepository.save(logEntry);
+
+            return "OK";
+
+        } catch (Exception e) {
+            String errorMsg = e.getMessage();
+            log.error("Error en envío directo de testing: {}", errorMsg);
+
+            try {
+                NotificationLog failedLog = new NotificationLog(
+                    notification.getRecipientEmail(),
+                    notification.getRecipientName(),
+                    notification.getRecipientRole(),
+                    NotificationType.valueOf(notification.getNotificationType()),
+                    notification.getSubject(),
+                    notification.getContent()
+                );
+                failedLog.markAsFailed(errorMsg);
+                notificationLogRepository.save(failedLog);
+            } catch (Exception logError) {
+                log.warn("No se pudo crear log de error: {}", logError.getMessage());
+            }
+
+            return errorMsg;
+        }
     }
 }

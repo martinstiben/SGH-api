@@ -52,6 +52,9 @@ public class AuthService {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Autowired
+    private NotificationService notificationService;
+
     public AuthService(Iusers repo,
                             IPeopleRepository peopleRepo,
                             IRolesRepository rolesRepo,
@@ -357,6 +360,34 @@ public class AuthService {
 
         user.getPerson().setEmail(newEmail.trim().toLowerCase());
         peopleRepo.save(user.getPerson());
+    }
+
+    /**
+     * Envía notificación de bienvenida al nuevo usuario registrado
+     */
+    private void sendWelcomeNotification(users newUser) {
+        try {
+            // Crear DTO de notificación de bienvenida
+            com.horarios.SGH.DTO.NotificationDTO welcomeNotification = new com.horarios.SGH.DTO.NotificationDTO();
+            welcomeNotification.setRecipientEmail(newUser.getPerson().getEmail());
+            welcomeNotification.setRecipientName(newUser.getPerson().getFullName());
+            welcomeNotification.setRecipientRole(newUser.getRole().getRoleName());
+            welcomeNotification.setNotificationType("GENERAL_SYSTEM_NOTIFICATION");
+            welcomeNotification.setSubject("¡Bienvenido a SGH - Sistema de Gestión de Horarios!");
+            welcomeNotification.setContent("Tu cuenta ha sido creada exitosamente. Ya puedes acceder a todas las funcionalidades disponibles para tu rol en el sistema.");
+            welcomeNotification.setSenderName("Sistema SGH");
+            welcomeNotification.setIsHtml(true);
+
+            // Enviar notificación de forma asíncrona
+            notificationService.validateAndPrepareNotification(welcomeNotification);
+            notificationService.sendNotificationAsync(welcomeNotification);
+
+            System.out.println("Notificación de bienvenida enviada a: " + newUser.getPerson().getEmail());
+
+        } catch (Exception e) {
+            System.err.println("Error enviando notificación de bienvenida: " + e.getMessage());
+            // No lanzar excepción para no fallar el registro
+        }
     }
 
     /**
