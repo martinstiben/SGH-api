@@ -39,7 +39,7 @@ public class users {
     private boolean isVerified = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_status", nullable = false)
+    @Column(name = "account_status", nullable = false, length = 15)
     @NotNull(message = "El estado de la cuenta es obligatorio")
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 

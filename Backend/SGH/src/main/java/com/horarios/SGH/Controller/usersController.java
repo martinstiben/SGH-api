@@ -15,7 +15,7 @@ import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Service.usersService;
 import com.horarios.SGH.Repository.Iusers;
 
-@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000", "http://localhost:3001"})
 @RestController
 @RequestMapping("/users")
 public class usersController {
