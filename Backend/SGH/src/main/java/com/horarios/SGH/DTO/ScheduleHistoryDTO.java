@@ -2,8 +2,10 @@ package com.horarios.SGH.DTO;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "DTO para la generación de horarios por cursos")
 public class ScheduleHistoryDTO {
@@ -46,6 +48,32 @@ public class ScheduleHistoryDTO {
     @Schema(description = "Parámetros adicionales o descripción", example = "Generación automática de horarios")
     private String params;
 
+    // NUEVA FUNCIONALIDAD: Cursos sin disponibilidad de profesores
+    @Schema(description = "Lista de cursos que no pudieron ser asignados por falta de disponibilidad de profesores", 
+            implementation = CourseWithoutAvailabilityDTO.class)
+    private List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability;
+
+    @Schema(description = "Total de cursos que no pudieron ser asignados", example = "3")
+    private int totalCoursesWithoutAvailability;
+
+    public ScheduleHistoryDTO() {}
+
+    public ScheduleHistoryDTO(Integer id, String executedBy, LocalDateTime executedAt, String status,
+                              int totalGenerated, String message, LocalDate periodStart, LocalDate periodEnd,
+                              boolean dryRun, boolean force, String params) {
+        this.id = id;
+        this.executedBy = executedBy;
+        this.executedAt = executedAt;
+        this.status = status;
+        this.totalGenerated = totalGenerated;
+        this.message = message;
+        this.periodStart = periodStart;
+        this.periodEnd = periodEnd;
+        this.dryRun = dryRun;
+        this.force = force;
+        this.params = params;
+    }
+
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
@@ -78,4 +106,20 @@ public class ScheduleHistoryDTO {
 
     public String getParams() { return params; }
     public void setParams(String params) { this.params = params; }
+
+    public List<CourseWithoutAvailabilityDTO> getCoursesWithoutAvailability() {
+        return coursesWithoutAvailability;
+    }
+
+    public void setCoursesWithoutAvailability(List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability) {
+        this.coursesWithoutAvailability = coursesWithoutAvailability;
+    }
+
+    public int getTotalCoursesWithoutAvailability() {
+        return totalCoursesWithoutAvailability;
+    }
+
+    public void setTotalCoursesWithoutAvailability(int totalCoursesWithoutAvailability) {
+        this.totalCoursesWithoutAvailability = totalCoursesWithoutAvailability;
+    }
 }

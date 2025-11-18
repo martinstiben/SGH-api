@@ -50,6 +50,10 @@ public class ScheduleControllerTest extends BaseControllerTest {
         ScheduleHistoryDTO output = new ScheduleHistoryDTO();
         output.setId(1);
         output.setParams("Horario 2025");
+        output.setTotalGenerated(5);
+        output.setMessage("Generación completada exitosamente. 5 horarios generados.");
+        output.setCoursesWithoutAvailability(Arrays.asList());
+        output.setTotalCoursesWithoutAvailability(0);
 
         when(generationService.generate(any(ScheduleHistoryDTO.class), any(String.class))).thenReturn(output);
 
@@ -57,13 +61,17 @@ public class ScheduleControllerTest extends BaseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(input)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1));
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.totalGenerated").value(5))
+                .andExpect(jsonPath("$.totalCoursesWithoutAvailability").value(0));
     }
 
     @Test
     public void testGetHistory() throws Exception {
         ScheduleHistoryDTO history = new ScheduleHistoryDTO();
         history.setId(1);
+        history.setCoursesWithoutAvailability(Arrays.asList());
+        history.setTotalCoursesWithoutAvailability(0);
 
         Page<ScheduleHistoryDTO> page = new PageImpl<>(Arrays.asList(history));
 
