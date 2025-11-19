@@ -93,9 +93,12 @@ public class InAppNotificationService {
      */
     @Transactional(readOnly = true)
     public Page<InAppNotification> getActiveNotificationsByUserId(Integer userId, int page, int size) {
+        log.info("Buscando notificaciones activas para usuario {} (página: {}, tamaño: {})", userId, page, size);
         LocalDateTime now = LocalDateTime.now();
         Pageable pageable = PageRequest.of(page, size);
-        return inAppNotificationRepository.findActiveByUserId(userId, now, pageable);
+        Page<InAppNotification> result = inAppNotificationRepository.findActiveByUserId(userId, now, pageable);
+        log.info("Encontradas {} notificaciones activas para usuario {}", result.getTotalElements(), userId);
+        return result;
     }
     
     /**
@@ -132,9 +135,27 @@ public class InAppNotificationService {
     public void markAllAsRead(Integer userId) {
         LocalDateTime now = LocalDateTime.now();
         inAppNotificationRepository.markAllAsReadByUserId(userId, now);
-        
+
         // Enviar confirmación vía WebSocket (comentado hasta que WebSocket esté compilado)
         // webSocketService.sendBulkReadStatusToUser(String.valueOf(userId));
+    }
+
+    /**
+     * Obtiene una notificación por ID
+     */
+    @Transactional(readOnly = true)
+    public InAppNotification getNotificationById(Long notificationId) {
+        return inAppNotificationRepository.findById(notificationId)
+            .orElseThrow(() -> new IllegalArgumentException("Notificación no encontrada: " + notificationId));
+    }
+
+    /**
+     * Obtiene el conteo de notificaciones no leídas de un usuario
+     */
+    @Transactional(readOnly = true)
+    public long getUnreadCount(Integer userId) {
+        LocalDateTime now = LocalDateTime.now();
+        return inAppNotificationRepository.countUnreadByUserId(userId, now);
     }
     
     /**
