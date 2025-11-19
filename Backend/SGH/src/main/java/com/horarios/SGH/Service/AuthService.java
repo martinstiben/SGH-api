@@ -17,14 +17,12 @@ import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Model.People;
 import com.horarios.SGH.Model.AccountStatus;
 import com.horarios.SGH.Model.NotificationType;
-import com.horarios.SGH.Model.NotificationPriority;
 import com.horarios.SGH.Repository.Iusers;
 import com.horarios.SGH.Repository.IPeopleRepository;
 import com.horarios.SGH.Repository.IRolesRepository;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
-import com.horarios.SGH.Service.usersService;
 import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
 import com.horarios.SGH.DTO.InAppNotificationDTO;
@@ -238,98 +236,126 @@ public class AuthService {
      * @param code Código de verificación
      */
     private void sendVerificationEmail(String email, String code) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+    try {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setTo(email);
-            helper.setSubject("Código de Verificación - SGH");
+        helper.setTo(email);
+        helper.setSubject("Código de Verificación - SGH");
 
-            String htmlContent = "<!DOCTYPE html>" +
-                "<html lang='es'>" +
-                "<head>" +
-                "<meta charset='UTF-8'>" +
-                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-                "<title>Verificación de Seguridad - SGH</title>" +
-                "<style>" +
-                "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0066cc 0%, #004d99 100%); margin: 0; padding: 20px; }" +
-                ".container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,102,204,0.15); overflow: hidden; border: 2px solid #e6f3ff; }" +
-                ".header { background: linear-gradient(135deg, #0066cc 0%, #004d99 100%); color: #ffffff; padding: 40px 30px; text-align: center; position: relative; }" +
-                ".header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"2\" fill=\"rgba(255,255,255,0.1)\"/></svg>') repeat; opacity: 0.1; }" +
-                ".logo { width: 80px; height: 80px; background: #ffffff; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); position: relative; }" +
-                ".logo-text { font-size: 28px; font-weight: bold; color: #0066cc; line-height: 1; margin: 0; padding: 0; position: relative; top: 2px; }" +
-                ".header h1 { margin: 0; font-size: 28px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }" +
-                ".header p { margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; }" +
-                ".content { padding: 40px 30px; text-align: center; background: #fafbfc; }" +
-                ".welcome { font-size: 20px; color: #0066cc; margin-bottom: 10px; font-weight: 600; }" +
-                ".message { font-size: 16px; color: #4a5568; line-height: 1.6; margin-bottom: 30px; }" +
-                ".code-container { background: linear-gradient(135deg, #0066cc 0%, #004d99 100%); border-radius: 12px; padding: 30px; margin: 30px 0; box-shadow: 0 8px 25px rgba(0,102,204,0.3); }" +
-                ".code-label { color: #ffffff; font-size: 14px; margin-bottom: 10px; opacity: 0.9; }" +
-                ".code { font-size: 36px; font-weight: 900; color: #ffffff; letter-spacing: 8px; font-family: 'Courier New', monospace; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }" +
-                ".timer { background: #e6f3ff; border: 2px solid #0066cc; border-radius: 20px; padding: 8px 16px; display: inline-block; margin: 20px 0; }" +
-                ".timer-text { color: #0066cc; font-weight: 600; font-size: 14px; }" +
-                ".warning { background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%); border: 2px solid #cc0000; border-radius: 8px; padding: 15px; margin: 20px 0; }" +
-                ".warning-text { color: #990000; font-size: 14px; margin: 0; font-weight: 500; }" +
-                ".footer { background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%); padding: 30px; text-align: center; border-top: 3px solid #0066cc; }" +
-                ".footer-text { color: #004d99; font-size: 14px; line-height: 1.5; }" +
-                ".footer-brand { color: #0066cc; font-weight: 700; margin-top: 10px; font-size: 16px; }" +
-                "@media (max-width: 600px) { .container { margin: 10px; } .header { padding: 30px 20px; } .content { padding: 30px 20px; } .code { font-size: 28px; letter-spacing: 4px; } .logo { width: 60px; height: 60px; font-size: 28px; } }" +
-                "</style>" +
-                "</head>" +
-                "<body>" +
-                "<div class='container'>" +
-                "<div class='header'>" +
-                "<div class='logo'>" +
-                "<span class='logo-text'>SGH</span>" +
-                "</div>" +
-                "<h1>Verificación de Seguridad</h1>" +
-                "<p>Sistema de Gestión de Horarios</p>" +
-                "</div>" +
-                "<div class='content'>" +
-                "<div class='welcome'>¡Hola!</div>" +
-                "<div class='message'>Para proteger tu cuenta, hemos enviado este código de verificación de 6 dígitos. Ingresa este código en la aplicación para completar tu inicio de sesión.</div>" +
-                "<div class='code-container'>" +
-                "<div class='code-label'>Tu código de verificación:</div>" +
-                "<div class='code'>" + code + "</div>" +
-                "</div>" +
-                "<div class='timer'>" +
-                "<span class='timer-text'>Expira en 10 minutos</span>" +
-                "</div>" +
-                "<div class='warning'>" +
-                "<p class='warning-text'>Importante: Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta. Por favor, ignora este mensaje y contacta inmediatamente con el administrador del sistema.</p>" +
-                "</div>" +
-                "</div>" +
-                "<div class='footer'>" +
-                "<div class='footer-text'>" +
-                "Este es un mensaje automático generado por el sistema SGH.<br>" +
-                "Por seguridad, no respondas a este correo electrónico.<br>" +
-                "Si necesitas ayuda, contacta al equipo de soporte técnico." +
-                "</div>" +
-                "<div class='footer-brand'>SGH - Tu Sistema de Confianza</div>" +
-                "</div>" +
-                "</div>" +
-                "</body>" +
-                "</html>";
+        String htmlContent = "<!DOCTYPE html>" +
+            "<html lang='es'>" +
+            "<head>" +
+            "<meta charset='UTF-8'>" +
+            "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+            "<title>Verificación de Seguridad - SGH</title>" +
+            "</head>" +
+            "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #e8eaed 0%, #d1d5db 100%); min-height: 100vh; padding: 40px 20px;'>" +
+            "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
+            "<tr>" +
+            "<td style='background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); padding: 55px 40px; text-align: center;'>" +
+            "<div style='margin: 0 auto 28px;'>" +
+            "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
+            "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
+            "<span style='font-size: 52px; font-weight: 700; color: #2c3e50; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 6px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
+            "</div>" +
+            "</div>" +
+            "</div>" +
+            "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>Verificación de Seguridad</h1>" +
+            "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
+            "</td>" +
+            "</tr>" +
+            "<tr>" +
+            "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
+            "<div style='margin-bottom: 15px;'>" +
+            "<span style='display: inline-block; font-size: 48px;'>👋</span>" +
+            "</div>" +
+            "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>¡Hola!</h2>" +
+            "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
+            "Para proteger tu cuenta, hemos generado un código de verificación.<br>" +
+            "<strong style='color: #1f2937;'>Ingresa este código en la aplicación</strong> para completar tu inicio de sesión de forma segura." +
+            "</p>" +
+            "<div style='background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(44, 62, 80, 0.3);'>" +
+            "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>Tu código de verificación</p>" +
+            "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px;'>" +
+            "<div style='font-size: 48px; font-weight: 900; color: #ffffff; letter-spacing: 12px; font-family: \"Courier New\", Courier, monospace; text-shadow: 0 2px 8px rgba(0,0,0,0.2);'>" +
+            code +
+            "</div>" +
+            "</div>" +
+            "</div>" +
+            "<div style='display: inline-block; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 50px; padding: 12px 24px; margin: 25px 0; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);'>" +
+            "<span style='font-size: 14px;'>⏱️</span>" +
+            "<span style='color: #92400e; font-weight: 700; font-size: 14px; margin-left: 8px;'>Expira en 10 minutos</span>" +
+            "</div>" +
+            "<div style='background: #fee; border: 2px solid #fca5a5; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
+            "<p style='margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.6;'>" +
+            "<span style='font-size: 18px; margin-right: 8px;'>🔒</span>" +
+            "<strong>Importante:</strong> Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta. Por favor, <strong>ignora este mensaje</strong> y contacta inmediatamente con el administrador del sistema." +
+            "</p>" +
+            "</div>" +
+            "<div style='background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: left;'>" +
+            "<p style='margin: 0 0 12px 0; color: #075985; font-size: 15px; font-weight: 700;'>" +
+            "💡 Consejos de seguridad:" +
+            "</p>" +
+            "<ul style='margin: 0; padding-left: 20px; color: #075985; font-size: 14px; line-height: 1.8;'>" +
+            "<li>Nunca compartas este código con nadie</li>" +
+            "<li>SGH nunca te pedirá tu código por teléfono o correo</li>" +
+            "<li>Usa contraseñas seguras y cámbialas regularmente</li>" +
+            "</ul>" +
+            "</div>" +
+            "</td>" +
+            "</tr>" +
+            "<tr>" +
+            "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
+            "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
+            "Este es un mensaje automático generado por el sistema SGH.<br>" +
+            "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
+            "Si necesitas ayuda, contacta al equipo de soporte técnico." +
+            "</p>" +
+            "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
+            "<div style='margin-bottom: 16px;'>" +
+            "<div style='width: 64px; height: 64px; background: #2c3e50; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(44, 62, 80, 0.4); display: table;'>" +
+            "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
+            "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
+            "</div>" +
+            "</div>" +
+            "</div>" +
+            "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
+            "Sistema de Gestión de Horarios" +
+            "</p>" +
+            "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
+            "Tu sistema de confianza para la gestión académica" +
+            "</p>" +
+            "</div>" +
+            "</td>" +
+            "</tr>" +
+            "</table>" +
+            "<div style='text-align: center; padding-top: 25px;'>" +
+            "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
+            "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
+            "</p>" +
+            "</div>" +
+            "</body>" +
+            "</html>";
 
-            helper.setText(htmlContent, true);
+        helper.setText(htmlContent, true);
 
-            mailSender.send(message);
+        mailSender.send(message);
 
-            System.out.println("=== EMAIL ENVIADO ===");
-            System.out.println("Destinatario: " + email);
-            System.out.println("Código: " + code);
-            System.out.println("====================");
+        System.out.println("=== EMAIL ENVIADO ===");
+        System.out.println("Destinatario: " + email);
+        System.out.println("Código: " + code);
+        System.out.println("====================");
 
-        } catch (Exception e) {
-            System.err.println("Error enviando email: " + e.getMessage());
-            // Fallback: mostrar en consola si falla el email
-            System.out.println("=== CÓDIGO DE VERIFICACIÓN SGH (FALLBACK) ===");
-            System.out.println("Email: " + email);
-            System.out.println("Código: " + code);
-            System.out.println("Este código expira en 10 minutos");
-            System.out.println("===========================================");
-        }
+    } catch (Exception e) {
+        System.err.println("Error enviando email: " + e.getMessage());
+        System.out.println("=== CÓDIGO DE VERIFICACIÓN SGH (FALLBACK) ===");
+        System.out.println("Email: " + email);
+        System.out.println("Código: " + code);
+        System.out.println("Este código expira en 10 minutos");
+        System.out.println("===========================================");
     }
+}
 
     public users getProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
