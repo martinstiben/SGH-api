@@ -35,6 +35,13 @@ public class users {
     @Column(name = "code_expiration", columnDefinition = "DATETIME(6)")
     private java.time.LocalDateTime codeExpiration;
 
+    @Column(name = "password_reset_code", length = 255)
+    @Size(max = 255, message = "El código de reset debe tener máximo 255 caracteres")
+    private String passwordResetCode;
+
+    @Column(name = "password_reset_expiration", columnDefinition = "DATETIME(6)")
+    private java.time.LocalDateTime passwordResetExpiration;
+
     @Column(name = "is_verified", nullable = false)
     private boolean isVerified = false;
 

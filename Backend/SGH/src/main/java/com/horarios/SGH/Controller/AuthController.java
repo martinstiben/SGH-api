@@ -4,6 +4,8 @@ import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
 import com.horarios.SGH.DTO.RegisterRequestDTO;
 import com.horarios.SGH.DTO.VerifyCodeDTO;
+import com.horarios.SGH.DTO.PasswordResetRequestDTO;
+import com.horarios.SGH.DTO.PasswordResetDTO;
 import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Service.AuthService;
 import com.horarios.SGH.Service.TokenRevocationService;
@@ -246,6 +248,40 @@ public class AuthController {
     public ResponseEntity<?> approveUser(@PathVariable int userId) {
         try {
             String message = service.approveUser(userId);
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+        }
+    }
+
+    @PostMapping("/request-password-reset")
+    @Operation(summary = "Solicitar restablecimiento de contraseña", description = "Envía un email con enlace para restablecer la contraseña")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Email enviado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en la solicitud")
+    })
+    public ResponseEntity<?> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDTO request) {
+        try {
+            String message = service.requestPasswordReset(request.getEmail());
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+        }
+    }
+
+    @PostMapping("/verify-reset-code")
+    @Operation(summary = "Verificar código de reset (Paso 2)", description = "Verifica el código de reset y cambia la contraseña si es válido")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Contraseña restablecida exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Código inválido o expirado")
+    })
+    public ResponseEntity<?> verifyResetCode(@Valid @RequestBody PasswordResetDTO request) {
+        try {
+            String message = service.resetPassword(request.getEmail(), request.getVerificationCode(), request.getNewPassword());
             return ResponseEntity.ok(Map.of("message", message));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
