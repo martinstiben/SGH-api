@@ -30,7 +30,7 @@ public class ScheduleCrudController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Crear horarios manualmente",
         description = "Permite crear horarios específicos asignando profesores y materias a cursos. " +
@@ -59,7 +59,7 @@ public class ScheduleCrudController {
     }
 
     @GetMapping("/{name}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Obtener horarios por nombre",
         description = "Busca horarios por el nombre del scheduleName"
@@ -110,7 +110,7 @@ public class ScheduleCrudController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Actualizar horario",
         description = "Actualiza un horario específico por su ID"
@@ -149,7 +149,7 @@ public class ScheduleCrudController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Eliminar horario",
         description = "Elimina un horario específico por su ID"
@@ -175,7 +175,7 @@ public class ScheduleCrudController {
     }
 
     @DeleteMapping("/by-day/{day}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Eliminar horarios por día",
         description = "Elimina todos los horarios asignados a un día específico"

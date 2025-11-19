@@ -50,17 +50,17 @@ public class CustomUserDetailsService implements UserDetailsService {
             }
 
             return User.withUsername(user.getPerson().getEmail())
-                    .password(user.getPasswordHash())
-                    .roles(user.getRole().getRoleName())
-                    .build();
+                     .password(user.getPasswordHash())
+                     .roles(user.getRole().getRoleName())
+                     .build();
         }
 
         // Fallback para usuario master solo si no existe en BD
         if (masterUsername.equals(username)) {
             return User.withUsername(masterUsername)
-                    .password(passwordEncoder.encode(masterPassword))
-                    .roles("COORDINADOR")
-                    .build();
+                     .password(passwordEncoder.encode(masterPassword))
+                     .roles("COORDINADOR")
+                     .build();
         }
 
         throw new UsernameNotFoundException("Usuario no encontrado: " + username);

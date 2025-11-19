@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 
 
 import com.horarios.SGH.DTO.responseDTO;
@@ -31,6 +33,7 @@ public class usersController {
 
     // Obtener usuario por ID
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('COORDINADOR')")
     public ResponseEntity<?> getUserById(@PathVariable int id) {
         try {
             Optional<users> usuarioOptional = usersService.findById(id);
@@ -50,11 +53,18 @@ public class usersController {
 
     // Eliminar usuario (excepto master)
     @DeleteMapping("/username/{username}")
-    public ResponseEntity<responseDTO> deleteUser(@PathVariable String username) {
+    @PreAuthorize("hasRole('COORDINADOR')")
+    public ResponseEntity<responseDTO> deleteUser(@PathVariable String username, Authentication auth) {
         try {
             if (username.equalsIgnoreCase(masterUsername)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(new responseDTO("ERROR", "No se puede eliminar el usuario master"));
+            }
+
+            // Validar que el coordinador no se elimine a sí mismo
+            if (auth.getName().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new responseDTO("ERROR", "No puedes eliminar tu propia cuenta"));
             }
 
             Optional<users> usuario = usersRepository.findByUserName(username);
@@ -119,6 +129,7 @@ public class usersController {
 
     // Obtener todos los usuarios
     @GetMapping
+    @PreAuthorize("hasRole('COORDINADOR')")
     public ResponseEntity<java.util.List<com.horarios.SGH.DTO.usersDTO>> getAllUsers() {
         try {
             java.util.List<users> allUsers = usersRepository.findAll();
@@ -144,11 +155,19 @@ public class usersController {
 
     // Eliminar usuario por ID
     @DeleteMapping("/{id}")
-    public ResponseEntity<responseDTO> deleteUserById(@PathVariable int id) {
+    @PreAuthorize("hasRole('COORDINADOR')")
+    public ResponseEntity<responseDTO> deleteUserById(@PathVariable int id, Authentication auth) {
         try {
             if (masterUsername != null && masterUsername.equals(String.valueOf(id))) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(new responseDTO("ERROR", "No se puede eliminar el usuario master"));
+            }
+
+            // Obtener el ID del usuario autenticado
+            Optional<users> currentUser = usersRepository.findByUserName(auth.getName());
+            if (currentUser.isPresent() && currentUser.get().getUserId() == id) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new responseDTO("ERROR", "No puedes eliminar tu propia cuenta"));
             }
 
             Optional<users> usuario = usersRepository.findById(id);
