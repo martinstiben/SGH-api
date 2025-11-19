@@ -54,15 +54,15 @@ public class AuthService {
     private NotificationService notificationService;
 
     public AuthService(Iusers repo,
-                            IPeopleRepository peopleRepo,
-                            IRolesRepository rolesRepo,
-                            Iteachers teacherRepo,
-                            Isubjects subjectRepo,
-                            TeacherSubjectRepository teacherSubjectRepo,
-                            PasswordEncoder encoder,
-                            AuthenticationManager authManager,
-                            JwtTokenProvider jwtTokenProvider,
-                            InAppNotificationService inAppNotificationService) {
+                             IPeopleRepository peopleRepo,
+                             IRolesRepository rolesRepo,
+                             Iteachers teacherRepo,
+                             Isubjects subjectRepo,
+                             TeacherSubjectRepository teacherSubjectRepo,
+                             PasswordEncoder encoder,
+                             AuthenticationManager authManager,
+                             JwtTokenProvider jwtTokenProvider,
+                             InAppNotificationService inAppNotificationService) {
         this.repo = repo;
         this.peopleRepo = peopleRepo;
         this.rolesRepo = rolesRepo;
@@ -542,6 +542,216 @@ public class AuthService {
                 });
         } catch (Exception e) {
             System.err.println("Error notificando rechazo al usuario: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Solicita el restablecimiento de contraseña enviando un código de verificación por email
+     *
+     * @param email Email del usuario
+     * @return Mensaje de confirmación
+     */
+    public String requestPasswordReset(String email) {
+        try {
+            ValidationUtils.validateEmail(email);
+
+            // Buscar usuario por email
+            users user = repo.findByUserName(email.trim().toLowerCase())
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró una cuenta con este email"));
+
+            // Verificar que la cuenta esté activa
+            if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+                throw new IllegalStateException("La cuenta no está activa. Contacte al administrador.");
+            }
+
+            // Generar y guardar código de reset de contraseña
+            String resetCode = generateVerificationCode();
+            user.setPasswordResetCode(resetCode);
+            user.setPasswordResetExpiration(java.time.LocalDateTime.now().plusMinutes(10)); // 10 minutos para reset
+            repo.save(user);
+
+            // Enviar código por email
+            sendPasswordResetEmail(user.getPerson().getEmail(), resetCode, user.getPerson().getFullName());
+
+            return "Se ha enviado un código de verificación a su email para restablecer la contraseña";
+        } catch (Exception e) {
+            System.err.println("Error solicitando reset de contraseña: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Restablece la contraseña usando el código de verificación enviado por email
+     *
+     * @param email Email del usuario
+     * @param verificationCode Código de verificación
+     * @param newPassword Nueva contraseña
+     * @return Mensaje de confirmación
+     */
+    public String resetPassword(String email, String verificationCode, String newPassword) {
+        try {
+            ValidationUtils.validateEmail(email);
+            ValidationUtils.validatePassword(newPassword);
+
+            // Buscar usuario
+            users user = repo.findByUserName(email.trim().toLowerCase())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            // Validar código de reset
+            if (user.getPasswordResetCode() == null || !user.getPasswordResetCode().equals(verificationCode.trim())) {
+                throw new RuntimeException("Código de verificación inválido");
+            }
+
+            // Verificar expiración
+            if (user.getPasswordResetExpiration().isBefore(java.time.LocalDateTime.now())) {
+                throw new RuntimeException("Código de verificación expirado");
+            }
+
+            // Verificar que la cuenta esté activa
+            if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+                throw new RuntimeException("La cuenta no está activa");
+            }
+
+            // Actualizar contraseña
+            user.setPasswordHash(encoder.encode(newPassword));
+            user.setPasswordResetCode(null); // Limpiar código usado
+            user.setPasswordResetExpiration(null);
+            repo.save(user);
+
+            return "Contraseña restablecida exitosamente";
+        } catch (Exception e) {
+            System.err.println("Error restableciendo contraseña: " + e.getMessage());
+            throw e;
+        }
+    }
+
+
+    /**
+     * Envía el código de verificación para restablecimiento de contraseña por email
+     *
+     * @param email Email del destinatario
+     * @param verificationCode Código de verificación
+     * @param userName Nombre del usuario
+     */
+    private void sendPasswordResetEmail(String email, String verificationCode, String userName) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(email);
+            helper.setSubject("Código de Verificación - Restablecimiento de Contraseña - SGH");
+
+            String htmlContent = "<!DOCTYPE html>" +
+                "<html lang='es'>" +
+                "<head>" +
+                "<meta charset='UTF-8'>" +
+                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                "<title>Restablecimiento de Contraseña - SGH</title>" +
+                "</head>" +
+                "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); min-height: 100vh; padding: 40px 20px;'>" +
+                "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
+                "<tr>" +
+                "<td style='background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); padding: 55px 40px; text-align: center;'>" +
+                "<div style='margin: 0 auto 28px;'>" +
+                "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
+                "<span style='font-size: 52px; font-weight: 700; color: #6b7280; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 6px; line-height: 1; text-transform: uppercase;'>🔐</span>" +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>Restablecimiento de Contraseña</h1>" +
+                "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
+                "</td>" +
+                "</tr>" +
+                "<tr>" +
+                "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
+                "<div style='margin-bottom: 15px;'>" +
+                "<span style='display: inline-block; font-size: 48px;'>👋</span>" +
+                "</div>" +
+                "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>¡Hola, " + userName + "!</h2>" +
+                "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
+                "Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.<br>" +
+                "<strong style='color: #1f2937;'>Ingresa este código en la aplicación</strong> para crear una nueva contraseña y recuperar el acceso de forma segura." +
+                "</p>" +
+                "<div style='background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(107, 114, 128, 0.3);'>" +
+                "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>Tu código de verificación</p>" +
+                "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px;'>" +
+                "<div style='font-size: 48px; font-weight: 900; color: #ffffff; letter-spacing: 12px; font-family: \"Courier New\", Courier, monospace; text-shadow: 0 2px 8px rgba(0,0,0,0.2);'>" +
+                verificationCode +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<div style='display: inline-block; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 50px; padding: 12px 24px; margin: 25px 0; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);'>" +
+                "<span style='font-size: 14px;'>⏱️</span>" +
+                "<span style='color: #92400e; font-weight: 700; font-size: 14px; margin-left: 8px;'>Expira en 10 minutos</span>" +
+                "</div>" +
+                "<div style='background: #fee; border: 2px solid #fca5a5; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
+                "<p style='margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.6;'>" +
+                "<span style='font-size: 18px; margin-right: 8px;'>🛡️</span>" +
+                "<strong>Importante:</strong> Si no solicitaste este restablecimiento, alguien podría estar intentando acceder a tu cuenta. Por favor, <strong>ignora este mensaje</strong> y contacta inmediatamente con el administrador del sistema." +
+                "</p>" +
+                "</div>" +
+                "<div style='background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: left;'>" +
+                "<p style='margin: 0 0 12px 0; color: #075985; font-size: 15px; font-weight: 700;'>" +
+                "💡 Consejos de seguridad:" +
+                "</p>" +
+                "<ul style='margin: 0; padding-left: 20px; color: #075985; font-size: 14px; line-height: 1.8;'>" +
+                "<li>Nunca compartas este código con nadie</li>" +
+                "<li>SGH nunca te pedirá tu código por teléfono o correo</li>" +
+                "<li>Usa contraseñas seguras y cámbialas regularmente</li>" +
+                "</ul>" +
+                "</div>" +
+                "</td>" +
+                "</tr>" +
+                "<tr>" +
+                "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
+                "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
+                "Este es un mensaje automático generado por el sistema SGH.<br>" +
+                "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
+                "Si necesitas ayuda, contacta al equipo de soporte técnico." +
+                "</p>" +
+                "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
+                "<div style='margin-bottom: 16px;'>" +
+                "<div style='width: 64px; height: 64px; background: #6b7280; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4); display: table;'>" +
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
+                "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
+                "Sistema de Gestión de Horarios" +
+                "</p>" +
+                "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
+                "Tu sistema de confianza para la gestión académica" +
+                "</p>" +
+                "</div>" +
+                "</td>" +
+                "</tr>" +
+                "</table>" +
+                "<div style='text-align: center; padding-top: 25px;'>" +
+                "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
+                "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
+                "</p>" +
+                "</div>" +
+                "</body>" +
+                "</html>";
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+
+            System.out.println("=== EMAIL DE RESET ENVIADO ===");
+            System.out.println("Destinatario: " + email);
+            System.out.println("Código: " + verificationCode);
+            System.out.println("============================");
+
+        } catch (Exception e) {
+            System.err.println("Error enviando email de reset: " + e.getMessage());
+            System.out.println("=== CÓDIGO DE RESET SGH (FALLBACK) ===");
+            System.out.println("Email: " + email);
+            System.out.println("Código: " + verificationCode);
+            System.out.println("Este código expira en 10 minutos");
+            System.out.println("=====================================");
         }
     }
 
