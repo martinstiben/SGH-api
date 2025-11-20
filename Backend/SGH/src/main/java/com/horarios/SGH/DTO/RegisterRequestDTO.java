@@ -32,7 +32,7 @@ public class RegisterRequestDTO {
     @Schema(description = "ID de la materia (requerido solo para maestros)", example = "1", required = false)
     private Integer subjectId;
 
-    @Schema(description = "ID del curso (requerido solo para estudiantes)", example = "1", required = false)
+    @Schema(description = "ID del curso (requerido solo para estudiantes). Los cursos disponibles se obtienen desde GET /courses. Ejemplos: 1=1A, 2=2B, 3=3C", example = "1", required = false)
     private Integer courseId;
 
     public String getName() { return name; }

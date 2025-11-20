@@ -97,6 +97,8 @@ public class AuthController {
         try {
             String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole(), request.getCourseId());
             return ResponseEntity.ok(Map.of("message", msg));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (IllegalStateException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {

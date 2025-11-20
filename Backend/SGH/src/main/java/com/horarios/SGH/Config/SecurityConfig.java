@@ -92,6 +92,8 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/schedules-crud/**").authenticated()
+                // Endpoint específico para estudiantes requiere autenticación
+                .requestMatchers("/schedules-crud/my-schedule").authenticated()
                 // Endpoints de generación de horarios requieren rol COORDINADOR
                 .requestMatchers("/schedules/generate", "/schedules/auto-generate", "/schedules/regenerate").authenticated()
                 // Solo subjects y courses requieren autenticación para operaciones de escritura
