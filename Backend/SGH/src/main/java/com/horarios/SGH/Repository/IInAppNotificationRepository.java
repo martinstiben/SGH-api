@@ -6,9 +6,11 @@ import com.horarios.SGH.Model.NotificationPriority;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -84,6 +86,8 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Marca todas las notificaciones de un usuario como leídas
      */
+    @Modifying
+    @Transactional
     @Query("UPDATE in_app_notifications n SET n.isRead = true, n.readAt = :now " +
            "WHERE n.userId = :userId AND n.isRead = false")
     void markAllAsReadByUserId(@Param("userId") Integer userId, @Param("now") LocalDateTime now);
@@ -91,6 +95,8 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Marca una notificación específica como leída
      */
+    @Modifying
+    @Transactional
     @Query("UPDATE in_app_notifications n SET n.isRead = true, n.readAt = :now " +
            "WHERE n.notificationId = :notificationId")
     void markAsRead(@Param("notificationId") Long notificationId, @Param("now") LocalDateTime now);
@@ -98,6 +104,8 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Archiva notificaciones antiguas (más de días especificados)
      */
+    @Modifying
+    @Transactional
     @Query("UPDATE in_app_notifications n SET n.isArchived = true " +
            "WHERE n.userId = :userId AND n.createdAt < :cutoffDate AND n.isArchived = false")
     void archiveOldByUserId(@Param("userId") Integer userId, @Param("cutoffDate") LocalDateTime cutoffDate);
@@ -105,6 +113,8 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Elimina notificaciones expiradas
      */
+    @Modifying
+    @Transactional
     @Query("DELETE FROM in_app_notifications n WHERE n.expiresAt IS NOT NULL AND n.expiresAt < :now")
     void deleteExpired(@Param("now") LocalDateTime now);
     

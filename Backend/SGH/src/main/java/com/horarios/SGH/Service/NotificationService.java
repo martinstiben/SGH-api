@@ -2695,48 +2695,5 @@ public class NotificationService {
         );
     }
 
-    /**
-     * Método público para testing directo - envía notificación inmediatamente
-     */
-    public String sendTestNotificationDirect(NotificationDTO notification) {
-        try {
-            NotificationLog logEntry = new NotificationLog(
-                notification.getRecipientEmail(),
-                notification.getRecipientName(),
-                notification.getRecipientRole(),
-                NotificationType.valueOf(notification.getNotificationType()),
-                notification.getSubject(),
-                notification.getContent()
-            );
-            notificationLogRepository.save(logEntry);
 
-            sendEmail(notification);
-
-            logEntry.markAsSent();
-            notificationLogRepository.save(logEntry);
-
-            return "OK";
-
-        } catch (Exception e) {
-            String errorMsg = e.getMessage();
-            log.error("Error en envío directo de testing: {}", errorMsg);
-
-            try {
-                NotificationLog failedLog = new NotificationLog(
-                    notification.getRecipientEmail(),
-                    notification.getRecipientName(),
-                    notification.getRecipientRole(),
-                    NotificationType.valueOf(notification.getNotificationType()),
-                    notification.getSubject(),
-                    notification.getContent()
-                );
-                failedLog.markAsFailed(errorMsg);
-                notificationLogRepository.save(failedLog);
-            } catch (Exception logError) {
-                log.warn("No se pudo crear log de error: {}", logError.getMessage());
-            }
-
-            return errorMsg;
-        }
-    }
 }

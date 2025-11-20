@@ -54,10 +54,10 @@ public class InAppNotificationResponseDTO {
     private String category;
 
     @Schema(description = "Indica si la notificación fue leída", example = "false")
-    private boolean isRead;
+    private boolean read;
 
     @Schema(description = "Indica si la notificación está archivada", example = "false")
-    private boolean isArchived;
+    private boolean archived;
 
     @Schema(description = "Fecha de expiración (opcional)")
     private LocalDateTime expiresAt;
@@ -85,10 +85,10 @@ public class InAppNotificationResponseDTO {
     private String age;
 
     @Schema(description = "Indica si es una notificación reciente", example = "true")
-    private boolean isRecent;
+    private boolean recent;
 
     @Schema(description = "Indica si la notificación está activa", example = "true")
-    private boolean isActive;
+    private boolean active;
 
     @Schema(description = "Indica si requiere atención inmediata", example = "false")
     private boolean requiresImmediateAttention;

@@ -125,7 +125,9 @@ public class InAppNotificationService {
     @Transactional
     public void markAsRead(Long notificationId) {
         LocalDateTime now = LocalDateTime.now();
+        log.info("Marcando notificación {} como leída", notificationId);
         inAppNotificationRepository.markAsRead(notificationId, now);
+        log.info("Notificación {} marcada como leída exitosamente", notificationId);
     }
     
     /**

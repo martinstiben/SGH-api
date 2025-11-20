@@ -58,6 +58,11 @@ public class InAppNotificationController {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
 
+            // Log para debugging
+            if (!notificationDTOs.isEmpty()) {
+                log.info("Primera notificación - isRead: {}", notificationDTOs.get(0).isRead());
+            }
+
             Map<String, Object> response = Map.of(
                 "notifications", notificationDTOs,
                 "totalElements", notifications.getTotalElements(),
@@ -188,6 +193,8 @@ public class InAppNotificationController {
         }
     }
 
+
+
     /**
      * Convierte InAppNotification a DTO de respuesta
      */
@@ -208,6 +215,8 @@ public class InAppNotificationController {
      * Obtiene el ID del usuario actual desde el contexto de seguridad
      */
     private Integer getCurrentUserId() {
+        log.info("Iniciando obtención de userId actual");
+        
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null) {
@@ -215,28 +224,46 @@ public class InAppNotificationController {
                 throw new RuntimeException("Usuario no autenticado");
             }
 
-            Object principal = authentication.getPrincipal();
-            log.debug("Principal type: {}", principal != null ? principal.getClass().getName() : "null");
-            log.debug("Principal value: {}", principal);
+            log.debug("Autenticación encontrada - Authorities: {}", authentication.getAuthorities());
+            log.debug("Principal type: {}", authentication.getPrincipal().getClass().getName());
+            log.debug("Principal value: {}", authentication.getPrincipal());
 
-            String email;
+            Object principal = authentication.getPrincipal();
+            String email = null;
+            Integer userId = null;
+
+            // Caso 1: Usuario está directamente en el principal
             if (principal instanceof users) {
                 users user = (users) principal;
+                log.debug("Usuario encontrado como principal: {} (ID: {})", 
+                         user.getUserName(), user.getUserId());
+                
+                // Intentar obtener email de person o usar username
                 if (user.getPerson() != null && user.getPerson().getEmail() != null) {
                     email = user.getPerson().getEmail();
-                    log.debug("Usuario encontrado directamente: {} (ID: {})", email, user.getUserId());
-                    return user.getUserId();
+                    log.debug("Email obtenido de person: {}", email);
                 } else {
-                    log.warn("Usuario encontrado pero person o email es null, usando userName");
                     email = user.getUserName();
+                    log.debug("Usando userName como email: {}", email);
                 }
-            } else if (principal instanceof String) {
-                // Si es un String (email), usarlo directamente
+                userId = user.getUserId();
+            } 
+            // Caso 2: Principal es User de Spring Security
+            else if (principal instanceof org.springframework.security.core.userdetails.User) {
+                org.springframework.security.core.userdetails.User securityUser = 
+                    (org.springframework.security.core.userdetails.User) principal;
+                email = securityUser.getUsername();
+                log.debug("Principal es User de Spring Security: {}", email);
+            }
+            // Caso 3: El principal es un String (email/username)
+            else if (principal instanceof String) {
                 email = (String) principal;
-                log.debug("Principal es email: {}", email);
-            } else {
-                log.error("Tipo de principal no esperado: {}", principal != null ? principal.getClass().getName() : "null");
-                throw new RuntimeException("Tipo de principal no soportado");
+                log.debug("Principal es String (email): {}", email);
+            } 
+            else {
+                log.error("Tipo de principal no esperado: {}", principal.getClass().getName());
+                log.error("Principal contents: {}", principal.toString());
+                throw new RuntimeException("Tipo de principal no soportado: " + principal.getClass().getName());
             }
 
             if (email == null || email.trim().isEmpty()) {
@@ -244,22 +271,46 @@ public class InAppNotificationController {
                 throw new RuntimeException("Email no disponible");
             }
 
-            // Buscar el usuario por email
-            log.debug("Buscando usuario por email: {}", email);
+            // Si ya tenemos el userId del principal, usarlo directamente
+            if (userId != null && userId > 0) {
+                log.info("UserId obtenido directamente del principal: {}", userId);
+                return userId;
+            }
+
+            // Caso 3: Buscar usuario por email en la base de datos
+            log.debug("Buscando usuario por email: {}", email.trim().toLowerCase());
             users user = usersService.findByEmail(email.trim().toLowerCase());
+            
             if (user == null) {
                 log.error("Usuario no encontrado para email: {}", email);
+                log.error("Available users in system:");
+                // Log a few users for debugging (limited to avoid spam)
+                try {
+                    // This is a debug operation - should be limited in production
+                    log.error("User lookup failed for email: {}", email);
+                } catch (Exception ex) {
+                    log.error("Error during user lookup debugging: {}", ex.getMessage());
+                }
                 throw new RuntimeException("Usuario no encontrado para email: " + email);
             }
 
-            log.debug("Usuario encontrado por email: {} (ID: {})", email, user.getUserId());
+            log.info("✅ Usuario encontrado por email: {} (ID: {})", email, user.getUserId());
             return user.getUserId();
 
         } catch (Exception e) {
-            log.error("Error obteniendo userId del contexto de seguridad: {}", e.getMessage(), e);
-            // Para evitar errores 500, devolver un ID por defecto para testing
-            log.warn("Usando ID de usuario por defecto (1) para testing");
-            return 1; // ID por defecto para testing
+            log.error("❌ Error obteniendo userId del contexto de seguridad: {}", e.getMessage(), e);
+            
+            // Solo devolver fallback en casos específicos de testing
+            String requestURI = "unknown";
+            try {
+                // Log the error but don't expose internal details to clients
+                log.error("❌ Falló la obtención de userId - este es un error crítico de autenticación");
+            } catch (Exception ex) {
+                log.error("Error adicional en logging: {}", ex.getMessage());
+            }
+            
+            // Throw the exception instead of returning a fallback
+            throw new RuntimeException("Error de autenticación: No se pudo obtener el ID del usuario", e);
         }
     }
 }
