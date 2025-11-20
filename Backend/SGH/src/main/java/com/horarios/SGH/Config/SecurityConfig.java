@@ -74,11 +74,13 @@ public class SecurityConfig {
                     "/teachers/**",      // CRUD completo de profesores
                     "/subjects/**",      // materias para dashboard
                     "/courses/**",       // cursos para dashboard
-                    "/schedules/**",     // horarios para dashboard
+                    "/schedules/history", // historial de horarios
+                    "/schedules/pdf/**", // exportar PDFs
+                    "/schedules/excel/**", // exportar Excel
+                    "/schedules/image/**", // exportar imágenes
                     "/schedules-crud/by-course/**",  // ver horarios de curso
                     "/schedules-crud/by-teacher/**", // ver horarios de profesor
                     "/schedules-crud",   // ver todos los horarios (GET)
-                    "/schedules/history", // historial de horarios
                     "/availability/**",  // disponibilidad de profesores
                     "/users/*/photo",    // obtener foto de usuario
                     "/swagger-ui/**",
@@ -90,6 +92,8 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/schedules-crud/**").authenticated()
+                // Endpoints de generación de horarios requieren rol COORDINADOR
+                .requestMatchers("/schedules/generate", "/schedules/auto-generate", "/schedules/regenerate").authenticated()
                 // Solo subjects y courses requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/subjects/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/subjects/**").authenticated()

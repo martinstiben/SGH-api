@@ -232,6 +232,11 @@ public class ScheduleService {
         scheduleRepo.deleteByDay(day);
     }
 
+    @Transactional
+    public void deleteAllSchedules() {
+        scheduleRepo.deleteAll();
+    }
+
     private schedule toEntity(ScheduleDTO dto) {
         schedule s = new schedule();
         s.setId(dto.getId());
