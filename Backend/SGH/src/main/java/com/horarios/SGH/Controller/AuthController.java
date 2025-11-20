@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/auth")
@@ -94,7 +95,7 @@ public class AuthController {
     })
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request) {
         try {
-            String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole());
+            String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole(), request.getCourseId());
             return ResponseEntity.ok(Map.of("message", msg));
         } catch (IllegalStateException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
@@ -123,7 +124,19 @@ public class AuthController {
     public ResponseEntity<?> getProfile() {
         try {
             var user = service.getProfile();
-            return ResponseEntity.ok(Map.of("userId", user.getUserId(), "name", user.getPerson().getFullName(), "email", user.getPerson().getEmail(), "role", user.getRole().getRoleName()));
+            var profile = new HashMap<String, Object>();
+            profile.put("userId", user.getUserId());
+            profile.put("name", user.getPerson().getFullName());
+            profile.put("email", user.getPerson().getEmail());
+            profile.put("role", user.getRole().getRoleName());
+
+            // Agregar información del curso si es estudiante
+            if (user.getCourse() != null) {
+                profile.put("courseId", user.getCourse().getId());
+                profile.put("courseName", user.getCourse().getCourseName());
+            }
+
+            return ResponseEntity.ok(profile);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "Error obteniendo perfil"));
         }

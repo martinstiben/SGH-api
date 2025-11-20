@@ -23,6 +23,10 @@ public class users {
     @NotNull(message = "El rol es obligatorio")
     private Roles role;
 
+    @ManyToOne
+    @JoinColumn(name = "course_id")
+    private courses course;
+
     @Column(name = "password_hash", nullable = false, length = 255)
     @NotNull(message = "El hash de la contraseña es obligatorio")
     @Size(min = 1, max = 255, message = "El hash de la contraseña debe tener entre 1 y 255 caracteres")

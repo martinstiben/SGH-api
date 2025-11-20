@@ -32,6 +32,9 @@ public class RegisterRequestDTO {
     @Schema(description = "ID de la materia (requerido solo para maestros)", example = "1", required = false)
     private Integer subjectId;
 
+    @Schema(description = "ID del curso (requerido solo para estudiantes)", example = "1", required = false)
+    private Integer courseId;
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -46,4 +49,7 @@ public class RegisterRequestDTO {
 
     public Integer getSubjectId() { return subjectId; }
     public void setSubjectId(Integer subjectId) { this.subjectId = subjectId; }
+
+    public Integer getCourseId() { return courseId; }
+    public void setCourseId(Integer courseId) { this.courseId = courseId; }
 }

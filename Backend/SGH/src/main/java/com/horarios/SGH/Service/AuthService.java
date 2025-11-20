@@ -15,11 +15,13 @@ import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.Roles;
 import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Model.People;
+import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.AccountStatus;
 import com.horarios.SGH.Model.NotificationType;
 import com.horarios.SGH.Repository.Iusers;
 import com.horarios.SGH.Repository.IPeopleRepository;
 import com.horarios.SGH.Repository.IRolesRepository;
+import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
@@ -39,6 +41,7 @@ public class AuthService {
     private final Iusers repo;
     private final IPeopleRepository peopleRepo;
     private final IRolesRepository rolesRepo;
+    private final Icourses courseRepo;
     private final Iteachers teacherRepo;
     private final Isubjects subjectRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
@@ -54,11 +57,12 @@ public class AuthService {
     private NotificationService notificationService;
 
     public AuthService(Iusers repo,
-                             IPeopleRepository peopleRepo,
-                             IRolesRepository rolesRepo,
-                             Iteachers teacherRepo,
-                             Isubjects subjectRepo,
-                             TeacherSubjectRepository teacherSubjectRepo,
+                              IPeopleRepository peopleRepo,
+                              IRolesRepository rolesRepo,
+                              Icourses courseRepo,
+                              Iteachers teacherRepo,
+                              Isubjects subjectRepo,
+                              TeacherSubjectRepository teacherSubjectRepo,
                              PasswordEncoder encoder,
                              AuthenticationManager authManager,
                              JwtTokenProvider jwtTokenProvider,
@@ -66,6 +70,7 @@ public class AuthService {
         this.repo = repo;
         this.peopleRepo = peopleRepo;
         this.rolesRepo = rolesRepo;
+        this.courseRepo = courseRepo;
         this.teacherRepo = teacherRepo;
         this.subjectRepo = subjectRepo;
         this.teacherSubjectRepo = teacherSubjectRepo;
@@ -75,7 +80,7 @@ public class AuthService {
         this.inAppNotificationService = inAppNotificationService;
     }
 
-    public String register(String name, String email, String rawPassword, Role role) {
+    public String register(String name, String email, String rawPassword, Role role, Integer courseId) {
         try {
             // Validar entradas usando ValidationUtils
             ValidationUtils.validateName(name);
@@ -84,6 +89,20 @@ public class AuthService {
 
             if (role == null) {
                 throw new IllegalArgumentException("El rol no puede ser nulo");
+            }
+
+            // Validar courseId para estudiantes
+            if (role == Role.ESTUDIANTE) {
+                if (courseId == null) {
+                    throw new IllegalArgumentException("Los estudiantes deben seleccionar un curso");
+                }
+                // Verificar que el curso existe
+                courseRepo.findById(courseId)
+                    .orElseThrow(() -> new IllegalArgumentException("El curso seleccionado no existe"));
+            } else {
+                if (courseId != null) {
+                    throw new IllegalArgumentException("Solo los estudiantes pueden seleccionar un curso");
+                }
             }
 
             // Verificar que el email no esté en uso
@@ -104,6 +123,13 @@ public class AuthService {
             // Crear y guardar el nuevo usuario con estado pendiente de aprobación
             users newUser = new users(person, userRole, encoder.encode(rawPassword));
             newUser.setAccountStatus(AccountStatus.PENDING_APPROVAL);
+
+            // Asignar curso si es estudiante
+            if (role == Role.ESTUDIANTE) {
+                courses selectedCourse = courseRepo.findById(courseId).get();
+                newUser.setCourse(selectedCourse);
+            }
+
             users savedUser = repo.save(newUser);
 
             System.out.println("Usuario registrado exitosamente: " + savedUser.getUserId());
