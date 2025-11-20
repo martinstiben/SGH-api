@@ -28,6 +28,7 @@ public class ScheduleGenerationService {
     private final IScheduleRepository scheduleRepo;
     private final Isubjects subjectRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
+    private final ScheduleService scheduleService;
 
     @Transactional
     public ScheduleHistoryDTO generate(ScheduleHistoryDTO request, String executedBy) {
@@ -64,7 +65,7 @@ public class ScheduleGenerationService {
                 // Simulation: count courses without assigned schedule
                 List<courses> coursesWithoutSchedule = getCoursesWithoutSchedule();
                 totalGenerated = coursesWithoutSchedule.size();
-                
+
                 // En modo simulación, también detectar cursos sin disponibilidad
                 SimulationResult simulationResult = analyzeCoursesWithoutAvailability(request.getPeriodStart(), request.getPeriodEnd());
                 coursesWithoutAvailability = simulationResult.getCoursesWithoutAvailability();
@@ -80,18 +81,18 @@ public class ScheduleGenerationService {
             ScheduleHistoryDTO response = toDTO(history);
             response.setCoursesWithoutAvailability(coursesWithoutAvailability);
             response.setTotalCoursesWithoutAvailability(coursesWithoutAvailability.size());
-            
+
             return response;
         } catch (Exception ex) {
             history.setStatus("FAILED");
             history.setMessage(ex.getMessage() != null ? ex.getMessage() : "Error en la generación");
             history.setExecutedAt(LocalDateTime.now());
             historyRepository.save(history);
-            
+
             ScheduleHistoryDTO response = toDTO(history);
             response.setCoursesWithoutAvailability(new ArrayList<>());
             response.setTotalCoursesWithoutAvailability(0);
-            
+
             return response;
         }
     }
@@ -360,21 +361,21 @@ public class ScheduleGenerationService {
 
         // Generar slots para mañana
         if (availability.getAmStart() != null && availability.getAmEnd() != null) {
-            slots.addAll(generateSlotsInPeriodForCourse(course, teacher, availability.getAmStart(), availability.getAmEnd(),
+            slots.addAll(generateSlotsInPeriodForCourse(course, teacher, subject, availability.getAmStart(), availability.getAmEnd(),
                                                       dayName, scheduleName));
         }
 
         // Generar slots para tarde
         if (availability.getPmStart() != null && availability.getPmEnd() != null) {
-            slots.addAll(generateSlotsInPeriodForCourse(course, teacher, availability.getPmStart(), availability.getPmEnd(),
+            slots.addAll(generateSlotsInPeriodForCourse(course, teacher, subject, availability.getPmStart(), availability.getPmEnd(),
                                                       dayName, scheduleName));
         }
 
         return slots;
     }
 
-    private List<schedule> generateSlotsInPeriodForCourse(courses course, teachers teacher, LocalTime start, LocalTime end,
-                                                       String day, String scheduleName) {
+    private List<schedule> generateSlotsInPeriodForCourse(courses course, teachers teacher, subjects subject, LocalTime start, LocalTime end,
+                                                        String day, String scheduleName) {
         List<schedule> slots = new ArrayList<>();
         LocalTime currentTime = start;
 
@@ -385,6 +386,8 @@ public class ScheduleGenerationService {
 
             schedule slot = new schedule();
             slot.setCourseId(course);
+            slot.setTeacherId(teacher);
+            slot.setSubjectId(subject);
             slot.setDay(day);
             slot.setStartTime(currentTime);
             slot.setEndTime(slotEnd);
@@ -424,6 +427,39 @@ public class ScheduleGenerationService {
             return String.format("Generación completada. %d horarios generados, %d cursos sin disponibilidad de profesores.", 
                 totalGenerated, totalWithoutAvailability);
         }
+    }
+
+    /**
+     * Genera horarios automáticamente con parámetros por defecto (semana actual)
+     */
+    @Transactional
+    public ScheduleHistoryDTO autoGenerate(String executedBy) {
+        ScheduleHistoryDTO request = new ScheduleHistoryDTO();
+        LocalDate today = LocalDate.now();
+
+        // Calcular lunes y viernes de la semana actual
+        LocalDate monday = today.with(java.time.DayOfWeek.MONDAY);
+        LocalDate friday = today.with(java.time.DayOfWeek.FRIDAY);
+
+        request.setPeriodStart(monday);
+        request.setPeriodEnd(friday);
+        request.setDryRun(false);
+        request.setForce(false);
+        request.setParams("Generación automática desde interfaz");
+
+        return generate(request, executedBy);
+    }
+
+    /**
+     * Regenera todo el horario: borra todos los horarios existentes y genera nuevos automáticamente
+     */
+    @Transactional
+    public ScheduleHistoryDTO regenerate(String executedBy) {
+        // Borrar todos los horarios existentes
+        scheduleService.deleteAllSchedules();
+
+        // Generar nuevos horarios automáticamente
+        return autoGenerate(executedBy);
     }
 
     private ScheduleHistoryDTO toDTO(schedule_history h) {

@@ -75,27 +75,6 @@ public class DataInitializer {
                 System.out.println(">> Master ya existe: " + masterUsername);
             }
 
-            // Crear usuario "Juan Saavedra"
-            if (!repo.existsByUserName("saavedrajuanpis@gmail.com")) {
-                if (peopleRepo.findByEmail("saavedrajuanpis@gmail.com").isPresent()) {
-                    System.out.println(">> Persona con email saavedrajuanpis@gmail.com ya existe, saltando creación");
-                } else {
-                    People juanPerson = new People("Juan Saavedra", "saavedrajuanpis@gmail.com");
-                    juanPerson = peopleRepo.save(juanPerson);
-
-                    Roles estudianteRole = rolesRepo.findByRoleName("ESTUDIANTE")
-                        .orElseGet(() -> {
-                            System.out.println(">> Rol ESTUDIANTE no encontrado, creando...");
-                            return rolesRepo.save(new Roles("ESTUDIANTE"));
-                        });
-
-                    users juanUser = new users(juanPerson, estudianteRole, encoder.encode("Simon12"));
-                    repo.save(juanUser);
-                    System.out.println(">> Usuario creado: saavedrajuanpis@gmail.com");
-                }
-            } else {
-                System.out.println(">> Usuario ya existe: saavedrajuanpis@gmail.com");
-            }
             long total = repo.count();
             System.out.println(">> Usuarios totales: " + total + " (sin límite)");
         };

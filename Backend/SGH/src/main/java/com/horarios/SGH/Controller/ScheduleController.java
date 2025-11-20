@@ -29,12 +29,12 @@ public class ScheduleController {
     private final ScheduleExportService exportService;
 
     @PostMapping("/generate")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Generar horarios automáticamente por cursos",
         description = "Genera horarios automáticamente para cursos que no tienen horario asignado. " +
-                     "Utiliza únicamente el profesor asignado a cada curso y valida que cada profesor " +
-                     "esté asociado a una sola materia."
+                      "Utiliza únicamente el profesor asignado a cada curso y valida que cada profesor " +
+                      "esté asociado a una sola materia."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Horarios generados exitosamente"),
@@ -49,8 +49,40 @@ public class ScheduleController {
         return generationService.generate(request, auth.getName());
     }
 
+    @PostMapping("/auto-generate")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(
+        summary = "Generar horarios automáticamente (interfaz simplificada)",
+        description = "Genera horarios automáticamente para cursos sin asignación usando parámetros por defecto " +
+                      "(semana actual, lunes a viernes). Ideal para botón en interfaz de usuario."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horarios generados exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en configuración de profesores"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    public ScheduleHistoryDTO autoGenerate(Authentication auth) {
+        return generationService.autoGenerate(auth.getName());
+    }
+
+    @PostMapping("/regenerate")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(
+        summary = "Regenerar todo el horario automáticamente",
+        description = "Borra todos los horarios existentes y genera un horario completamente nuevo " +
+                      "automáticamente para todos los cursos. Útil para reiniciar la planificación."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horario regenerado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en configuración de profesores"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    public ScheduleHistoryDTO regenerate(Authentication auth) {
+        return generationService.regenerate(auth.getName());
+    }
+
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Obtener historial de generaciones",
         description = "Consulta el historial de todas las generaciones de horarios realizadas en el sistema"
