@@ -27,6 +27,19 @@ public class usersService {
         }
     }
 
+    /**
+     * Encuentra un usuario por email
+     * @param email Email del usuario
+     * @return Usuario encontrado o null si no existe
+     */
+    public users findByEmail(String email) {
+        try {
+            return usersRepository.findByPerson_Email(email.trim().toLowerCase()).orElse(null);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al buscar usuario por email: " + email + ", Error: " + e.getMessage());
+        }
+    }
+
     // Método de login removido - ahora se maneja en AuthService con 2FA
 
     /**
