@@ -14,6 +14,7 @@ import com.horarios.SGH.Repository.ITeacherAvailabilityRepository;
 import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
+import com.horarios.SGH.Repository.Iusers;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
 import com.horarios.SGH.DTO.NotificationDTO;
 import com.horarios.SGH.Model.NotificationType;
@@ -38,6 +39,7 @@ public class ScheduleService {
     private final Icourses courseRepo;
     private final Iteachers teacherRepo;
     private final Isubjects subjectRepo;
+    private final Iusers userRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
 
     @Autowired
@@ -149,6 +151,22 @@ public class ScheduleService {
 
     public List<ScheduleDTO> getAll() {
         return scheduleRepo.findAll().stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    public List<ScheduleDTO> getByStudentEmail(String email) {
+        users student = userRepo.findByUserName(email)
+            .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (student.getCourse() == null) {
+            throw new RuntimeException("El estudiante no tiene un curso asignado");
+        }
+
+        return getByCourse(student.getCourse().getId());
+    }
+
+    public users getUserByEmail(String email) {
+        return userRepo.findByUserName(email)
+            .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 
     @Transactional

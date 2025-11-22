@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/auth")
@@ -96,6 +97,8 @@ public class AuthController {
         try {
             String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole(), request.getSubjectId(), request.getCourseId());
             return ResponseEntity.ok(Map.of("message", msg));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (IllegalStateException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
@@ -123,14 +126,14 @@ public class AuthController {
     public ResponseEntity<?> getProfile() {
         try {
             var user = service.getProfile();
-            Map<String, Object> profile = new java.util.HashMap<>();
+            Map<String, Object> profile = new HashMap<>();
             profile.put("userId", user.getUserId());
             profile.put("name", user.getPerson().getFullName());
             profile.put("email", user.getPerson().getEmail());
             profile.put("role", user.getRole().getRoleName());
 
-            // Incluir courseId si el usuario es estudiante
-            if (user.getRole().getRoleName().equals("ESTUDIANTE") && user.getCourse() != null) {
+            // Agregar información del curso si es estudiante
+            if (user.getCourse() != null) {
                 profile.put("courseId", user.getCourse().getId());
                 profile.put("courseName", user.getCourse().getCourseName());
             }

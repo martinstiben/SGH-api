@@ -1,6 +1,6 @@
 package com.horarios.SGH.Service;
 
-import org.springframework.beans.factory.annotation.Autowired; 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import jakarta.mail.internet.MimeMessage;
@@ -21,15 +21,14 @@ import com.horarios.SGH.Model.NotificationType;
 import com.horarios.SGH.Repository.Iusers;
 import com.horarios.SGH.Repository.IPeopleRepository;
 import com.horarios.SGH.Repository.IRolesRepository;
+import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
-import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
 import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
 import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.jwt.JwtTokenProvider;
-import com.horarios.SGH.Service.ValidationUtils;
 
 
 /**
@@ -42,9 +41,9 @@ public class AuthService {
     private final Iusers repo;
     private final IPeopleRepository peopleRepo;
     private final IRolesRepository rolesRepo;
+    private final Icourses courseRepo;
     private final Iteachers teacherRepo;
     private final Isubjects subjectRepo;
-    private final Icourses courseRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
     private final PasswordEncoder encoder;
     private final AuthenticationManager authManager;
@@ -60,9 +59,9 @@ public class AuthService {
     public AuthService(Iusers repo,
                               IPeopleRepository peopleRepo,
                               IRolesRepository rolesRepo,
+                              Icourses courseRepo,
                               Iteachers teacherRepo,
                               Isubjects subjectRepo,
-                              Icourses courseRepo,
                               TeacherSubjectRepository teacherSubjectRepo,
                               PasswordEncoder encoder,
                               AuthenticationManager authManager,
@@ -71,9 +70,9 @@ public class AuthService {
         this.repo = repo;
         this.peopleRepo = peopleRepo;
         this.rolesRepo = rolesRepo;
+        this.courseRepo = courseRepo;
         this.teacherRepo = teacherRepo;
         this.subjectRepo = subjectRepo;
-        this.courseRepo = courseRepo;
         this.teacherSubjectRepo = teacherSubjectRepo;
         this.encoder = encoder;
         this.authManager = authManager;
