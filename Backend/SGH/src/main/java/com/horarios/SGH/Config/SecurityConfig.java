@@ -80,7 +80,6 @@ public class SecurityConfig {
                     "/schedules/image/**", // exportar imágenes
                     "/schedules-crud/by-course/**",  // ver horarios de curso
                     "/schedules-crud/by-teacher/**", // ver horarios de profesor
-                    "/schedules-crud",   // ver todos los horarios (GET)
                     "/availability/**",  // disponibilidad de profesores
                     "/users/*/photo",    // obtener foto de usuario
                     "/swagger-ui/**",

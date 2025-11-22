@@ -164,6 +164,11 @@ public class ScheduleService {
         return getByCourse(student.getCourse().getId());
     }
 
+    public users getUserByEmail(String email) {
+        return userRepo.findByUserName(email)
+            .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+
     @Transactional
     public ScheduleDTO updateSchedule(Integer id, ScheduleDTO dto, String executedBy) {
         System.out.println("Updating schedule with id: " + id + ", dto: " + dto);

@@ -120,7 +120,28 @@ public class ScheduleCrudController {
     }
 
     @GetMapping
-    public List<ScheduleDTO> getAll() {
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Obtener horarios según rol del usuario",
+        description = "Estudiantes ven solo su horario. Coordinadores ven todos los horarios."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horarios obtenidos según permisos"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    public List<ScheduleDTO> getAll(Authentication auth) {
+        // Obtener el usuario autenticado
+        com.horarios.SGH.Model.users currentUser = scheduleService.getUserByEmail(auth.getName());
+
+        // Si es estudiante, filtrar por su curso
+        if ("ESTUDIANTE".equals(currentUser.getRole().getRoleName())) {
+            if (currentUser.getCourse() == null) {
+                throw new RuntimeException("Estudiante no tiene curso asignado");
+            }
+            return scheduleService.getByCourse(currentUser.getCourse().getId());
+        }
+
+        // Para coordinadores y otros roles con permisos, mostrar todos
         return scheduleService.getAll();
     }
 
