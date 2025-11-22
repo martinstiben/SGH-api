@@ -72,7 +72,7 @@ public class AuthControllerTest {
 
     @Test
     public void testRegisterSuccess() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(Integer.class))).thenReturn("Usuario registrado correctamente. Pendiente de aprobación por el coordinador.");
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any())).thenReturn("Usuario registrado correctamente. Pendiente de aprobación por el coordinador.");
 
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +83,7 @@ public class AuthControllerTest {
 
     @Test
     public void testRegisterFailure() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(Integer.class)))
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any()))
                 .thenThrow(new IllegalStateException("El correo electrónico ya está en uso"));
 
         mockMvc.perform(post("/auth/register")

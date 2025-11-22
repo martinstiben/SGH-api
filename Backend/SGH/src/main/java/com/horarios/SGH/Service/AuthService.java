@@ -1,6 +1,6 @@
 package com.horarios.SGH.Service;
 
-import org.springframework.beans.factory.annotation.Autowired; 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import jakarta.mail.internet.MimeMessage;
@@ -13,9 +13,9 @@ import org.springframework.stereotype.Service;
 
 import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.Roles;
+import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Model.People;
-import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.AccountStatus;
 import com.horarios.SGH.Model.NotificationType;
 import com.horarios.SGH.Repository.Iusers;
@@ -63,10 +63,10 @@ public class AuthService {
                               Iteachers teacherRepo,
                               Isubjects subjectRepo,
                               TeacherSubjectRepository teacherSubjectRepo,
-                             PasswordEncoder encoder,
-                             AuthenticationManager authManager,
-                             JwtTokenProvider jwtTokenProvider,
-                             InAppNotificationService inAppNotificationService) {
+                              PasswordEncoder encoder,
+                              AuthenticationManager authManager,
+                              JwtTokenProvider jwtTokenProvider,
+                              InAppNotificationService inAppNotificationService) {
         this.repo = repo;
         this.peopleRepo = peopleRepo;
         this.rolesRepo = rolesRepo;
@@ -80,7 +80,7 @@ public class AuthService {
         this.inAppNotificationService = inAppNotificationService;
     }
 
-    public String register(String name, String email, String rawPassword, Role role, Integer courseId) {
+    public String register(String name, String email, String rawPassword, Role role, Integer subjectId, Integer courseId) {
         try {
             // Validar entradas usando ValidationUtils
             ValidationUtils.validateName(name);
@@ -91,18 +91,26 @@ public class AuthService {
                 throw new IllegalArgumentException("El rol no puede ser nulo");
             }
 
+            // Validar subjectId para maestros
+            if (role == Role.MAESTRO && subjectId == null) {
+                throw new IllegalArgumentException("Los maestros deben tener una materia asignada");
+            }
+
             // Validar courseId para estudiantes
-            if (role == Role.ESTUDIANTE) {
-                if (courseId == null) {
-                    throw new IllegalArgumentException("Los estudiantes deben seleccionar un curso");
-                }
-                // Verificar que el curso existe
+            if (role == Role.ESTUDIANTE && courseId == null) {
+                throw new IllegalArgumentException("Los estudiantes deben tener un curso asignado");
+            }
+
+            // Verificar que la materia existe si se proporciona
+            if (subjectId != null) {
+                subjectRepo.findById(subjectId)
+                    .orElseThrow(() -> new IllegalArgumentException("La materia especificada no existe"));
+            }
+
+            // Verificar que el curso existe si se proporciona
+            if (courseId != null) {
                 courseRepo.findById(courseId)
-                    .orElseThrow(() -> new IllegalArgumentException("El curso seleccionado no existe"));
-            } else {
-                if (courseId != null) {
-                    throw new IllegalArgumentException("Solo los estudiantes pueden seleccionar un curso");
-                }
+                    .orElseThrow(() -> new IllegalArgumentException("El curso especificado no existe"));
             }
 
             // Verificar que el email no esté en uso
@@ -124,10 +132,11 @@ public class AuthService {
             users newUser = new users(person, userRole, encoder.encode(rawPassword));
             newUser.setAccountStatus(AccountStatus.PENDING_APPROVAL);
 
-            // Asignar curso si es estudiante
-            if (role == Role.ESTUDIANTE) {
-                courses selectedCourse = courseRepo.findById(courseId).get();
-                newUser.setCourse(selectedCourse);
+            // Asignar curso para estudiantes
+            if (role == Role.ESTUDIANTE && courseId != null) {
+                courses course = courseRepo.findById(courseId)
+                    .orElseThrow(() -> new IllegalArgumentException("El curso especificado no existe"));
+                newUser.setCourse(course);
             }
 
             users savedUser = repo.save(newUser);
@@ -447,12 +456,50 @@ public class AuthService {
      */
     private void notifyCoordinatorsOfNewUser(users newUser) {
         try {
-            System.out.println("Buscando coordinadores para notificar...");
+            System.out.println("=== NOTIFICANDO COORDINADORES ===");
+            System.out.println("Nuevo usuario: " + newUser.getUserId() + " - " +
+                             (newUser.getPerson() != null ? newUser.getPerson().getFullName() : "Sin nombre"));
+
+            // Buscar coordinadores
+            System.out.println("Buscando coordinadores en la base de datos...");
             java.util.List<users> coordinators = repo.findByRoleNameWithDetails("COORDINADOR");
             System.out.println("Encontrados " + coordinators.size() + " coordinadores");
 
+            if (coordinators.isEmpty()) {
+                System.out.println("⚠️ No se encontraron coordinadores en la base de datos");
+                System.out.println("Creando notificación de prueba para usuario ID 1 (admin por defecto)");
+                // Crear notificación de prueba para el usuario 1 (admin por defecto)
+                InAppNotificationDTO testNotification = new InAppNotificationDTO();
+                testNotification.setUserId(1); // ID por defecto para testing
+                testNotification.setNotificationType(NotificationType.COORDINATOR_USER_REGISTRATION_PENDING.name());
+                testNotification.setTitle("Nuevo usuario pendiente de aprobación");
+                testNotification.setMessage(String.format(
+                    "El usuario %s (%s) con rol %s solicita registro en el sistema.",
+                    newUser.getPerson() != null ? newUser.getPerson().getFullName() : "N/A",
+                    newUser.getPerson() != null ? newUser.getPerson().getEmail() : "N/A",
+                    newUser.getRole() != null ? newUser.getRole().getRoleName() : "N/A"
+                ));
+                testNotification.setPriority("HIGH");
+                testNotification.setCategory("user_registration");
+                testNotification.setActionUrl("/dashboard/users/pending");
+                testNotification.setActionText("Revisar solicitudes");
+
+                inAppNotificationService.sendInAppNotificationAsync(testNotification)
+                    .thenAccept(notification -> {
+                        System.out.println("✅ Notificación de prueba creada exitosamente para admin");
+                    })
+                    .exceptionally(ex -> {
+                        System.err.println("❌ Error creando notificación de prueba: " + ex.getMessage());
+                        return null;
+                    });
+                return;
+            }
+
+            // Enviar notificación a cada coordinador encontrado
             for (users coordinator : coordinators) {
-                System.out.println("Enviando notificación al coordinador: " + coordinator.getUserId());
+                System.out.println("Enviando notificación al coordinador: " + coordinator.getUserId() +
+                                 " - " + (coordinator.getPerson() != null ? coordinator.getPerson().getFullName() : "Sin nombre"));
+
                 InAppNotificationDTO notification = new InAppNotificationDTO();
                 notification.setUserId(coordinator.getUserId());
                 notification.setNotificationType(NotificationType.COORDINATOR_USER_REGISTRATION_PENDING.name());
@@ -465,19 +512,25 @@ public class AuthService {
                 ));
                 notification.setPriority("HIGH");
                 notification.setCategory("user_registration");
-                notification.setActionUrl("/admin/users/pending");
+                notification.setActionUrl("/dashboard/users/pending");
                 notification.setActionText("Revisar solicitudes");
 
                 // Enviar notificación usando el servicio
+                final int coordinatorId = coordinator.getUserId();
                 inAppNotificationService.sendInAppNotificationAsync(notification)
+                    .thenAccept(savedNotification -> {
+                        System.out.println("✅ Notificación enviada exitosamente al coordinador " + coordinatorId);
+                    })
                     .exceptionally(ex -> {
-                        System.err.println("Error enviando notificación al coordinador " + coordinator.getUserId() + ": " + ex.getMessage());
+                        System.err.println("❌ Error enviando notificación al coordinador " + coordinatorId + ": " + ex.getMessage());
                         return null;
                     });
             }
+
+            System.out.println("=== FIN NOTIFICACIÓN COORDINADORES ===");
+
         } catch (Exception e) {
-            // Log error but don't fail registration
-            System.err.println("Error notificando coordinadores: " + e.getMessage());
+            System.err.println("❌ Error notificando coordinadores: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -527,6 +580,7 @@ public class AuthService {
      */
     private void notifyUserApproval(users user) {
         try {
+            // Notificación in-app
             InAppNotificationDTO notification = new InAppNotificationDTO();
             notification.setUserId(user.getUserId());
             notification.setNotificationType(NotificationType.USER_REGISTRATION_APPROVED.name());
@@ -540,6 +594,10 @@ public class AuthService {
                     System.err.println("Error notificando aprobación al usuario " + user.getUserId() + ": " + ex.getMessage());
                     return null;
                 });
+
+            // Enviar email de aprobación
+            sendApprovalEmail(user.getPerson().getEmail(), user.getPerson().getFullName());
+
         } catch (Exception e) {
             System.err.println("Error notificando aprobación al usuario: " + e.getMessage());
         }
@@ -550,6 +608,7 @@ public class AuthService {
      */
     private void notifyUserRejection(users user, String reason) {
         try {
+            // Notificación in-app
             InAppNotificationDTO notification = new InAppNotificationDTO();
             notification.setUserId(user.getUserId());
             notification.setNotificationType(NotificationType.USER_REGISTRATION_REJECTED.name());
@@ -566,6 +625,10 @@ public class AuthService {
                     System.err.println("Error notificando rechazo al usuario " + user.getUserId() + ": " + ex.getMessage());
                     return null;
                 });
+
+            // Enviar email de rechazo
+            sendRejectionEmail(user.getPerson().getEmail(), user.getPerson().getFullName(), reason);
+
         } catch (Exception e) {
             System.err.println("Error notificando rechazo al usuario: " + e.getMessage());
         }
@@ -794,6 +857,238 @@ public class AuthService {
             System.err.println("Error obteniendo usuarios pendientes: " + e.getMessage());
             e.printStackTrace();
             throw e;
+        }
+    }
+
+    /**
+     * Envía email de aprobación de registro al usuario
+     *
+     * @param email Email del destinatario
+     * @param userName Nombre del usuario
+     */
+    private void sendApprovalEmail(String email, String userName) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(email);
+            helper.setSubject("¡Registro Aprobado! - Sistema de Gestión de Horarios");
+
+            String htmlContent = "<!DOCTYPE html>" +
+                "<html lang='es'>" +
+                "<head>" +
+                "<meta charset='UTF-8'>" +
+                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                "<title>Registro Aprobado - SGH</title>" +
+                "</head>" +
+                "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); min-height: 100vh; padding: 40px 20px;'>" +
+                "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
+                "<tr>" +
+                "<td style='background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); padding: 55px 40px; text-align: center;'>" +
+                "<div style='margin: 0 auto 28px;'>" +
+                "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
+                "<span style='font-size: 52px;'>✅</span>" +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>¡Registro Aprobado!</h1>" +
+                "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
+                "</td>" +
+                "</tr>" +
+                "<tr>" +
+                "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
+                "<div style='margin-bottom: 15px;'>" +
+                "<span style='display: inline-block; font-size: 48px;'>🎉</span>" +
+                "</div>" +
+                "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>¡Felicitaciones, " + userName + "!</h2>" +
+                "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
+                "Tu solicitud de registro ha sido <strong style='color: #4caf50;'>aprobada exitosamente</strong> por el coordinador.<br>" +
+                "Ya puedes acceder a todas las funcionalidades disponibles para tu rol en el sistema SGH." +
+                "</p>" +
+                "<div style='background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(76, 175, 80, 0.3);'>" +
+                "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>¿Qué sigue?</p>" +
+                "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px; text-align: left;'>" +
+                "<div style='font-size: 16px; font-weight: 700; color: #ffffff; margin-bottom: 12px;'>🚀 Inicia sesión en el sistema</div>" +
+                "<div style='font-size: 14px; color: rgba(255,255,255,0.9); line-height: 1.6;'>" +
+                "Utiliza tu email y contraseña para acceder al portal web o aplicación móvil de SGH." +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<div style='background: #e8f5e8; border: 2px solid #4caf50; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
+                "<p style='margin: 0; color: #2e7d32; font-size: 14px; line-height: 1.6;'>" +
+                "<span style='font-size: 18px; margin-right: 8px;'>🎯</span>" +
+                "<strong>¡Bienvenido al equipo!</strong> Tu cuenta está ahora activa y lista para usar. Explora todas las funcionalidades disponibles según tu rol asignado." +
+                "</p>" +
+                "</div>" +
+                "</td>" +
+                "</tr>" +
+                "<tr>" +
+                "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
+                "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
+                "Este es un mensaje automático generado por el sistema SGH.<br>" +
+                "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
+                "Si necesitas ayuda, contacta al equipo de soporte técnico." +
+                "</p>" +
+                "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
+                "<div style='margin-bottom: 16px;'>" +
+                "<div style='width: 64px; height: 64px; background: #4caf50; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4); display: table;'>" +
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
+                "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
+                "Sistema de Gestión de Horarios" +
+                "</p>" +
+                "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
+                "Tu sistema de confianza para la gestión académica" +
+                "</p>" +
+                "</div>" +
+                "</td>" +
+                "</tr>" +
+                "</table>" +
+                "<div style='text-align: center; padding-top: 25px;'>" +
+                "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
+                "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
+                "</p>" +
+                "</div>" +
+                "</body>" +
+                "</html>";
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+
+            System.out.println("=== EMAIL DE APROBACIÓN ENVIADO ===");
+            System.out.println("Destinatario: " + email);
+            System.out.println("Usuario: " + userName);
+            System.out.println("===================================");
+
+        } catch (Exception e) {
+            System.err.println("Error enviando email de aprobación: " + e.getMessage());
+            System.out.println("=== EMAIL DE APROBACIÓN FALLÓ ===");
+            System.out.println("Destinatario: " + email);
+            System.out.println("Usuario: " + userName);
+            System.out.println("=================================");
+        }
+    }
+
+    /**
+     * Envía email de rechazo de registro al usuario
+     *
+     * @param email Email del destinatario
+     * @param userName Nombre del usuario
+     * @param reason Motivo del rechazo (opcional)
+     */
+    private void sendRejectionEmail(String email, String userName, String reason) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(email);
+            helper.setSubject("Registro No Aprobado - Sistema de Gestión de Horarios");
+
+            String reasonText = (reason != null && !reason.trim().isEmpty()) ? " Motivo: " + reason : "";
+
+            String htmlContent = "<!DOCTYPE html>" +
+                "<html lang='es'>" +
+                "<head>" +
+                "<meta charset='UTF-8'>" +
+                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+                "<title>Registro No Aprobado - SGH</title>" +
+                "</head>" +
+                "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%); min-height: 100vh; padding: 40px 20px;'>" +
+                "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
+                "<tr>" +
+                "<td style='background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); padding: 55px 40px; text-align: center;'>" +
+                "<div style='margin: 0 auto 28px;'>" +
+                "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
+                "<span style='font-size: 52px;'>❌</span>" +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>Registro No Aprobado</h1>" +
+                "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
+                "</td>" +
+                "</tr>" +
+                "<tr>" +
+                "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
+                "<div style='margin-bottom: 15px;'>" +
+                "<span style='display: inline-block; font-size: 48px;'>😔</span>" +
+                "</div>" +
+                "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>Lo sentimos, " + userName + "</h2>" +
+                "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
+                "Tu solicitud de registro ha sido <strong style='color: #f44336;'>rechazada</strong> por el coordinador." + reasonText +
+                "</p>" +
+                "<div style='background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(244, 67, 54, 0.3);'>" +
+                "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>¿Qué puedes hacer?</p>" +
+                "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px; text-align: left;'>" +
+                "<div style='font-size: 16px; font-weight: 700; color: #ffffff; margin-bottom: 12px;'>📞 Contacta al coordinador</div>" +
+                "<div style='font-size: 14px; color: rgba(255,255,255,0.9); line-height: 1.6;'>" +
+                "Comunícate con el coordinador del sistema para obtener más información sobre el motivo del rechazo." +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<div style='background: #ffebee; border: 2px solid #f44336; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
+                "<p style='margin: 0; color: #c62828; font-size: 14px; line-height: 1.6;'>" +
+                "<span style='font-size: 18px; margin-right: 8px;'>💡</span>" +
+                "<strong>Información importante:</strong> Si crees que ha habido un error, por favor contacta directamente con el coordinador para resolver cualquier malentendido." +
+                "</p>" +
+                "</div>" +
+                "</td>" +
+                "</tr>" +
+                "<tr>" +
+                "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
+                "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
+                "Este es un mensaje automático generado por el sistema SGH.<br>" +
+                "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
+                "Si necesitas ayuda, contacta al equipo de soporte técnico." +
+                "</p>" +
+                "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
+                "<div style='margin-bottom: 16px;'>" +
+                "<div style='width: 64px; height: 64px; background: #f44336; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4); display: table;'>" +
+                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
+                "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
+                "Sistema de Gestión de Horarios" +
+                "</p>" +
+                "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
+                "Tu sistema de confianza para la gestión académica" +
+                "</p>" +
+                "</div>" +
+                "</td>" +
+                "</tr>" +
+                "</table>" +
+                "<div style='text-align: center; padding-top: 25px;'>" +
+                "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
+                "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
+                "</p>" +
+                "</div>" +
+                "</body>" +
+                "</html>";
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+
+            System.out.println("=== EMAIL DE RECHAZO ENVIADO ===");
+            System.out.println("Destinatario: " + email);
+            System.out.println("Usuario: " + userName);
+            System.out.println("Motivo: " + (reason != null ? reason : "No especificado"));
+            System.out.println("=================================");
+
+        } catch (Exception e) {
+            System.err.println("Error enviando email de rechazo: " + e.getMessage());
+            System.out.println("=== EMAIL DE RECHAZO FALLÓ ===");
+            System.out.println("Destinatario: " + email);
+            System.out.println("Usuario: " + userName);
+            System.out.println("Motivo: " + (reason != null ? reason : "No especificado"));
+            System.out.println("===============================");
         }
     }
 }

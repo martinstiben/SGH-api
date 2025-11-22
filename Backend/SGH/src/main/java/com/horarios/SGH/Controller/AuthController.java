@@ -95,7 +95,7 @@ public class AuthController {
     })
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request) {
         try {
-            String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole(), request.getCourseId());
+            String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole(), request.getSubjectId(), request.getCourseId());
             return ResponseEntity.ok(Map.of("message", msg));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
@@ -126,7 +126,7 @@ public class AuthController {
     public ResponseEntity<?> getProfile() {
         try {
             var user = service.getProfile();
-            var profile = new HashMap<String, Object>();
+            Map<String, Object> profile = new HashMap<>();
             profile.put("userId", user.getUserId());
             profile.put("name", user.getPerson().getFullName());
             profile.put("email", user.getPerson().getEmail());

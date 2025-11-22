@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Entity(name = "users")
-@Data
 public class users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -69,5 +68,108 @@ public class users {
         this.createdAt = java.time.LocalDateTime.now();
     }
 
-    // Getters y setters generados por Lombok (@Data)
+    // Getters y setters
+    public int getUserId() {
+        return userId;
+    }
+
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+
+    public People getPerson() {
+        return person;
+    }
+
+    public void setPerson(People person) {
+        this.person = person;
+    }
+
+    public Roles getRole() {
+        return role;
+    }
+
+    public void setRole(Roles role) {
+        this.role = role;
+    }
+
+    public courses getCourse() {
+        return course;
+    }
+
+    public void setCourse(courses course) {
+        this.course = course;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getVerificationCode() {
+        return verificationCode;
+    }
+
+    public void setVerificationCode(String verificationCode) {
+        this.verificationCode = verificationCode;
+    }
+
+    public java.time.LocalDateTime getCodeExpiration() {
+        return codeExpiration;
+    }
+
+    public void setCodeExpiration(java.time.LocalDateTime codeExpiration) {
+        this.codeExpiration = codeExpiration;
+    }
+
+    public String getPasswordResetCode() {
+        return passwordResetCode;
+    }
+
+    public void setPasswordResetCode(String passwordResetCode) {
+        this.passwordResetCode = passwordResetCode;
+    }
+
+    public java.time.LocalDateTime getPasswordResetExpiration() {
+        return passwordResetExpiration;
+    }
+
+    public void setPasswordResetExpiration(java.time.LocalDateTime passwordResetExpiration) {
+        this.passwordResetExpiration = passwordResetExpiration;
+    }
+
+    public boolean isVerified() {
+        return isVerified;
+    }
+
+    public void setVerified(boolean verified) {
+        isVerified = verified;
+    }
+
+    public AccountStatus getAccountStatus() {
+        return accountStatus;
+    }
+
+    public void setAccountStatus(AccountStatus accountStatus) {
+        this.accountStatus = accountStatus;
+    }
+
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getUserName() {
+        return person != null ? person.getEmail() : null;
+    }
+
+    public void setUserName(String userName) {
+        // Este método puede no ser necesario, pero lo incluimos por compatibilidad
+    }
 }
