@@ -72,7 +72,7 @@ public class AuthControllerTest {
 
     @Test
     public void testRegisterSuccess() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class))).thenReturn("Usuario registrado correctamente");
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any())).thenReturn("Usuario registrado correctamente");
 
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +83,7 @@ public class AuthControllerTest {
 
     @Test
     public void testRegisterFailure() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class)))
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any()))
                 .thenThrow(new IllegalStateException("Usuario ya existe"));
 
         mockMvc.perform(post("/auth/register")

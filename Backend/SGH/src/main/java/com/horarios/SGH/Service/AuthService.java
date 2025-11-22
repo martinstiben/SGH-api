@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.Roles;
+import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Model.People;
 import com.horarios.SGH.Model.AccountStatus;
@@ -22,11 +23,13 @@ import com.horarios.SGH.Repository.IPeopleRepository;
 import com.horarios.SGH.Repository.IRolesRepository;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
+import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
 import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
 import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.jwt.JwtTokenProvider;
+import com.horarios.SGH.Service.ValidationUtils;
 
 
 /**
@@ -41,6 +44,7 @@ public class AuthService {
     private final IRolesRepository rolesRepo;
     private final Iteachers teacherRepo;
     private final Isubjects subjectRepo;
+    private final Icourses courseRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
     private final PasswordEncoder encoder;
     private final AuthenticationManager authManager;
@@ -54,20 +58,22 @@ public class AuthService {
     private NotificationService notificationService;
 
     public AuthService(Iusers repo,
-                             IPeopleRepository peopleRepo,
-                             IRolesRepository rolesRepo,
-                             Iteachers teacherRepo,
-                             Isubjects subjectRepo,
-                             TeacherSubjectRepository teacherSubjectRepo,
-                             PasswordEncoder encoder,
-                             AuthenticationManager authManager,
-                             JwtTokenProvider jwtTokenProvider,
-                             InAppNotificationService inAppNotificationService) {
+                              IPeopleRepository peopleRepo,
+                              IRolesRepository rolesRepo,
+                              Iteachers teacherRepo,
+                              Isubjects subjectRepo,
+                              Icourses courseRepo,
+                              TeacherSubjectRepository teacherSubjectRepo,
+                              PasswordEncoder encoder,
+                              AuthenticationManager authManager,
+                              JwtTokenProvider jwtTokenProvider,
+                              InAppNotificationService inAppNotificationService) {
         this.repo = repo;
         this.peopleRepo = peopleRepo;
         this.rolesRepo = rolesRepo;
         this.teacherRepo = teacherRepo;
         this.subjectRepo = subjectRepo;
+        this.courseRepo = courseRepo;
         this.teacherSubjectRepo = teacherSubjectRepo;
         this.encoder = encoder;
         this.authManager = authManager;
@@ -75,7 +81,7 @@ public class AuthService {
         this.inAppNotificationService = inAppNotificationService;
     }
 
-    public String register(String name, String email, String rawPassword, Role role) {
+    public String register(String name, String email, String rawPassword, Role role, Integer subjectId, Integer courseId) {
         try {
             // Validar entradas usando ValidationUtils
             ValidationUtils.validateName(name);
@@ -84,6 +90,28 @@ public class AuthService {
 
             if (role == null) {
                 throw new IllegalArgumentException("El rol no puede ser nulo");
+            }
+
+            // Validar subjectId para maestros
+            if (role == Role.MAESTRO && subjectId == null) {
+                throw new IllegalArgumentException("Los maestros deben tener una materia asignada");
+            }
+
+            // Validar courseId para estudiantes
+            if (role == Role.ESTUDIANTE && courseId == null) {
+                throw new IllegalArgumentException("Los estudiantes deben tener un curso asignado");
+            }
+
+            // Verificar que la materia existe si se proporciona
+            if (subjectId != null) {
+                subjectRepo.findById(subjectId)
+                    .orElseThrow(() -> new IllegalArgumentException("La materia especificada no existe"));
+            }
+
+            // Verificar que el curso existe si se proporciona
+            if (courseId != null) {
+                courseRepo.findById(courseId)
+                    .orElseThrow(() -> new IllegalArgumentException("El curso especificado no existe"));
             }
 
             // Verificar que el email no esté en uso
@@ -104,6 +132,14 @@ public class AuthService {
             // Crear y guardar el nuevo usuario con estado pendiente de aprobación
             users newUser = new users(person, userRole, encoder.encode(rawPassword));
             newUser.setAccountStatus(AccountStatus.PENDING_APPROVAL);
+
+            // Asignar curso para estudiantes
+            if (role == Role.ESTUDIANTE && courseId != null) {
+                courses course = courseRepo.findById(courseId)
+                    .orElseThrow(() -> new IllegalArgumentException("El curso especificado no existe"));
+                newUser.setCourse(course);
+            }
+
             users savedUser = repo.save(newUser);
 
             System.out.println("Usuario registrado exitosamente: " + savedUser.getUserId());
