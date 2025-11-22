@@ -3,7 +3,6 @@ package com.horarios.SGH.Model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
 
 @Entity(name = "users")
 public class users {
