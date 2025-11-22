@@ -1,10 +1,12 @@
 package com.horarios.SGH.Service;
 
 import com.horarios.SGH.DTO.CourseDTO;
+import com.horarios.SGH.DTO.CourseStudentDTO;
 import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.teachers;
 import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Iteachers;
+import com.horarios.SGH.Repository.Iusers;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ public class CourseService {
 
     private final Icourses courseRepo;
     private final Iteachers teacherRepo;
+    private final Iusers userRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
 
     private static Comparator<CourseDTO> naturalOrderComparator() {
@@ -83,6 +86,21 @@ public class CourseService {
 
     public void delete(int id) {
         courseRepo.deleteById(id);
+    }
+
+    public List<CourseStudentDTO> getStudentsByCourseId(int courseId) {
+        return userRepo.findByCourseIdWithDetails(courseId).stream()
+                .map(user -> {
+                    CourseStudentDTO dto = new CourseStudentDTO();
+                    dto.setUserId(user.getUserId());
+                    dto.setFullName(user.getPerson().getFullName());
+                    dto.setEmail(user.getPerson().getEmail());
+                    dto.setRoleName(user.getRole().getRoleName());
+                    dto.setAccountStatus(user.getAccountStatus());
+                    dto.setVerified(user.isVerified());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
 }
