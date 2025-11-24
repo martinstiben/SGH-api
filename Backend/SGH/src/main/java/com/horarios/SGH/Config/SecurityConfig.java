@@ -73,7 +73,7 @@ public class SecurityConfig {
                     "/auth/**",          // login y register
                     "/teachers/**",      // CRUD completo de profesores
                     "/subjects/**",      // materias para dashboard
-                    "/courses/**",       // cursos para dashboard
+                    "/courses/**",       // cursos para dashboard (excepto estudiantes)
                     "/schedules/history", // historial de horarios
                     "/schedules/pdf/**", // exportar PDFs
                     "/schedules/excel/**", // exportar Excel
@@ -87,6 +87,8 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/api-docs/**"
                 ).permitAll()
+                // Endpoint específico para estudiantes requiere rol COORDINADOR
+                .requestMatchers("/courses/*/students").hasRole("COORDINADOR")
                 // Endpoints que requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/schedules-crud/**").authenticated()
