@@ -21,6 +21,9 @@ public interface Iusers extends JpaRepository<users, Integer> {
     @Query("SELECT u FROM users u LEFT JOIN FETCH u.person p LEFT JOIN FETCH u.role r WHERE u.role.roleName = :roleName")
     List<users> findByRoleNameWithDetails(@Param("roleName") String roleName);
 
+    @Query("SELECT u FROM users u LEFT JOIN FETCH u.person WHERE u.course.id = :courseId AND u.role.roleName = 'ESTUDIANTE' AND u.accountStatus = 'ACTIVE'")
+    List<users> findStudentsByCourseId(@Param("courseId") Integer courseId);
+
     // Para compatibilidad con autenticación
     default Optional<users> findByUserName(String userName) {
         return findByPerson_Email(userName);

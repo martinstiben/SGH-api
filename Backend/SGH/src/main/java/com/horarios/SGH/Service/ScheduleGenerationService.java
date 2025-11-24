@@ -2,6 +2,7 @@ package com.horarios.SGH.Service;
 
 import com.horarios.SGH.DTO.ScheduleHistoryDTO;
 import com.horarios.SGH.DTO.CourseWithoutAvailabilityDTO;
+import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.Model.*;
 import com.horarios.SGH.Model.schedule;
 import com.horarios.SGH.Repository.*;
@@ -28,9 +29,14 @@ public class ScheduleGenerationService {
     private final IScheduleRepository scheduleRepo;
     private final Isubjects subjectRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
+    private final Iusers userRepo;
+    private final InAppNotificationService inAppNotificationService;
 
     @Transactional
     public ScheduleHistoryDTO generate(ScheduleHistoryDTO request, String executedBy) {
+        System.out.println("=== INICIANDO GENERACIÓN DE HORARIOS ===");
+        System.out.println("Executed by: " + executedBy);
+        System.out.println("Dry run: " + request.isDryRun());
         validate(request);
 
         schedule_history history = new schedule_history();
@@ -60,6 +66,11 @@ public class ScheduleGenerationService {
                 GenerationResult result = generateSchedulesForPeriod(request.getPeriodStart(), request.getPeriodEnd(), request.getParams());
                 totalGenerated = result.getTotalGenerated();
                 coursesWithoutAvailability = result.getCoursesWithoutAvailability();
+
+                // Notificar a los estudiantes de los cursos que obtuvieron horarios
+                if (!result.getGeneratedSchedules().isEmpty()) {
+                    notifyStudentsOfNewSchedules(result.getGeneratedSchedules(), executedBy);
+                }
             } else {
                 // Simulation: count courses without assigned schedule
                 List<courses> coursesWithoutSchedule = getCoursesWithoutSchedule();
@@ -115,14 +126,17 @@ public class ScheduleGenerationService {
     private static class GenerationResult {
         private int totalGenerated;
         private List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability;
+        private List<schedule> generatedSchedules;
 
-        public GenerationResult(int totalGenerated, List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability) {
+        public GenerationResult(int totalGenerated, List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability, List<schedule> generatedSchedules) {
             this.totalGenerated = totalGenerated;
             this.coursesWithoutAvailability = coursesWithoutAvailability;
+            this.generatedSchedules = generatedSchedules;
         }
 
         public int getTotalGenerated() { return totalGenerated; }
         public List<CourseWithoutAvailabilityDTO> getCoursesWithoutAvailability() { return coursesWithoutAvailability; }
+        public List<schedule> getGeneratedSchedules() { return generatedSchedules; }
     }
 
     /**
@@ -200,7 +214,7 @@ public class ScheduleGenerationService {
             scheduleRepo.saveAll(generatedSchedules);
         }
 
-        return new GenerationResult(totalGenerated, coursesWithoutAvailability);
+        return new GenerationResult(totalGenerated, coursesWithoutAvailability, generatedSchedules);
     }
 
     /**
@@ -440,5 +454,59 @@ public class ScheduleGenerationService {
         dto.setForce(h.isForce());
         dto.setParams(h.getParams());
         return dto;
+    }
+
+    /**
+     * Notifica a los estudiantes cuando se les asigna un horario nuevo
+     */
+    private void notifyStudentsOfNewSchedules(List<schedule> newSchedules, String executedBy) {
+        System.out.println("=== NOTIFICANDO ESTUDIANTES ===");
+        System.out.println("Executed by: " + executedBy);
+        try {
+            // Obtener cursos únicos que obtuvieron horarios
+            List<Integer> courseIds = newSchedules.stream()
+                .map(schedule -> schedule.getCourseId().getId())
+                .distinct()
+                .collect(Collectors.toList());
+
+            for (Integer courseId : courseIds) {
+                // Obtener estudiantes del curso
+                List<users> students = userRepo.findStudentsByCourseId(courseId);
+                courses course = courseRepo.findById(courseId).orElse(null);
+
+                if (course != null && !students.isEmpty()) {
+                    // Enviar notificación a cada estudiante
+                    for (users student : students) {
+                        try {
+                            InAppNotificationDTO notification = new InAppNotificationDTO();
+                            notification.setUserId(student.getUserId());
+                            notification.setNotificationType(NotificationType.SCHEDULE_ASSIGNED.name());
+                            notification.setTitle("¡Nuevo horario asignado!");
+                            notification.setMessage(String.format(
+                                "Se ha asignado un horario para tu curso: %s. Revisa tu horario actualizado.",
+                                course.getCourseName()
+                            ));
+                            notification.setPriority("HIGH");
+                            notification.setCategory("schedule");
+                            notification.setActionUrl("/dashboard");
+                            notification.setActionText("Ver horario");
+
+                            inAppNotificationService.sendInAppNotificationAsync(notification)
+                                .exceptionally(ex -> {
+                                    System.err.println("Error notificando estudiante " + student.getUserId() + ": " + ex.getMessage());
+                                    return null;
+                                });
+                        } catch (Exception e) {
+                            System.err.println("Error creando notificación para estudiante " + student.getUserId() + ": " + e.getMessage());
+                        }
+                    }
+
+                    System.out.println("Notificaciones enviadas a " + students.size() + " estudiantes del curso: " + course.getCourseName());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error notificando estudiantes de nuevos horarios: " + e.getMessage());
+            // No fallar la generación por errores de notificación
+        }
     }
 }
