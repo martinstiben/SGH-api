@@ -66,8 +66,17 @@ public class CourseController {
 
     @GetMapping("/{id}/students")
     @PreAuthorize("hasRole('COORDINADOR')")
-    public List<CourseStudentDTO> getStudentsByCourseId(@PathVariable int id) {
-        return service.getStudentsByCourseId(id);
+    public ResponseEntity<?> getStudentsByCourseId(@PathVariable int id) {
+        try {
+            List<CourseStudentDTO> students = service.getStudentsByCourseId(id);
+            return ResponseEntity.ok(students);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new responseDTO("ERROR", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new responseDTO("ERROR", "Error interno del servidor: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")

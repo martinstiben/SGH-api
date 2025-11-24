@@ -89,18 +89,33 @@ public class CourseService {
     }
 
     public List<CourseStudentDTO> getStudentsByCourseId(int courseId) {
-        return userRepo.findByCourseIdWithDetails(courseId).stream()
-                .map(user -> {
-                    CourseStudentDTO dto = new CourseStudentDTO();
-                    dto.setUserId(user.getUserId());
-                    dto.setFullName(user.getPerson().getFullName());
-                    dto.setEmail(user.getPerson().getEmail());
-                    dto.setRoleName(user.getRole().getRoleName());
-                    dto.setAccountStatus(user.getAccountStatus());
-                    dto.setVerified(user.isVerified());
-                    return dto;
-                })
-                .collect(Collectors.toList());
+        // Validar que el courseId sea válido
+        if (courseId <= 0) {
+            throw new IllegalArgumentException("El ID del curso debe ser un número positivo");
+        }
+
+        // Verificar que el curso existe
+        courses course = courseRepo.findById(courseId).orElse(null);
+        if (course == null) {
+            throw new IllegalArgumentException("El curso con ID " + courseId + " no existe");
+        }
+
+        try {
+            return userRepo.findByCourseIdWithDetails(courseId).stream()
+                    .map(user -> {
+                        CourseStudentDTO dto = new CourseStudentDTO();
+                        dto.setUserId(user.getUserId());
+                        dto.setFullName(user.getPerson() != null ? user.getPerson().getFullName() : "N/A");
+                        dto.setEmail(user.getPerson() != null ? user.getPerson().getEmail() : "N/A");
+                        dto.setRoleName(user.getRole() != null ? user.getRole().getRoleName() : "N/A");
+                        dto.setAccountStatus(user.getAccountStatus());
+                        dto.setVerified(user.isVerified());
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener estudiantes del curso: " + e.getMessage(), e);
+        }
     }
 
 }
