@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 
 import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.Roles;
+import com.horarios.SGH.Model.TeacherSubject;
 import com.horarios.SGH.Model.courses;
+import com.horarios.SGH.Model.subjects;
+import com.horarios.SGH.Model.teachers;
 import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Model.People;
 import com.horarios.SGH.Model.AccountStatus;
@@ -29,6 +32,7 @@ import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
 import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.jwt.JwtTokenProvider;
+import com.horarios.SGH.Service.ValidationUtils;
 
 
 /**
@@ -140,6 +144,23 @@ public class AuthService {
             }
 
             users savedUser = repo.save(newUser);
+
+            // Crear profesor si el rol es MAESTRO
+            if (role == Role.MAESTRO && subjectId != null) {
+                teachers newTeacher = new teachers();
+                newTeacher.setTeacherName(person.getFullName());
+                teachers savedTeacher = teacherRepo.save(newTeacher);
+
+                // Crear relación profesor-materia
+                subjects subject = subjectRepo.findById(subjectId)
+                    .orElseThrow(() -> new IllegalArgumentException("Materia no encontrada"));
+                TeacherSubject teacherSubject = new TeacherSubject();
+                teacherSubject.setTeacher(savedTeacher);
+                teacherSubject.setSubject(subject);
+                teacherSubjectRepo.save(teacherSubject);
+
+                System.out.println("Profesor creado exitosamente: " + savedTeacher.getId());
+            }
 
             System.out.println("Usuario registrado exitosamente: " + savedUser.getUserId());
 

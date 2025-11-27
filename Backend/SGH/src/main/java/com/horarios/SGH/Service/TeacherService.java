@@ -1,13 +1,16 @@
 package com.horarios.SGH.Service;
 
 import com.horarios.SGH.DTO.TeacherDTO;
+import com.horarios.SGH.Model.Days;
 import com.horarios.SGH.Model.TeacherAvailability;
 import com.horarios.SGH.Model.TeacherSubject;
+import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.schedule;
 import com.horarios.SGH.Model.subjects;
 import com.horarios.SGH.Model.teachers;
 import com.horarios.SGH.Repository.IScheduleRepository;
 import com.horarios.SGH.Repository.ITeacherAvailabilityRepository;
+import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
@@ -15,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,10 +31,12 @@ public class TeacherService {
     private final TeacherSubjectRepository teacherSubjectRepo;
     private final ITeacherAvailabilityRepository availabilityRepo;
     private final IScheduleRepository scheduleRepo;
+    private final Icourses courseRepo;
     private final FileStorageService fileStorageService;
 
     /**
      * Crea un docente. Si se envía subjectId, crea también la relación TeacherSubject.
+     * Automáticamente registra disponibilidad predeterminada de 06:00am a 12:00pm Lunes a Viernes.
      */
     public TeacherDTO create(TeacherDTO dto) {
         teachers teacher = new teachers();
@@ -44,6 +50,9 @@ public class TeacherService {
             ts.setSubject(subject);
             teacherSubjectRepo.save(ts);
         }
+
+        // Registrar disponibilidad predeterminada: 06:00am - 12:00pm Lunes a Viernes
+        createDefaultAvailability(savedTeacher);
 
         dto.setTeacherId(savedTeacher.getId());
         return dto;
@@ -161,12 +170,30 @@ public class TeacherService {
             throw new IllegalStateException("No se puede eliminar el docente porque tiene horarios asignados");
         }
 
+        // Remover como director de grado de todos los cursos
+        List<courses> coursesAsDirector = courseRepo.findByGradeDirector_Id(id);
+        for (courses course : coursesAsDirector) {
+            course.setGradeDirector(null);
+            courseRepo.save(course);
+        }
+
+        // Remover referencias TeacherSubject en cursos antes de eliminarlas
+        List<TeacherSubject> tsList = teacherSubjectRepo.findByTeacher_Id(id);
+        for (TeacherSubject ts : tsList) {
+            List<courses> coursesUsingTs = courseRepo.findAll().stream()
+                .filter(c -> c.getTeacherSubject() != null && c.getTeacherSubject().getId().equals(ts.getId()))
+                .collect(Collectors.toList());
+            for (courses course : coursesUsingTs) {
+                course.setTeacherSubject(null);
+                courseRepo.save(course);
+            }
+        }
+
         // Eliminar disponibilidad del profesor
         List<TeacherAvailability> availabilities = availabilityRepo.findByTeacher_Id(id);
         availabilityRepo.deleteAll(availabilities);
 
         // Eliminar relaciones TeacherSubject
-        List<TeacherSubject> tsList = teacherSubjectRepo.findByTeacher_Id(id);
         teacherSubjectRepo.deleteAll(tsList);
 
         // Finalmente eliminar el profesor
@@ -231,5 +258,28 @@ public class TeacherService {
             throw new RuntimeException("Error al actualizar la foto de perfil: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Crea disponibilidad predeterminada para un profesor: 06:00am - 12:00pm Lunes a Viernes
+     */
+    private void createDefaultAvailability(teachers teacher) {
+        // Días laborables: Lunes a Viernes
+        Days[] workDays = {Days.Lunes, Days.Martes, Days.Miércoles, Days.Jueves, Days.Viernes};
+
+        for (Days day : workDays) {
+            TeacherAvailability availability = new TeacherAvailability();
+            availability.setTeacher(teacher);
+            availability.setDay(day);
+            availability.setAmStart(LocalTime.parse("06:00"));
+            availability.setAmEnd(LocalTime.parse("12:00"));
+            // PM se deja null (no disponible)
+            availability.setPmStart(null);
+            availability.setPmEnd(null);
+            availability.setEndTime(LocalTime.parse("12:00"));
+
+            availabilityRepo.save(availability);
+        }
+    }
+
 
 }
