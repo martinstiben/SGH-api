@@ -5,11 +5,14 @@ import com.horarios.SGH.DTO.responseDTO;
 import com.horarios.SGH.Model.subjects;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Service.TeacherService;
+
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,30 +39,6 @@ public class TeacherController {
                         .orElse("Error de validación");
                 return ResponseEntity.badRequest()
                         .body(new responseDTO("ERROR", errorMessage));
-            }
-
-            // VALIDACIÓN MANUAL ADICIONAL: Verificar que el nombre NO contenga números
-            if (dto.getTeacherName() != null && dto.getTeacherName().matches(".*\\d.*")) {
-                return ResponseEntity.badRequest()
-                        .body(new responseDTO("ERROR", "El nombre del profesor no puede contener números"));
-            }
-
-            // VALIDACIÓN MANUAL ADICIONAL: Verificar que el nombre NO contenga números
-            if (dto.getTeacherName() != null && dto.getTeacherName().matches(".*\\d.*")) {
-                return ResponseEntity.badRequest()
-                        .body(new responseDTO("ERROR", "El nombre del profesor no puede contener números"));
-            }
-
-            // VALIDACIÓN MANUAL ADICIONAL: Verificar longitud
-            if (dto.getTeacherName() != null) {
-                if (dto.getTeacherName().length() < 5) {
-                    return ResponseEntity.badRequest()
-                            .body(new responseDTO("ERROR", "El nombre del profesor debe tener al menos 5 caracteres"));
-                }
-                if (dto.getTeacherName().length() > 50) {
-                    return ResponseEntity.badRequest()
-                            .body(new responseDTO("ERROR", "El nombre del profesor debe tener máximo 50 caracteres"));
-                }
             }
 
             // VALIDACIÓN MANUAL ADICIONAL: Verificar que el nombre NO contenga números
@@ -205,4 +184,5 @@ public class TeacherController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
 }
