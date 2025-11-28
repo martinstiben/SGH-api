@@ -1,6 +1,7 @@
 package com.horarios.SGH.Controller;
 
 import com.horarios.SGH.DTO.CourseDTO;
+import com.horarios.SGH.DTO.CourseStudentDTO;
 import com.horarios.SGH.DTO.responseDTO;
 import com.horarios.SGH.Service.CourseService;
 import com.horarios.SGH.Service.ValidationUtils;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,6 +62,21 @@ public class CourseController {
     @GetMapping("/{id}")
     public CourseDTO getById(@PathVariable int id) {
         return service.getById(id);
+    }
+
+    @GetMapping("/{id}/students")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    public ResponseEntity<?> getStudentsByCourseId(@PathVariable int id) {
+        try {
+            List<CourseStudentDTO> students = service.getStudentsByCourseId(id);
+            return ResponseEntity.ok(students);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new responseDTO("ERROR", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new responseDTO("ERROR", "Error interno del servidor: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")

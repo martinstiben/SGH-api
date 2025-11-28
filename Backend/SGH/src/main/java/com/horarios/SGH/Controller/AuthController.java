@@ -4,6 +4,8 @@ import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
 import com.horarios.SGH.DTO.RegisterRequestDTO;
 import com.horarios.SGH.DTO.VerifyCodeDTO;
+import com.horarios.SGH.DTO.PasswordResetRequestDTO;
+import com.horarios.SGH.DTO.PasswordResetDTO;
 import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Service.AuthService;
 import com.horarios.SGH.Service.TokenRevocationService;
@@ -22,10 +24,11 @@ import java.util.Map;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000", "http://localhost:3001"})
 @Tag(name = "Autenticación", description = "Endpoints para autenticación y registro de usuarios")
 public class AuthController {
 
@@ -46,10 +49,16 @@ public class AuthController {
         @ApiResponse(responseCode = "401", description = "Credenciales inválidas")
     })
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO request) {
+        System.out.println("=== LOGIN REQUEST ===");
+        System.out.println("Email: " + request.getEmail());
+        System.out.println("Password: " + (request.getPassword() != null ? "[PROVIDED]" : "null"));
         try {
             String message = service.initiateLogin(request);
+            System.out.println("Login initiated, code sent");
             return ResponseEntity.ok(Map.of("message", message));
         } catch (Exception e) {
+            System.out.println("Login failed: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(401).body(Map.of("error", "Credenciales inválidas"));
         }
     }
@@ -63,13 +72,20 @@ public class AuthController {
         @ApiResponse(responseCode = "400", description = "Código inválido o expirado")
     })
     public ResponseEntity<?> verifyCode(@Valid @RequestBody VerifyCodeDTO request) {
+        System.out.println("=== VERIFY CODE REQUEST ===");
+        System.out.println("Email: " + request.getEmail());
+        System.out.println("Code: " + request.getCode());
         try {
             LoginResponseDTO resp = service.verifyCode(request.getEmail(), request.getCode());
+            System.out.println("Code verified successfully, token generated");
             return ResponseEntity.ok(resp);
         } catch (Exception e) {
+            System.out.println("Code verification failed: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
         }
     }
+
 
     @PostMapping("/register")
     @Operation(summary = "Registrar usuario", description = "Registra un nuevo usuario con rol específico")
@@ -79,8 +95,10 @@ public class AuthController {
     })
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request) {
         try {
-            String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole());
+            String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole(), request.getSubjectId(), request.getCourseId());
             return ResponseEntity.ok(Map.of("message", msg));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (IllegalStateException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
@@ -108,7 +126,19 @@ public class AuthController {
     public ResponseEntity<?> getProfile() {
         try {
             var user = service.getProfile();
-            return ResponseEntity.ok(Map.of("userId", user.getUserId(), "name", user.getPerson().getFullName(), "email", user.getPerson().getEmail(), "role", user.getRole().getRoleName()));
+            Map<String, Object> profile = new HashMap<>();
+            profile.put("userId", user.getUserId());
+            profile.put("name", user.getPerson().getFullName());
+            profile.put("email", user.getPerson().getEmail());
+            profile.put("role", user.getRole().getRoleName());
+
+            // Agregar información del curso si es estudiante
+            if (user.getCourse() != null) {
+                profile.put("courseId", user.getCourse().getId());
+                profile.put("courseName", user.getCourse().getCourseName());
+            }
+
+            return ResponseEntity.ok(profile);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "Error obteniendo perfil"));
         }
@@ -188,6 +218,109 @@ public class AuthController {
                 return "Director de Área";
             default:
                 return role.name();
+        }
+    }
+
+    @GetMapping("/pending-users")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(summary = "Obtener usuarios pendientes de aprobación", description = "Obtiene la lista de usuarios que están pendientes de aprobación por el coordinador")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Lista obtenida exitosamente")
+    })
+    public ResponseEntity<?> getPendingUsers() {
+        try {
+            var pendingUsers = service.getPendingUsers();
+            var result = pendingUsers.stream()
+                .map(user -> {
+                    // Validar que las relaciones no sean null
+                    String name = (user.getPerson() != null) ? user.getPerson().getFullName() : "N/A";
+                    String email = (user.getPerson() != null) ? user.getPerson().getEmail() : "N/A";
+                    String role = (user.getRole() != null) ? user.getRole().getRoleName() : "N/A";
+
+                    return Map.of(
+                        "userId", user.getUserId(),
+                        "name", name,
+                        "email", email,
+                        "role", role,
+                        "createdAt", user.getCreatedAt()
+                    );
+                })
+                .toList();
+            return ResponseEntity.ok(Map.of("pendingUsers", result));
+        } catch (Exception e) {
+            e.printStackTrace(); // Para debugging
+            return ResponseEntity.status(500).body(Map.of("error", "Error obteniendo usuarios pendientes: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/approve-user/{userId}")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(summary = "Aprobar usuario", description = "Aprueba un usuario pendiente de aprobación")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario aprobado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en la aprobación")
+    })
+    public ResponseEntity<?> approveUser(@PathVariable int userId) {
+        try {
+            String message = service.approveUser(userId);
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+        }
+    }
+
+    @PostMapping("/request-password-reset")
+    @Operation(summary = "Solicitar restablecimiento de contraseña", description = "Envía un email con enlace para restablecer la contraseña")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Email enviado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en la solicitud")
+    })
+    public ResponseEntity<?> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDTO request) {
+        try {
+            String message = service.requestPasswordReset(request.getEmail());
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+        }
+    }
+
+    @PostMapping("/verify-reset-code")
+    @Operation(summary = "Verificar código de reset (Paso 2)", description = "Verifica el código de reset y cambia la contraseña si es válido")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Contraseña restablecida exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Código inválido o expirado")
+    })
+    public ResponseEntity<?> verifyResetCode(@Valid @RequestBody PasswordResetDTO request) {
+        try {
+            String message = service.resetPassword(request.getEmail(), request.getVerificationCode(), request.getNewPassword());
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+        }
+    }
+
+    @PostMapping("/reject-user/{userId}")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(summary = "Rechazar usuario", description = "Rechaza un usuario pendiente de aprobación")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario rechazado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Error en el rechazo")
+    })
+    public ResponseEntity<?> rejectUser(@PathVariable int userId, @RequestBody Map<String, String> request) {
+        try {
+            String reason = request.get("reason");
+            String message = service.rejectUser(userId, reason);
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
         }
     }
 }

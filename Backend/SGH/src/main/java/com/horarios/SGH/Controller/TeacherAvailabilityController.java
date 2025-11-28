@@ -11,7 +11,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
@@ -106,25 +108,53 @@ public class TeacherAvailabilityController {
     }
 
     @GetMapping("/by-teacher/{id}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Consultar disponibilidad de un profesor",
-        description = "Obtiene todos los horarios de disponibilidad de un profesor específico"
+        description = "Obtiene todos los horarios de disponibilidad de un profesor específico. Si no tiene disponibilidad, crea la configuración predeterminada."
     )
-    @ApiResponse(
-        responseCode = "200",
-        description = "Lista de disponibilidades encontradas (puede estar vacía)",
-        content = @Content(
-            mediaType = "application/json",
-            schema = @Schema(implementation = TeacherAvailability.class)
-        )
-    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Lista de disponibilidades encontradas"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
     public List<TeacherAvailability> getAvailability(@PathVariable Integer id) {
         // Validar que el profesor existe
         teachers teacher = teacherRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Profesor no encontrado con ID: " + id));
 
-        // Retornar la disponibilidad (puede estar vacía)
-        return availabilityRepo.findByTeacher_Id(id);
+        // Obtener disponibilidad actual
+        List<TeacherAvailability> availabilities = availabilityRepo.findByTeacher_Id(id);
+
+        // Si no tiene disponibilidad, crear la predeterminada
+        if (availabilities.isEmpty()) {
+            createDefaultAvailability(teacher);
+            // Recargar después de crear
+            availabilities = availabilityRepo.findByTeacher_Id(id);
+        }
+
+        return availabilities;
+    }
+
+    /**
+     * Crea disponibilidad predeterminada para un profesor: 06:00am - 12:00pm Lunes a Viernes
+     */
+    private void createDefaultAvailability(teachers teacher) {
+        // Días laborables: Lunes a Viernes
+        Days[] workDays = {Days.Lunes, Days.Martes, Days.Miércoles, Days.Jueves, Days.Viernes};
+
+        for (Days day : workDays) {
+            TeacherAvailability availability = new TeacherAvailability();
+            availability.setTeacher(teacher);
+            availability.setDay(day);
+            availability.setAmStart(LocalTime.parse("06:00"));
+            availability.setAmEnd(LocalTime.parse("12:00"));
+            // PM se deja null (no disponible)
+            availability.setPmStart(null);
+            availability.setPmEnd(null);
+            availability.setEndTime(LocalTime.parse("12:00"));
+
+            availabilityRepo.save(availability);
+        }
     }
 
     @DeleteMapping("/delete/{teacherId}/{day}")
