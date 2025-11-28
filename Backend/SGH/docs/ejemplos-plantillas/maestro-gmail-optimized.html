@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGH - Notificación para Docente</title>
+    <style>
+        /* Gmail-compatible styles - usando principalmente inline styles */
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333333;
+            line-height: 1.4;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #2196F3;
+            color: #ffffff;
+            padding: 25px;
+            text-align: center;
+        }
+        .logo {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 22px;
+            margin: 0 0 8px 0;
+            font-weight: bold;
+        }
+        .header p {
+            font-size: 16px;
+            margin: 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 25px;
+        }
+        .notification-card {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 4px solid #2196F3;
+        }
+        .notification-title {
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0 0 15px 0;
+            display: flex;
+            align-items: center;
+        }
+        .notification-title .icon {
+            margin-right: 10px;
+            font-size: 22px;
+        }
+        .notification-content {
+            color: #495057;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .info-section {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+        .info-table td:first-child {
+            font-weight: bold;
+            color: #6c757d;
+            font-size: 12px;
+            text-transform: uppercase;
+            width: 40%;
+        }
+        .info-table td:last-child {
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        .info-table tr:last-child td {
+            border-bottom: none;
+        }
+        .action-section {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .action-text {
+            color: #1565C0;
+            font-size: 14px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #2196F3;
+            color: #ffffff;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .footer {
+            background-color: #2c3e50;
+            color: #ffffff;
+            padding: 25px;
+            text-align: center;
+        }
+        .footer-logo {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2196F3;
+        }
+        .footer-text {
+            font-size: 13px;
+            opacity: 0.8;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        .footer-links {
+            margin-top: 15px;
+        }
+        .footer-links a {
+            color: #2196F3;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 12px;
+        }
+        /* Responsive para móviles */
+        @media screen and (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 0;
+            }
+            .header, .content, .footer {
+                padding: 20px 15px;
+            }
+            .notification-card {
+                padding: 20px 15px;
+            }
+            .info-table td {
+                display: block;
+                border-bottom: none;
+                padding: 5px 0;
+            }
+            .info-table td:first-child {
+                border-bottom: 1px solid #e0e0e0;
+                padding-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">👨‍🏫</div>
+            <h1>Sistema de Gestión de Horarios</h1>
+            <p>Profesor/a {{NOMBRE_USUARIO}}</p>
+        </div>
+
+        <div class="content">
+            <div class="notification-card">
+                <h2 class="notification-title">
+                    <span class="icon">📋</span>
+                    {{TITULO_NOTIFICACION}}
+                </h2>
+                <div class="notification-content">
+                    {{CONTENIDO_NOTIFICACION}}
+                </div>
+
+                <div class="info-section">
+                    <table class="info-table">
+                        <tr>
+                            <td>Destinatario</td>
+                            <td>{{EMAIL_USUARIO}}</td>
+                        </tr>
+                        <tr>
+                            <td>Rol</td>
+                            <td>Docente</td>
+                        </tr>
+                        <tr>
+                            <td>Fecha y Hora</td>
+                            <td>{{FECHA_HORA}}</td>
+                        </tr>
+                        <tr>
+                            <td>Categoría</td>
+                            <td>Gestión Académica</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="action-section">
+                    <div class="action-text">
+                        📋 Esta notificación contiene información importante sobre tu gestión académica
+                    </div>
+                    <a href="{{URL_SISTEMA}}" class="action-button">
+                        Acceder al Sistema
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-logo">SGH</div>
+            <div class="footer-text">
+                <p>Sistema de Gestión de Horarios Académicos</p>
+                <p>Institución Educativa - Excelencia en la educación</p>
+            </div>
+            <div class="footer-links">
+                <a href="{{URL_PORTAL_DOCENTE}}">Portal Docente</a>
+                <a href="{{URL_RECURSOS}}">Recursos</a>
+                <a href="{{URL_SOPORTE}}">Soporte</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

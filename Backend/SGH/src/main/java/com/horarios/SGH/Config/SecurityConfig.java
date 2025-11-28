@@ -46,10 +46,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Permitir múltiples orígenes comunes de desarrollo
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://localhost:5173",  // Vite dev server
+            "http://127.0.0.1:5173"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L); // Cache preflight por 1 hora
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -73,12 +83,14 @@ public class SecurityConfig {
                     "/auth/**",          // login y register
                     "/teachers/**",      // CRUD completo de profesores
                     "/subjects/**",      // materias para dashboard
-                    "/courses/**",       // cursos para dashboard
-                    "/schedules/**",     // horarios para dashboard
+                    "/courses/**",       // cursos para dashboard (excepto estudiantes)
+                    "/schedules/history", // historial de horarios
+                    "/schedules/debug-courses", // debug estado de cursos
+                    "/schedules/pdf/**", // exportar PDFs
+                    "/schedules/excel/**", // exportar Excel
+                    "/schedules/image/**", // exportar imágenes
                     "/schedules-crud/by-course/**",  // ver horarios de curso
                     "/schedules-crud/by-teacher/**", // ver horarios de profesor
-                    "/schedules-crud",   // ver todos los horarios (GET)
-                    "/schedules/history", // historial de horarios
                     "/availability/**",  // disponibilidad de profesores
                     "/users/*/photo",    // obtener foto de usuario
                     "/swagger-ui/**",
@@ -86,10 +98,14 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/api-docs/**"
                 ).permitAll()
+                // Endpoint específico para estudiantes requiere rol COORDINADOR
+                .requestMatchers("/courses/*/students").hasAuthority("ROLE_COORDINADOR")
                 // Endpoints que requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/schedules-crud/**").authenticated()
+                // Endpoint específico para estudiantes requiere autenticación
+                .requestMatchers("/schedules-crud/my-schedule").authenticated()
                 // Solo subjects y courses requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/subjects/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/subjects/**").authenticated()

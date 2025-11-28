@@ -30,7 +30,7 @@ public class ScheduleCrudController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Crear horarios manualmente",
         description = "Permite crear horarios específicos asignando profesores y materias a cursos. " +
@@ -59,7 +59,7 @@ public class ScheduleCrudController {
     }
 
     @GetMapping("/{name}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Obtener horarios por nombre",
         description = "Busca horarios por el nombre del scheduleName"
@@ -104,13 +104,49 @@ public class ScheduleCrudController {
         return scheduleService.getByTeacher(id);
     }
 
+    @GetMapping("/my-schedule")
+    @PreAuthorize("hasRole('ESTUDIANTE')")
+    @Operation(
+        summary = "Obtener horario del estudiante logueado",
+        description = "Obtiene todos los horarios del curso al que pertenece el estudiante autenticado"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horarios obtenidos exitosamente"),
+        @ApiResponse(responseCode = "403", description = "No autorizado - solo para estudiantes"),
+        @ApiResponse(responseCode = "404", description = "Estudiante no tiene curso asignado")
+    })
+    public List<ScheduleDTO> getMySchedule(Authentication auth) {
+        return scheduleService.getByStudentEmail(auth.getName());
+    }
+
     @GetMapping
-    public List<ScheduleDTO> getAll() {
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Obtener horarios según rol del usuario",
+        description = "Estudiantes ven solo su horario. Coordinadores ven todos los horarios."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horarios obtenidos según permisos"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    public List<ScheduleDTO> getAll(Authentication auth) {
+        // Obtener el usuario autenticado
+        com.horarios.SGH.Model.users currentUser = scheduleService.getUserByEmail(auth.getName());
+
+        // Si es estudiante, filtrar por su curso
+        if ("ESTUDIANTE".equals(currentUser.getRole().getRoleName())) {
+            if (currentUser.getCourse() == null) {
+                throw new RuntimeException("Estudiante no tiene curso asignado");
+            }
+            return scheduleService.getByCourse(currentUser.getCourse().getId());
+        }
+
+        // Para coordinadores y otros roles con permisos, mostrar todos
         return scheduleService.getAll();
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Actualizar horario",
         description = "Actualiza un horario específico por su ID"
@@ -149,7 +185,7 @@ public class ScheduleCrudController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Eliminar horario",
         description = "Elimina un horario específico por su ID"
@@ -175,7 +211,7 @@ public class ScheduleCrudController {
     }
 
     @DeleteMapping("/by-day/{day}")
-    @PreAuthorize("hasAnyRole('ADMIN','COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Eliminar horarios por día",
         description = "Elimina todos los horarios asignados a un día específico"
