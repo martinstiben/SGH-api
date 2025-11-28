@@ -1,6 +1,13 @@
 pipeline {
     agent any
 
+    options {
+        // Timeout general del pipeline
+        timeout(time: 20, unit: 'MINUTES')
+        // Log rotation
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+    }
+
     environment {
         PROJECT_PATH = 'Backend/SGH'
     }
@@ -9,77 +16,112 @@ pipeline {
 
         stage('Checkout código fuente') {
             steps {
-                echo "📥 Clonando repositorio desde GitHub..."
-                checkout scm
-                sh 'ls -R Devops || true'
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        echo "🧹 Limpiando workspace completamente..."
+                        deleteDir()
+                        
+                        echo "📥 Clonando repositorio desde GitHub..."
+                        sh '''
+                            echo "🔄 Verificando ramas disponibles en el repositorio..."
+                            
+                            # Intentar listar las ramas disponibles
+                            git ls-remote --heads https://github.com/martinstiben/SGH-api.git
+                            
+                            echo "🔄 Intentando clonar la rama más apropiada..."
+                            
+                            # SOLO usar la rama Staging - es independiente
+                            if git clone -b Staging https://github.com/martinstiben/SGH-api.git .; then
+                                echo "✅ Clonado rama Staging exitosamente"
+                                echo "🎯 Pipeline ejecutándose en ambiente Staging (independiente)"
+                            else
+                                echo "❌ No se pudo clonar la rama Staging"
+                                echo "💡 La rama Staging debe existir para ejecutar este pipeline de Staging"
+                                echo "🔧 Verifica que la rama 'Staging' esté creada en el repositorio"
+                                exit 1
+                            fi
+                            
+                            echo "📁 Verificando estructura del repositorio:"
+                            ls -la
+                        '''
+                    }
+                }
             }
         }
 
         stage('Detectar entorno') {
             steps {
                 script {
-                    def branch = env.BRANCH_NAME?.toLowerCase()
-                    switch (branch) {
-                        case 'main':
-                            env.ENVIRONMENT = 'prod'
-                            break
-                        case 'staging':
-                            env.ENVIRONMENT = 'staging'
-                            break
-                        case 'qa':
-                            env.ENVIRONMENT = 'qa'
-                            break
-                        default:
-                            env.ENVIRONMENT = 'develop'
-                            break
-                    }
-
-                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
-                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
-                    env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
-                    switch (env.ENVIRONMENT) {
-                        case 'develop':
-                            env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
-                            break
-                        case 'qa':
-                            env.ENV_FILE = "${env.ENV_DIR}/.env.qa"
-                            break
-                        case 'staging':
-                            env.ENV_FILE = "${env.ENV_DIR}/.env.staging"
-                            break
-                        case 'prod':
-                            env.ENV_FILE = "${env.ENV_DIR}/.env.prod"
-                            break
-                        default:
-                            env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
-                            break
-                    }
+                    // Forzar Staging como el usuario solicitó
+                    env.ENVIRONMENT = 'staging'
+                    
+                    // Usar los archivos Docker Compose correctos como en develop
+                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-staging.yml"
+                    env.COMPOSE_FILE_API = "Devops/docker-compose-api-staging.yml"
+                    env.ENV_FILE = "Devops/staging/.env.staging"
 
                     echo """
-                    ✅ Rama detectada: ${env.BRANCH_NAME}
-                    🌎 Entorno asignado: ${env.ENVIRONMENT}
+                    ✅ Entorno forzado: ${env.ENVIRONMENT}
                     📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
                     """
 
-                    if (!fileExists(env.COMPOSE_FILE_DATABASE)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE_DATABASE}"
-                    }
-                    
-                    if (!fileExists(env.COMPOSE_FILE_API)) {
-                        error "❌ No se encontró ${env.COMPOSE_FILE_API}"
-                    }
+                    echo "🔍 Verificando estructura del workspace..."
+                    sh '''
+                        echo "📁 Contenido actual del directorio:"
+                        ls -la
+                        echo "📂 Verificando directorio Backend/SGH:"
+                        if [ -d "Backend/SGH" ]; then
+                            echo "✅ Backend/SGH encontrado"
+                        else
+                            echo "❌ Backend/SGH no encontrado"
+                            echo "💡 ERROR: La estructura del repositorio no es correcta"
+                            exit 1
+                        fi
+                        echo "📂 Verificando directorio Devops:"
+                        if [ -d "Devops" ]; then
+                            echo "✅ Devops encontrado"
+                            echo "📁 Contenido de Devops:"
+                            ls -la Devops/
+                        else
+                            echo "❌ Devops no encontrado"
+                            echo "💡 ERROR: La estructura del repositorio no es correcta"
+                            exit 1
+                        fi
+                    '''
 
-                    if (!fileExists(env.ENV_FILE)) {
-                        echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
-                        writeFile file: env.ENV_FILE, text: '''
-                            PORT=8080
-                            DB_HOST=localhost
-                            DB_USER=admin
-                            DB_PASS=secret
-                        '''
-                    }
+                    // Verificar archivos usando la estructura real del repositorio
+                    sh '''
+                        echo "🔍 Verificando archivos de configuración..."
+                        
+                        # Verificar el Docker Compose de Base de Datos
+                        if [ -f "Devops/docker-compose-databases-staging.yml" ]; then
+                            echo "✅ Devops/docker-compose-databases-staging.yml encontrado"
+                            echo "📄 Servicio de base de datos definido:"
+                            grep -A 1 "container_name:" Devops/docker-compose-databases-staging.yml | head -5
+                        else
+                            echo "❌ Devops/docker-compose-databases-staging.yml no encontrado"
+                            exit 1
+                        fi
+                        
+                        # Verificar el Docker Compose de API
+                        if [ -f "Devops/docker-compose-api-staging.yml" ]; then
+                            echo "✅ Devops/docker-compose-api-staging.yml encontrado"
+                            echo "📄 Servicio de API definido:"
+                            grep -A 1 "container_name:" Devops/docker-compose-api-staging.yml | head -5
+                        else
+                            echo "❌ Devops/docker-compose-api-staging.yml no encontrado"
+                            exit 1
+                        fi
+                        
+                        if [ -f "Devops/staging/.env.staging" ]; then
+                            echo "✅ Devops/staging/.env.staging encontrado"
+                        else
+                            echo "❌ Devops/staging/.env.staging no encontrado"
+                            exit 1
+                        fi
+                    '''
                 }
             }
         }
@@ -114,15 +156,41 @@ pipeline {
             }
         }
 
+        stage('Limpiar Base de Datos') {
+            steps {
+                sh """
+                    echo "🗄️ Limpiando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🧹 Eliminando volumen de datos anterior para fresh start..."
+                    
+                    # Eliminar el volumen anterior para start limpio
+                    docker volume rm postgres_data_staging 2>/dev/null || true
+                    
+                    echo "✅ Volumen de base de datos limpio - listo para fresh start"
+                """
+            }
+        }
+
         stage('Desplegar Base de Datos') {
             steps {
                 sh """
                     echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
-                    ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
-                    echo "✅ Base de datos desplegada correctamente"
+                    
+                    # Limpiar contenedores anteriores para evitar conflictos
+                    echo "🧹 Limpiando contenedores anteriores de base de datos..."
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
+                    
+                    echo "📦 Levantando base de datos de Staging..."
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-staging
+                    
+                    echo "⏳ Esperando que la base de datos esté lista..."
+                    sleep 15
+                    
+                    echo "🔍 Verificando que la base de datos esté corriendo:"
+                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_Staging
+                    
+                    echo "✅ Base de datos DB_Staging desplegada correctamente en puerto: 5434"
                 """
             }
         }
@@ -131,30 +199,30 @@ pipeline {
             steps {
                 sh """
                     echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
-                    echo "📦 Desplegando solo el contenedor de la API..."
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
                     
-                    # Asegurar que la base de datos esté funcionando antes de desplegar la API
-                    echo "🔍 Verificando estado de la base de datos..."
-                    sleep 10
+                    # Limpiar contenedores anteriores para evitar conflictos
+                    echo "🧹 Limpiando contenedores anteriores de API..."
+                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
                     
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
-                    echo "✅ API desplegada correctamente"
+                    echo "📦 Levantando API de Staging..."
+                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-staging
+                    
+                    echo "⏳ Esperando que la API esté lista..."
+                    sleep 15
+                    
+                    echo "🔍 Verificando contenedores que están corriendo:"
+                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                    
+                    echo "✅ Despliegue completado - Contenedores de Staging:"
+                    echo "   🗄️ DB_Staging (Base de datos PostgreSQL)"
+                    echo "   🚀 API_Staging (Spring Boot API)"
+                    echo ""
                     echo "🌐 Swagger UI disponible en:"
-                    case ${env.ENVIRONMENT} in
-                        "develop")
-                            echo "   http://localhost:8082/swagger-ui/index.html"
-                            ;;
-                        "qa")
-                            echo "   http://localhost:8083/swagger-ui/index.html"
-                            ;;
-                        "staging")
-                            echo "   http://localhost:8084/swagger-ui/index.html"
-                            ;;
-                        "prod")
-                            echo "   http://localhost:8085/swagger-ui/index.html"
-                            ;;
-                    esac
+                    echo "   http://localhost:8084/swagger-ui/index.html"
+                    echo "🔗 Health check:"
+                    echo "   http://localhost:8084/actuator/health"
+                    echo "🗄️ Base de datos PostgreSQL en puerto: 5434"
                 """
             }
         }
@@ -163,12 +231,16 @@ pipeline {
     post {
         success {
             echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
+            echo "🌐 Tu API está disponible en: http://localhost:8084"
+            echo "📚 Swagger UI: http://localhost:8084/swagger-ui/index.html"
+            echo "🔍 Health check: http://localhost:8084/actuator/health"
         }
         failure {
             echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
+            echo "🔍 Revisa los logs arriba para más detalles"
         }
         always {
-            echo "🧹 Limpieza final del pipeline completada."
+            echo "🧹 Limppieza final del pipeline completada."
         }
     }
 }

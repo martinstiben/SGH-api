@@ -72,23 +72,23 @@ public class AuthControllerTest {
 
     @Test
     public void testRegisterSuccess() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class))).thenReturn("Usuario registrado correctamente");
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any())).thenReturn("Usuario registrado correctamente. Pendiente de aprobación por el coordinador.");
 
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Juan Pérez\",\"email\":\"test@example.com\",\"password\":\"password\",\"role\":\"MAESTRO\"}"))
+                .content("{\"name\":\"Juan Pérez\",\"email\":\"test@example.com\",\"password\":\"Password123\",\"role\":\"MAESTRO\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Usuario registrado correctamente"));
+                .andExpect(jsonPath("$.message").value("Usuario registrado correctamente. Pendiente de aprobación por el coordinador."));
     }
 
     @Test
     public void testRegisterFailure() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class)))
-                .thenThrow(new IllegalStateException("Usuario ya existe"));
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any()))
+                .thenThrow(new IllegalStateException("El correo electrónico ya está en uso"));
 
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Juan Pérez\",\"email\":\"test@example.com\",\"password\":\"password\",\"role\":\"MAESTRO\"}"))
+                .content("{\"name\":\"Juan Pérez\",\"email\":\"test@example.com\",\"password\":\"Password123\",\"role\":\"MAESTRO\"}"))
                 .andExpect(status().isBadRequest());
     }
 

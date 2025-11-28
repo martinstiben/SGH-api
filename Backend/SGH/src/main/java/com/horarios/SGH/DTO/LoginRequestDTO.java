@@ -34,8 +34,4 @@ public class LoginRequestDTO {
         this.password = password;
     }
 
-    // Para compatibilidad, mantener getUsername que retorna email
-    public String getUsername() {
-        return email;
-    }
 }

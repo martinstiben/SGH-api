@@ -27,6 +27,19 @@ public class usersService {
         }
     }
 
+    /**
+     * Encuentra un usuario por email
+     * @param email Email del usuario
+     * @return Usuario encontrado o null si no existe
+     */
+    public users findByEmail(String email) {
+        try {
+            return usersRepository.findByPerson_Email(email.trim().toLowerCase()).orElse(null);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al buscar usuario por email: " + email + ", Error: " + e.getMessage());
+        }
+    }
+
     // Método de login removido - ahora se maneja en AuthService con 2FA
 
     /**
@@ -63,6 +76,20 @@ public class usersService {
             throw e; // Re-lanzar excepciones de validación
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar la foto de perfil: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Encuentra todos los usuarios por rol específico
+     * @param roleName Nombre del rol a buscar
+     * @return Lista de usuarios con el rol especificado
+     */
+    public java.util.List<users> findUsersByRole(String roleName) {
+        try {
+            // Usar consulta optimizada que carga las relaciones
+            return usersRepository.findByRoleNameWithDetails(roleName);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener usuarios por rol: " + roleName + ", Error: " + e.getMessage());
         }
     }
 
