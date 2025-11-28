@@ -348,8 +348,8 @@ public class DataInitializer {
                 if (ts != null) { courses c = new courses(); c.setCourseName("8B"); c.setTeacherSubject(ts); courseRepo.save(c); assignedCreated++; }
             }
 
-            // Crear cursos adicionales SIN profesores asignados
-            String[] unassignedCourses = {"9A", "9B", "10A", "10B", "11A", "11B", "12A", "12B"};
+            // Crear algunos cursos SIN profesores asignados (para testing de casos sin profesor)
+            String[] unassignedCourses = {"9A", "9B"};
             int unassignedCreated = 0;
 
             for (String courseName : unassignedCourses) {
@@ -358,15 +358,30 @@ public class DataInitializer {
                 if (!exists) {
                     courses course = new courses();
                     course.setCourseName(courseName);
-                    course.setTeacherSubject(null); // Sin profesor asignado
+                    course.setTeacherSubject(null); // Sin profesor asignado - útil para testing
                     courseRepo.save(course);
                     unassignedCreated++;
                 }
             }
 
             if (assignedCreated > 0 || unassignedCreated > 0) {
-                System.out.println(">> Cursos adicionales creados (" + assignedCreated + " con profesores asignados, " + unassignedCreated + " sin asignar)");
+                System.out.println(">> Cursos de prueba creados (" + assignedCreated + " con profesores, " + unassignedCreated + " sin asignar)");
             }
+
+            // Resumen final de datos iniciales
+            long totalSubjects = subjectRepo.count();
+            long totalTeachers = teacherRepo.count();
+            long totalCourses = courseRepo.count();
+            long totalAvailabilities = availabilityRepo.count();
+            long totalAssignments = teacherSubjectRepo.count();
+
+            System.out.println(">> DATOS INICIALES COMPLETOS:");
+            System.out.println("   - Materias: " + totalSubjects);
+            System.out.println("   - Profesores: " + totalTeachers);
+            System.out.println("   - Cursos: " + totalCourses + " (" + assignedCreated + " con profesor, " + unassignedCreated + " sin asignar)");
+            System.out.println("   - Disponibilidades: " + totalAvailabilities);
+            System.out.println("   - Asignaciones profesor-materia: " + totalAssignments);
+            System.out.println(">> Listo para testing de generación automática de horarios");
         };
     }
 }
