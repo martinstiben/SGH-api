@@ -275,7 +275,6 @@ public class TeacherService {
             // PM se deja null (no disponible)
             availability.setPmStart(null);
             availability.setPmEnd(null);
-            availability.setEndTime(LocalTime.parse("12:00"));
 
             availabilityRepo.save(availability);
         }

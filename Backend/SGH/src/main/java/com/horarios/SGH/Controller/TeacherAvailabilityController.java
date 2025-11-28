@@ -59,7 +59,6 @@ public class TeacherAvailabilityController {
         availability.setAmEnd(dto.getAmEnd());
         availability.setPmStart(dto.getPmStart());
         availability.setPmEnd(dto.getPmEnd());
-        availability.setEndTime(dto.getPmEnd()); // Asumir que end_time es pmEnd
 
         // Validar que al menos tenga un horario válido
         if (!availability.hasValidSchedule()) {
@@ -98,7 +97,6 @@ public class TeacherAvailabilityController {
         availability.setAmEnd(dto.getAmEnd());
         availability.setPmStart(dto.getPmStart());
         availability.setPmEnd(dto.getPmEnd());
-        availability.setEndTime(dto.getPmEnd());
 
         // Validar que al menos tenga un horario válido
         if (!availability.hasValidSchedule()) {
@@ -153,7 +151,6 @@ public class TeacherAvailabilityController {
             // PM se deja null (no disponible)
             availability.setPmStart(null);
             availability.setPmEnd(null);
-            availability.setEndTime(LocalTime.parse("12:00"));
 
             availabilityRepo.save(availability);
         }
