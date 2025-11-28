@@ -25,7 +25,7 @@ public class ScheduleController {
     private final ScheduleHistoryService historyService;
 
     @PostMapping("/generate")
-    @PreAuthorize("hasAuthority('ROLE_COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Generar horarios automáticamente por cursos",
         description = "Genera horarios automáticamente para cursos que no tienen horario asignado. " +
@@ -46,7 +46,7 @@ public class ScheduleController {
     }
 
     @PostMapping("/auto-generate")
-    @PreAuthorize("hasAuthority('ROLE_COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Generar horarios automáticamente (interfaz simplificada)",
         description = "Genera horarios automáticamente para cursos sin asignación usando parámetros por defecto " +
@@ -62,7 +62,7 @@ public class ScheduleController {
     }
 
     @PostMapping("/regenerate")
-    @PreAuthorize("hasAuthority('ROLE_COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Regenerar todo el horario automáticamente",
         description = "Borra todos los horarios existentes y genera un horario completamente nuevo " +
@@ -77,8 +77,28 @@ public class ScheduleController {
         return generationService.regenerate(auth.getName());
     }
 
+    @PostMapping("/generate-course/{courseId}")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(
+        summary = "Generar horario completo para un curso específico",
+        description = "Genera automáticamente un horario completo para un curso seleccionado, asignando clases distribuidas a lo largo de la semana según disponibilidad del profesor. Ideal para crear horarios completos por curso desde la interfaz."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horario generado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Curso no válido o sin profesor asignado"),
+        @ApiResponse(responseCode = "404", description = "Curso no encontrado"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    public ScheduleHistoryDTO generateScheduleForCourse(
+            @Parameter(description = "ID del curso para el cual generar horario", required = true, example = "1")
+            @PathVariable Integer courseId,
+            Authentication auth
+    ) {
+        return generationService.generateScheduleForCourse(courseId, auth.getName());
+    }
+
     @GetMapping("/history")
-    @PreAuthorize("hasAuthority('ROLE_COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Obtener historial de generaciones",
         description = "Consulta el historial de todas las generaciones de horarios realizadas en el sistema"
@@ -97,7 +117,7 @@ public class ScheduleController {
     }
 
     @GetMapping("/diagnostic")
-    @PreAuthorize("hasAuthority('ROLE_COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Diagnóstico completo del sistema de generación de horarios",
         description = "Obtiene un diagnóstico detallado del estado actual del sistema: cursos, profesores, disponibilidades, horarios existentes y posibles problemas. Útil para debugging."
@@ -111,6 +131,7 @@ public class ScheduleController {
     }
 
     @GetMapping("/debug-courses")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Debug: Ver estado de cursos",
         description = "Endpoint temporal para verificar cursos y horarios"
@@ -120,7 +141,7 @@ public class ScheduleController {
     }
 
     @DeleteMapping("/clear-all")
-    @PreAuthorize("hasAuthority('ROLE_COORDINADOR')")
+    @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Limpiar todos los horarios",
         description = "Elimina todos los horarios existentes para testing"

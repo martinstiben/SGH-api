@@ -759,13 +759,190 @@ public class ScheduleGenerationService {
     }
 
     /**
+     * Genera horario completo para un curso específico
+     * Crea un horario integrado asignando slots consecutivos según disponibilidad
+     */
+    @Transactional
+    public ScheduleHistoryDTO generateScheduleForCourse(Integer courseId, String executedBy) {
+        logger.info("=== INICIANDO GENERACIÓN DE HORARIO COMPLETO PARA CURSO ===");
+        logger.info("Usuario ejecutor: {}", executedBy);
+        logger.info("Curso ID: {}", courseId);
+
+        // Validar que el curso existe
+        courses selectedCourse = courseRepo.findById(courseId).orElseThrow(() ->
+            new IllegalArgumentException("Curso no encontrado con ID: " + courseId));
+
+        logger.info("Curso seleccionado: {} ({})", selectedCourse.getCourseName(), courseId);
+
+        // Validar que el curso tenga profesor asignado
+        if (selectedCourse.getTeacherSubject() == null) {
+            throw new IllegalArgumentException("El curso " + selectedCourse.getCourseName() +
+                " no tiene profesor asignado. Asigne un profesor antes de generar el horario.");
+        }
+
+        schedule_history history = new schedule_history();
+        history.setExecutedBy(executedBy);
+        history.setExecutedAt(LocalDateTime.now());
+        history.setStatus("RUNNING");
+        history.setMessage("Generando horario completo para curso: " + selectedCourse.getCourseName());
+        history.setTotalGenerated(0);
+
+        // Usar semana actual por defecto
+        LocalDate today = LocalDate.now();
+        LocalDate monday = today.with(java.time.DayOfWeek.MONDAY);
+        LocalDate friday = today.with(java.time.DayOfWeek.FRIDAY);
+
+        history.setPeriodStart(monday);
+        history.setPeriodEnd(friday);
+        history.setDryRun(false);
+        history.setForce(false);
+        history.setParams("Horario completo para curso: " + selectedCourse.getCourseName());
+
+        history = historyRepository.save(history);
+
+        try {
+            // Generar horario completo para el curso
+            GenerationResult result = generateCompleteScheduleForCourse(selectedCourse, monday, friday);
+            int totalGenerated = result.getTotalGenerated();
+
+            history.setStatus("SUCCESS");
+            history.setTotalGenerated(totalGenerated);
+            history.setMessage("Horario completo generado exitosamente para " + selectedCourse.getCourseName() +
+                ". " + totalGenerated + " clases asignadas.");
+            history.setExecutedAt(LocalDateTime.now());
+            historyRepository.save(history);
+
+            // Retornar DTO con información de cursos sin disponibilidad
+            ScheduleHistoryDTO response = toDTO(history);
+            response.setCoursesWithoutAvailability(result.getCoursesWithoutAvailability());
+            response.setTotalCoursesWithoutAvailability(result.getCoursesWithoutAvailability().size());
+
+            logger.info("=== GENERACIÓN COMPLETA FINALIZADA ===");
+            return response;
+
+        } catch (Exception ex) {
+            logger.error("Error generando horario completo: {}", ex.getMessage(), ex);
+            history.setStatus("FAILED");
+            history.setMessage(ex.getMessage() != null ? ex.getMessage() : "Error en la generación");
+            history.setExecutedAt(LocalDateTime.now());
+            historyRepository.save(history);
+
+            ScheduleHistoryDTO response = toDTO(history);
+            response.setCoursesWithoutAvailability(new ArrayList<>());
+            response.setTotalCoursesWithoutAvailability(0);
+
+            logger.error("=== GENERACIÓN FALLIDA ===");
+            return response;
+        }
+    }
+
+    /**
+     * Genera horario completo para un curso específico
+     * Asigna clases distribuidas a lo largo de la semana
+     */
+    private GenerationResult generateCompleteScheduleForCourse(courses course, LocalDate startDate, LocalDate endDate) {
+        logger.info("=== GENERANDO HORARIO COMPLETO PARA CURSO: {} ===", course.getCourseName());
+
+        List<schedule> generatedSchedules = new ArrayList<>();
+        List<CourseWithoutAvailabilityDTO> coursesWithoutAvailability = new ArrayList<>();
+        int totalClassesAssigned = 0;
+
+        teachers assignedTeacher = course.getTeacherSubject().getTeacher();
+        subjects assignedSubject = course.getTeacherSubject().getSubject();
+
+        logger.info("Profesor asignado: {} ({})", assignedTeacher.getTeacherName(), assignedTeacher.getId());
+        logger.info("Materia: {} ({})", assignedSubject.getSubjectName(), assignedSubject.getId());
+
+        // Validar configuración del profesor
+        List<TeacherSubject> teacherAssociations = teacherSubjectRepo.findByTeacher_Id(assignedTeacher.getId());
+        if (teacherAssociations.size() > 1) {
+            String errorMsg = "ERROR DE CONFIGURACIÓN: El profesor " + assignedTeacher.getTeacherName() +
+                " está asociado a múltiples materias. Cada profesor debe estar asociado únicamente a UNA materia.";
+            logger.error(errorMsg);
+            throw new RuntimeException(errorMsg);
+        }
+
+        List<String> daysInPeriod = getUniqueDaysInPeriod(startDate, endDate);
+        logger.info("Días disponibles para asignación: {}", daysInPeriod);
+
+        // Estrategia: Asignar clases distribuidas a lo largo de la semana
+        // Intentar asignar al menos 1 clase por día disponible
+        for (String dayName : daysInPeriod) {
+            logger.debug("Intentando asignar clase para {} el día {}", course.getCourseName(), dayName);
+
+            // Encontrar slots disponibles para este profesor en este día
+            List<TimeSlot> availableSlots = findAvailableSlotsForTeacher(assignedTeacher, dayName);
+
+            if (availableSlots.isEmpty()) {
+                logger.debug("No hay slots disponibles para {} el día {}", assignedTeacher.getTeacherName(), dayName);
+                continue;
+            }
+
+            // Intentar asignar una clase en este día
+            boolean classAssignedForDay = false;
+
+            for (TimeSlot slot : availableSlots) {
+                if (classAssignedForDay) break;
+
+                logger.debug("Probando slot: {} - {}", slot.getStartTime(), slot.getEndTime());
+
+                // Verificar que no haya conflicto
+                if (!hasConflict(assignedTeacher, dayName, slot.getStartTime(), slot.getEndTime())) {
+                    // Crear el horario
+                    schedule newSchedule = new schedule();
+                    newSchedule.setCourseId(course);
+                    newSchedule.setTeacherId(assignedTeacher);
+                    newSchedule.setSubjectId(assignedSubject);
+                    newSchedule.setDay(dayName);
+                    newSchedule.setStartTime(slot.getStartTime());
+                    newSchedule.setEndTime(slot.getEndTime());
+                    newSchedule.setScheduleName(course.getCourseName() + " - " + assignedSubject.getSubjectName());
+
+                    generatedSchedules.add(newSchedule);
+                    totalClassesAssigned++;
+                    classAssignedForDay = true;
+
+                    logger.info("✓ Clase asignada: {} {} {}-{} ({})",
+                        course.getCourseName(), dayName, slot.getStartTime(), slot.getEndTime(), assignedTeacher.getTeacherName());
+                    break;
+                }
+            }
+
+            if (!classAssignedForDay) {
+                logger.warn("No se pudo asignar clase para {} el día {}", course.getCourseName(), dayName);
+            }
+        }
+
+        // Si no se pudo asignar ninguna clase, agregar a cursos sin disponibilidad
+        if (totalClassesAssigned == 0) {
+            CourseWithoutAvailabilityDTO unavailabilityInfo = analyzeCourseUnavailability(course, assignedTeacher, daysInPeriod);
+            if (unavailabilityInfo != null) {
+                coursesWithoutAvailability.add(unavailabilityInfo);
+            }
+        }
+
+        logger.info("=== RESUMEN HORARIO COMPLETO ===");
+        logger.info("Curso: {}", course.getCourseName());
+        logger.info("Clases asignadas: {}", totalClassesAssigned);
+        logger.info("Días con clases: {}", generatedSchedules.stream().map(s -> s.getDay()).distinct().count());
+
+        if (!generatedSchedules.isEmpty()) {
+            logger.info("Guardando horario completo en la base de datos...");
+            scheduleRepo.saveAll(generatedSchedules);
+            logger.info("Horario guardado exitosamente");
+        }
+
+        return new GenerationResult(totalClassesAssigned, coursesWithoutAvailability);
+    }
+
+    /**
      * Regenera todo el horario: borra todos los horarios existentes y genera nuevos automáticamente
      */
     @Transactional
     public ScheduleHistoryDTO regenerate(String executedBy) {
         logger.info("=== INICIANDO REGENERACIÓN COMPLETA DE HORARIOS ===");
         logger.info("Usuario ejecutor: {}", executedBy);
-        
+
         // Borrar todos los horarios existentes
         logger.info("Eliminando todos los horarios existentes...");
         scheduleService.deleteAllSchedules();
@@ -774,7 +951,7 @@ public class ScheduleGenerationService {
         // Generar nuevos horarios automáticamente
         logger.info("Generando nuevos horarios automáticamente...");
         ScheduleHistoryDTO result = autoGenerate(executedBy);
-        
+
         logger.info("Regeneración completa finalizada");
         return result;
     }
