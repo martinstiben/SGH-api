@@ -106,8 +106,6 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/schedules-crud/**").authenticated()
                 // Endpoint específico para estudiantes requiere autenticación
                 .requestMatchers("/schedules-crud/my-schedule").authenticated()
-                // Endpoints de generación de horarios (temporalmente sin rol específico para pruebas)
-                .requestMatchers("/schedules/generate", "/schedules/auto-generate", "/schedules/regenerate", "/schedules/clear-all").authenticated()
                 // Solo subjects y courses requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/subjects/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/subjects/**").authenticated()
