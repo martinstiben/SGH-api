@@ -13,7 +13,7 @@ services:
     networks:
       - network_develop
     external_links:
-      - DB_Develop:postgres-develop
+      - DB_Develop:mysql-develop
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
       interval: 30s

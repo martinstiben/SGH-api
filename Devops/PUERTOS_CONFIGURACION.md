@@ -6,7 +6,7 @@
 - **Puerto API**: 8082
 - **Swagger UI**: http://localhost:8082/swagger-ui/index.html
 - **API Docs**: http://localhost:8082/api-docs
-- **Base de Datos**: PostgreSQL en puerto 5432
+- **Base de Datos**: MySQL en puerto 3306
 - **Container DB**: DB_Develop
 - **URL Base**: http://localhost:8082
 
@@ -89,5 +89,5 @@ curl -X GET "http://localhost:8082/api/v1/courses" \
 
 ---
 
-**Última actualización**: 2025-11-06
+**Última actualización**: 2025-11-28
 **Mantenido por**: Equipo de Desarrollo SGH

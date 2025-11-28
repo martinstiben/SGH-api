@@ -117,11 +117,11 @@ pipeline {
         stage('Desplegar Base de Datos') {
             steps {
                 sh """
-                    echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
                     ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-${env.ENVIRONMENT}
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d mysql-${env.ENVIRONMENT}
                     echo "✅ Base de datos desplegada correctamente"
                 """
             }

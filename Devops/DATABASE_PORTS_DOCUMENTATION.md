@@ -10,7 +10,7 @@ Este documento detalla la configuración de puertos para las bases de datos Post
 
 | Ambiente | Puerto Host | Puerto Contenedor | Nombre Base de Datos | Usuario | Contenedor |
 |----------|-------------|-------------------|---------------------|---------|------------|
-| **Develop** | `5432` | `5432` | `DB_SGH_Develop` | `sgh_user` | `sgh-postgres-develop` |
+| **Develop** | `3306` | `3306` | `horarios` | `user` | `DB_Develop` |
 | **QA** | `5433` | `5432` | `DB_SGH_QA` | `sgh_user` | `sgh-postgres-qa` |
 | **Staging** | `5434` | `5432` | `DB_SGH_Staging` | `sgh_user` | `sgh-postgres-staging` |
 | **Production** | `5435` | `5432` | `DB_SGH_Production` | `sgh_user` | `sgh-postgres-prod` |
@@ -20,17 +20,17 @@ Este documento detalla la configuración de puertos para las bases de datos Post
 ## 🔧 Detalles de Configuración por Ambiente
 
 ### 1. Ambiente de Desarrollo (Develop)
-- **Puerto de acceso:** `5432`
-- **Base de datos:** `DB_SGH_Develop`
-- **Usuario:** `sgh_user`
+- **Puerto de acceso:** `3306`
+- **Base de datos:** `horarios`
+- **Usuario:** `user`
 - **Archivo de configuración:** `Devops/develop/.env.dev`
-- **Docker Compose:** `Devops/Docker-Compose.yml` (centralizado)
+- **Docker Compose:** `Devops/docker-compose-databases.yml` (centralizado)
 - **Conexión desde host:**
   ```
   Host: localhost
-  Port: 5432
-  Database: DB_SGH_Develop
-  User: sgh_user
+  Port: 3306
+  Database: horarios
+  User: user
   Password: [ver .env.dev]
   ```
 
@@ -145,13 +145,13 @@ docker-compose stop postgres-prod
 
 ## 🔍 Verificación de Conectividad
 
-### Verificar que PostgreSQL está corriendo:
+### Verificar que la base de datos está corriendo:
 
 ```bash
-# Develop
-docker exec -it sgh-postgres-develop pg_isready -U postgres
+# Develop (MySQL)
+docker exec -it DB_Develop mysqladmin ping -h localhost
 
-# QA
+# QA (PostgreSQL)
 docker exec -it sgh-postgres-qa pg_isready -U postgres
 
 # Staging
@@ -164,10 +164,10 @@ docker exec -it sgh-postgres-prod pg_isready -U postgres
 ### Conectarse a la base de datos desde el contenedor:
 
 ```bash
-# Develop
-docker exec -it sgh-postgres-develop psql -U sgh_user -d DB_SGH_Develop
+# Develop (MySQL)
+docker exec -it DB_Develop mysql -u user -p horarios
 
-# QA
+# QA (PostgreSQL)
 docker exec -it sgh-postgres-qa psql -U sgh_user -d DB_SGH_QA
 
 # Staging
@@ -186,16 +186,16 @@ El backend de Spring Boot debe configurarse para conectarse a cada ambiente seg�
 ### application.properties (ejemplo para Develop):
 
 ```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/DB_SGH_Develop
-spring.datasource.username=sgh_user
+spring.datasource.url=jdbc:mysql://localhost:3306/horarios
+spring.datasource.username=user
 spring.datasource.password=${DB_PASSWORD}
-spring.datasource.driver-class-name=org.postgresql.Driver
-spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 ```
 
 ### Variables de entorno por ambiente:
 
-- **Develop:** `DB_PORT=5432`
+- **Develop:** `DB_PORT=3306`
 - **QA:** `DB_PORT=5433`
 - **Staging:** `DB_PORT=5434`
 - **Production:** `DB_PORT=5435`
@@ -214,7 +214,7 @@ spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
 
 Cada ambiente tiene su propio volumen persistente:
 
-- **Develop:** `postgres_data_develop`
+- **Develop:** `mysql_data_develop`
 - **QA:** `postgres_data_qa`
 - **Staging:** `postgres_data_staging`
 - **Production:** `postgres_data_prod`
@@ -241,7 +241,7 @@ Cada ambiente tiene su propia red aislada:
 ## ⚠️ Notas Importantes
 
 1. **Puertos únicos:** Cada ambiente usa un puerto diferente para evitar conflictos
-2. **Locale:** Todas las bases de datos están configuradas con locale `es_ES.UTF-8`
+2. **Locale:** Las bases de datos PostgreSQL están configuradas con locale `es_ES.UTF-8`, MySQL con `utf8mb4`
 3. **Health checks:** Cada contenedor tiene configurado un health check para verificar su estado
 4. **Restart policy:** Todos los contenedores están configurados con `restart: always`
 5. **Jenkins:** Esta configuración es compatible con pipelines de Jenkins para CI/CD
@@ -252,5 +252,5 @@ Cada ambiente tiene su propia red aislada:
 
 Para problemas o dudas sobre la configuración de las bases de datos, contactar al equipo de DevOps.
 
-**Última actualización:** 2025-01-06
-**Versión:** 1.0.0
+**Última actualización:** 2025-11-28
+**Versión:** 1.1.0
