@@ -2,6 +2,10 @@ package com.horarios.SGH.Controller;
 
 import com.horarios.SGH.DTO.ScheduleHistoryDTO;
 import com.horarios.SGH.DTO.ScheduleGenerationDiagnosticDTO;
+import com.horarios.SGH.DTO.CourseDTO;
+import com.horarios.SGH.DTO.CourseGenerationValidationDTO;
+import com.horarios.SGH.DTO.ScheduleTableDTO;
+import com.horarios.SGH.DTO.ScheduleVerificationReportDTO;
 import com.horarios.SGH.Service.ScheduleGenerationService;
 import com.horarios.SGH.Service.ScheduleHistoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,16 +14,22 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/schedules")
 @RequiredArgsConstructor
 @Tag(name = "Horarios", description = "Gestión de generación automática de horarios")
 public class ScheduleController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ScheduleController.class);
 
     private final ScheduleGenerationService generationService;
     private final ScheduleHistoryService historyService;
@@ -81,7 +91,7 @@ public class ScheduleController {
     @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
         summary = "Generar horario completo para un curso específico",
-        description = "Genera automáticamente un horario completo para un curso seleccionado, asignando clases distribuidas a lo largo de la semana según disponibilidad del profesor. Ideal para crear horarios completos por curso desde la interfaz."
+        description = "Genera automáticamente un horario completo para un curso seleccionado, asignando clases distribuidas inteligentemente a lo largo de la semana según disponibilidad del profesor. Ideal para crear horarios completos por curso desde la interfaz."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Horario generado exitosamente"),
@@ -95,6 +105,38 @@ public class ScheduleController {
             Authentication auth
     ) {
         return generationService.generateScheduleForCourse(courseId, auth.getName());
+    }
+
+    @PostMapping("/generate-course/{courseId}/quick")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(
+        summary = "Generar horario completo para un curso (interfaz simplificada)",
+        description = "Versión simplificada del endpoint de generación por curso. No requiere parámetros adicionales, usa valores por defecto optimizados para una experiencia de un solo clic desde la interfaz de usuario."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horario generado exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Curso no válido o sin profesor asignado"),
+        @ApiResponse(responseCode = "404", description = "Curso no encontrado"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    public ScheduleHistoryDTO generateScheduleForCourseQuick(
+            @Parameter(description = "ID del curso para el cual generar horario", required = true, example = "1")
+            @PathVariable Integer courseId,
+            Authentication auth
+    ) {
+        logger.info("=== GENERACIÓN RÁPIDA DE HORARIO PARA CURSO {} ===", courseId);
+        
+        try {
+            ScheduleHistoryDTO result = generationService.generateScheduleForCourse(courseId, auth.getName());
+            
+            logger.info("Generación rápida completada - Status: {}, Horarios generados: {}", 
+                result.getStatus(), result.getTotalGenerated());
+            
+            return result;
+        } catch (Exception e) {
+            logger.error("Error en generación rápida para curso {}: {}", courseId, e.getMessage());
+            throw e;
+        }
     }
 
     @GetMapping("/history")
@@ -130,26 +172,71 @@ public class ScheduleController {
         return generationService.generateDiagnostic();
     }
 
-    @GetMapping("/debug-courses")
+    @GetMapping("/available-courses")
     @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
-        summary = "Debug: Ver estado de cursos",
-        description = "Endpoint temporal para verificar cursos y horarios"
+        summary = "Obtener cursos disponibles para generación automática",
+        description = "Lista todos los cursos que no tienen horario asignado pero sí tienen profesor asignado, " +
+                     "listos para generación automática de horarios."
     )
-    public String debugCourses() {
-        return generationService.debugCoursesStatus();
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Cursos disponibles obtenidos exitosamente"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    public List<CourseDTO> getCoursesAvailableForAutoGeneration() {
+        return generationService.getCoursesAvailableForAutoGeneration();
     }
 
-    @DeleteMapping("/clear-all")
+    @GetMapping("/validate-course/{courseId}")
     @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
-        summary = "Limpiar todos los horarios",
-        description = "Elimina todos los horarios existentes para testing"
+        summary = "Validar viabilidad de generación para un curso",
+        description = "Valida si un curso específico puede tener horario generado automáticamente, " +
+                     "incluyendo verificación de profesor, disponibilidad y posibles conflictos."
     )
-    public String clearAllSchedules() {
-        generationService.clearAllSchedulesForTesting();
-        return "Todos los horarios han sido eliminados";
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Validación completada"),
+        @ApiResponse(responseCode = "404", description = "Curso no encontrado"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    public CourseGenerationValidationDTO validateCourseForGeneration(
+            @Parameter(description = "ID del curso a validar", required = true, example = "1")
+            @PathVariable Integer courseId) {
+        return generationService.validateCourseForGeneration(courseId);
     }
 
+    @GetMapping("/table/{courseId}")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(
+        summary = "Obtener horario de curso en formato tabla",
+        description = "Obtiene el horario completo de un curso en formato de tabla visual, como se muestra en el ejemplo del curso 1A. Incluye días como columnas y franjas horarias como filas."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Horario obtenido exitosamente"),
+        @ApiResponse(responseCode = "404", description = "Curso no encontrado"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    public ScheduleTableDTO getCourseScheduleTable(
+            @Parameter(description = "ID del curso", required = true, example = "1")
+            @PathVariable Integer courseId) {
+        return generationService.getCourseScheduleTable(courseId);
+    }
+
+    @GetMapping("/verify/{courseId}")
+    @PreAuthorize("hasRole('COORDINADOR')")
+    @Operation(
+        summary = "Verificar exhaustivamente el horario generado",
+        description = "Realiza una verificación completa del horario generado para un curso específico, validando completitud, bloques protegidos, conflictos y formato."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Verificación completada"),
+        @ApiResponse(responseCode = "404", description = "Curso no encontrado"),
+        @ApiResponse(responseCode = "403", description = "No autorizado")
+    })
+    public ScheduleVerificationReportDTO verifyGeneratedSchedule(
+            @Parameter(description = "ID del curso a verificar", required = true, example = "1")
+            @PathVariable Integer courseId) {
+        return generationService.verifyGeneratedSchedule(courseId);
+    }
 
 }
