@@ -64,11 +64,12 @@ public class ScheduleGenerationServiceAvailabilityTest {
         
         // Configurar comportamiento de los repositorios
         when(courseRepo.findAll()).thenReturn(Arrays.asList(course));
+        when(teacherRepo.findAll()).thenReturn(Arrays.asList(teacher)); // Incluir profesor en la lista
         when(scheduleRepo.findByCourseId(any())).thenReturn(Arrays.asList()); // Curso sin horarios
         when(teacherSubjectRepo.findByTeacher_Id(any())).thenReturn(Arrays.asList(teacherSubject));
         when(teacherRepo.findById(any())).thenReturn(java.util.Optional.of(teacher));
         when(subjectRepo.findById(any())).thenReturn(java.util.Optional.of(subject));
-        
+
         // El profesor NO tiene disponibilidad configurada
         when(availabilityRepo.findByTeacher_IdAndDay(eq(1), any(Days.class))).thenReturn(Arrays.asList());
         
@@ -119,6 +120,7 @@ public class ScheduleGenerationServiceAvailabilityTest {
         
         // Configurar comportamiento de los repositorios
         when(courseRepo.findAll()).thenReturn(Arrays.asList(course));
+        when(teacherRepo.findAll()).thenReturn(Arrays.asList(teacher)); // Incluir profesor en la lista
         when(scheduleRepo.findByCourseId(any())).thenReturn(Arrays.asList()); // Curso sin horarios
         when(scheduleRepo.findByTeacherId(any())).thenReturn(createExistingSchedules(teacher, "Lunes")); // Conflicto existente
         when(teacherSubjectRepo.findByTeacher_Id(any())).thenReturn(Arrays.asList(teacherSubject));
@@ -175,20 +177,21 @@ public class ScheduleGenerationServiceAvailabilityTest {
         
         // Configurar comportamiento de los repositorios
         when(courseRepo.findAll()).thenReturn(Arrays.asList(course1, course2));
+        when(teacherRepo.findAll()).thenReturn(Arrays.asList(teacher1, teacher2)); // Incluir profesores en la lista
         when(scheduleRepo.findByCourseId(any())).thenReturn(Arrays.asList()); // Ambos sin horarios
-        
+
         // Profesor 1 sin disponibilidad, Profesor 2 con disponibilidad
         when(availabilityRepo.findByTeacher_IdAndDay(eq(1), any(Days.class))).thenReturn(Arrays.asList());
         when(availabilityRepo.findByTeacher_IdAndDay(eq(2), eq(Days.Lunes))).thenReturn(Arrays.asList(availability));
-        
+
         when(teacherSubjectRepo.findByTeacher_Id(eq(1))).thenReturn(Arrays.asList(teacherSubject1));
         when(teacherSubjectRepo.findByTeacher_Id(eq(2))).thenReturn(Arrays.asList(teacherSubject2));
-        
+
         when(teacherRepo.findById(eq(1))).thenReturn(java.util.Optional.of(teacher1));
         when(teacherRepo.findById(eq(2))).thenReturn(java.util.Optional.of(teacher2));
         when(subjectRepo.findById(eq(1))).thenReturn(java.util.Optional.of(subject1));
         when(subjectRepo.findById(eq(2))).thenReturn(java.util.Optional.of(subject2));
-        
+
         when(scheduleRepo.findByTeacherId(any())).thenReturn(Arrays.asList()); // Sin conflictos
         
         // Simular guardado del historial
@@ -263,12 +266,58 @@ public class ScheduleGenerationServiceAvailabilityTest {
     }
 
     private List<schedule> createExistingSchedules(teachers teacher, String day) {
-        schedule existing = new schedule();
-        existing.setTeacherId(teacher);
-        existing.setDay(day);
-        existing.setStartTime(java.time.LocalTime.of(9, 0));
-        existing.setEndTime(java.time.LocalTime.of(10, 0));
-        return Arrays.asList(existing);
+        // Crear múltiples horarios existentes que cubran todo el rango de disponibilidad
+        // para asegurar que no haya slots disponibles (mañana y tarde)
+        schedule existing1 = new schedule();
+        existing1.setTeacherId(teacher);
+        existing1.setDay(day);
+        existing1.setStartTime(java.time.LocalTime.of(8, 0));
+        existing1.setEndTime(java.time.LocalTime.of(9, 0));
+
+        schedule existing2 = new schedule();
+        existing2.setTeacherId(teacher);
+        existing2.setDay(day);
+        existing2.setStartTime(java.time.LocalTime.of(9, 0));
+        existing2.setEndTime(java.time.LocalTime.of(10, 0));
+
+        schedule existing3 = new schedule();
+        existing3.setTeacherId(teacher);
+        existing3.setDay(day);
+        existing3.setStartTime(java.time.LocalTime.of(10, 0));
+        existing3.setEndTime(java.time.LocalTime.of(11, 0));
+
+        schedule existing4 = new schedule();
+        existing4.setTeacherId(teacher);
+        existing4.setDay(day);
+        existing4.setStartTime(java.time.LocalTime.of(11, 0));
+        existing4.setEndTime(java.time.LocalTime.of(12, 0));
+
+        // Horarios de tarde para cubrir toda la disponibilidad
+        schedule existing5 = new schedule();
+        existing5.setTeacherId(teacher);
+        existing5.setDay(day);
+        existing5.setStartTime(java.time.LocalTime.of(13, 0));
+        existing5.setEndTime(java.time.LocalTime.of(14, 0));
+
+        schedule existing6 = new schedule();
+        existing6.setTeacherId(teacher);
+        existing6.setDay(day);
+        existing6.setStartTime(java.time.LocalTime.of(14, 0));
+        existing6.setEndTime(java.time.LocalTime.of(15, 0));
+
+        schedule existing7 = new schedule();
+        existing7.setTeacherId(teacher);
+        existing7.setDay(day);
+        existing7.setStartTime(java.time.LocalTime.of(15, 0));
+        existing7.setEndTime(java.time.LocalTime.of(16, 0));
+
+        schedule existing8 = new schedule();
+        existing8.setTeacherId(teacher);
+        existing8.setDay(day);
+        existing8.setStartTime(java.time.LocalTime.of(16, 0));
+        existing8.setEndTime(java.time.LocalTime.of(17, 0));
+
+        return Arrays.asList(existing1, existing2, existing3, existing4, existing5, existing6, existing7, existing8);
     }
 
     private schedule_history createTestHistory() {

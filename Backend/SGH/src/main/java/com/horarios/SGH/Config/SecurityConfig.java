@@ -46,10 +46,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Permitir múltiples orígenes comunes de desarrollo
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://localhost:5173",  // Vite dev server
+            "http://127.0.0.1:5173"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L); // Cache preflight por 1 hora
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -75,6 +85,7 @@ public class SecurityConfig {
                     "/subjects/**",      // materias para dashboard
                     "/courses/**",       // cursos para dashboard (excepto estudiantes)
                     "/schedules/history", // historial de horarios
+                    "/schedules/debug-courses", // debug estado de cursos
                     "/schedules/pdf/**", // exportar PDFs
                     "/schedules/excel/**", // exportar Excel
                     "/schedules/image/**", // exportar imágenes
@@ -88,15 +99,15 @@ public class SecurityConfig {
                     "/api-docs/**"
                 ).permitAll()
                 // Endpoint específico para estudiantes requiere rol COORDINADOR
-                .requestMatchers("/courses/*/students").hasRole("COORDINADOR")
+                .requestMatchers("/courses/*/students").hasAuthority("ROLE_COORDINADOR")
                 // Endpoints que requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/schedules-crud/**").authenticated()
                 // Endpoint específico para estudiantes requiere autenticación
                 .requestMatchers("/schedules-crud/my-schedule").authenticated()
-                // Endpoints de generación de horarios requieren rol COORDINADOR
-                .requestMatchers("/schedules/generate", "/schedules/auto-generate", "/schedules/regenerate").authenticated()
+                // Endpoints de generación de horarios (temporalmente sin rol específico para pruebas)
+                .requestMatchers("/schedules/generate", "/schedules/auto-generate", "/schedules/regenerate", "/schedules/clear-all").authenticated()
                 // Solo subjects y courses requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/subjects/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/subjects/**").authenticated()
