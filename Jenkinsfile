@@ -37,6 +37,11 @@ pipeline {
                     env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
                     env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
                     env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                    if (env.ENVIRONMENT == 'develop') {
+                        env.DB_SERVICE = "mysql-develop"
+                    } else {
+                        env.DB_SERVICE = "postgres-${env.ENVIRONMENT}"
+                    }
                     switch (env.ENVIRONMENT) {
                         case 'develop':
                             env.ENV_FILE = "${env.ENV_DIR}/.env.dev"
@@ -136,7 +141,7 @@ pipeline {
                     
                     # Asegurar que la base de datos esté funcionando antes de desplegar la API
                     echo "🔍 Verificando estado de la base de datos..."
-                    sleep 10
+                    sleep 30
                     
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
                     echo "✅ API desplegada correctamente"
