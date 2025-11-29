@@ -119,13 +119,9 @@ volumes:
 networks:
   network_develop:
     driver: bridge
-    name: network_develop
   network_qa:
     driver: bridge
-    name: network_qa
   network_staging:
     driver: bridge
-    name: network_staging
   network_prod:
     driver: bridge
-    name: network_prod

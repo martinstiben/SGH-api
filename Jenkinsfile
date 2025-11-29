@@ -162,17 +162,18 @@ pipeline {
 
         stage('Desplegar Base de Datos') {
             steps {
-                sh """
-                    echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
-                    echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
-                    echo "📁 Ubicación actual: \$(pwd)"
+                dir("Devops") {
+                    sh """
+                        echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
+                        echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
+                        echo "📁 Ubicación actual: \$(pwd)"
 
-                    # Limpiar contenedores anteriores para evitar conflictos
-                    echo "🧹 Limpiando contenedores anteriores de base de datos..."
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
+                        # Limpiar contenedores anteriores para evitar conflictos
+                        echo "🧹 Limpiando contenedores anteriores de base de datos..."
+                        docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
 
-                    echo "📦 Levantando base de datos de QA..."
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
+                        echo "📦 Levantando base de datos de QA..."
+                        docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
 
                     # Asegurar que la base de datos esté funcionando antes de desplegar la API
                     echo "🔍 Verificando estado de la base de datos..."
@@ -213,16 +214,17 @@ pipeline {
 
         stage('Desplegar SGH Backend') {
             steps {
-                sh """
-                    echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
-                    echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
-                    
-                    # Limpiar contenedores anteriores para evitar conflictos
-                    echo "🧹 Limpiando contenedores anteriores de API..."
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-                    
-                    echo "📦 Levantando API de QA..."
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-qa
+                dir("Devops") {
+                    sh """
+                        echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
+                        echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
+
+                        # Limpiar contenedores anteriores para evitar conflictos
+                        echo "🧹 Limpiando contenedores anteriores de API..."
+                        docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
+
+                        echo "📦 Levantando API de QA..."
+                        docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-qa
                     
                     echo "⏳ Esperando que la API esté lista..."
                     sleep 15
