@@ -146,7 +146,7 @@ pipeline {
                         fi
                     done
 
-                    docker-compose -f docker-compose-apis.yml -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+                    docker-compose -f docker-compose-apis.yml -p sgh-${env.ENVIRONMENT} up -d
                     echo "✅ API desplegada correctamente"
                     echo "🌐 Swagger UI disponible en:"
                     case ${env.ENVIRONMENT} in

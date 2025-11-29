@@ -1,29 +1,4 @@
-version: '3.8'
-
 services:
-  # ==================== DESARROLLO ====================
-  sgh-api-develop:
-    container_name: API_Develop
-    image: sgh-api-develop:latest
-    restart: always
-    env_file:
-      - ./develop/.env.dev
-    ports:
-      - "8082:8082"
-    networks:
-      - network_develop
-    external_links:
-      - DB_Develop:postgres-develop
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    labels:
-      - com.sgh.group=sgh
-      - com.sgh.environment=develop
-
   # ==================== QA ====================
   sgh-api-qa:
     container_name: API_QA
@@ -45,63 +20,7 @@ services:
       - com.sgh.group=sgh
       - com.sgh.environment=qa
 
-  # ==================== STAGING ====================
-  sgh-api-staging:
-    container_name: API_Staging
-    image: sgh-api-staging:latest
-    restart: always
-    env_file:
-      - ./staging/.env.staging
-    ports:
-      - "8084:8084"
-    networks:
-      - network_staging
-    external_links:
-      - DB_Staging:postgres-staging
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    labels:
-      - com.sgh.group=sgh
-      - com.sgh.environment=staging
-
-  # ==================== PRODUCCIÓN ====================
-  sgh-api-prod:
-    container_name: API_Prod
-    image: sgh-api-prod:latest
-    restart: always
-    env_file:
-      - ./prod/.env.prod
-    ports:
-      - "8085:8085"
-    networks:
-      - network_prod
-    external_links:
-      - DB_Prod:postgres-prod
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    labels:
-      - com.sgh.group=sgh
-      - com.sgh.environment=prod
-
 # ==================== REDES ====================
 networks:
-  network_develop:
-    driver: bridge
-    name: network_develop
   network_qa:
     driver: bridge
-    name: network_qa
-  network_staging:
-    driver: bridge
-    name: network_staging
-  network_prod:
-    driver: bridge
-    name: network_prod
