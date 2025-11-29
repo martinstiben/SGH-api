@@ -1,102 +1,27 @@
 version: '3.8'
 
 services:
-  # ==================== DESARROLLO ====================
-  postgres-develop:
-    container_name: DB_Develop
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    env_file:
-      - ./develop/.env.dev
-    ports:
-      - "5432:5432"
-    networks:
-      - network_develop
-    volumes:
-      - postgres_data_develop:/var/lib/postgresql
-      - "./backups/develop:/backups/postgres"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    labels:
-      - com.sgh.group=sgh
-      - com.sgh.environment=develop
-
-  # ==================== QA ====================
-  postgres-qa:
-    container_name: DB_QA
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    env_file:
-      - ./qa/.env.qa
-    ports:
-      - "5433:5432"
-    networks:
-      - network_qa
-    volumes:
-      - postgres_data_qa:/var/lib/postgresql
-      - "./backups/qa:/backups/postgres"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    labels:
-      - com.sgh.group=sgh
-      - com.sgh.environment=qa
-
-  # ==================== STAGING ====================
-  postgres-staging:
-    container_name: DB_Staging
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    env_file:
-      - ./staging/.env.staging
-    ports:
-      - "5434:5432"
-    networks:
-      - network_staging
-    volumes:
-      - postgres_data_staging:/var/lib/postgresql
-      - "./backups/staging:/backups/postgres"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    labels:
-      - com.sgh.group=sgh
-      - com.sgh.environment=staging
-
   # ==================== PRODUCCIÓN ====================
-  postgres-prod:
+  mysql-prod:
+    image: mysql:8.0
     container_name: DB_Prod
-    build:
-      context: .
-      dockerfile: Dockerfile
     restart: always
     env_file:
       - ./prod/.env.prod
     ports:
-      - "5435:5432"
+      - "3310:3306"
     networks:
       - network_prod
     volumes:
-      - postgres_data_prod:/var/lib/postgresql
-      - "./backups/prod:/backups/postgres"
+      - mysql_data_prod:/var/lib/mysql
+      - "./backups/prod:/backups/mysql"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 30s
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     labels:
       - com.sgh.group=sgh
       - com.sgh.environment=prod
@@ -112,9 +37,9 @@ volumes:
   postgres_data_staging:
     driver: local
     name: postgres_data_staging
-  postgres_data_prod:
+  mysql_data_prod:
     driver: local
-    name: postgres_data_prod
+    name: mysql_data_prod
 
 # ==================== REDES ====================
 networks:

@@ -30,14 +30,13 @@ pipeline {
                             
                             echo "🔄 Intentando clonar la rama más apropiada..."
                             
-                            # SOLO usar la rama Staging - es independiente
-                            if git clone -b Staging https://github.com/martinstiben/SGH-api.git .; then
-                                echo "✅ Clonado rama Staging exitosamente"
-                                echo "🎯 Pipeline ejecutándose en ambiente Staging (independiente)"
+                            # Usar la rama actual del pipeline
+                            if git clone -b ${env.BRANCH_NAME} https://github.com/martinstiben/SGH-api.git .; then
+                                echo "✅ Clonado rama ${env.BRANCH_NAME} exitosamente"
+                                echo "🎯 Pipeline ejecutándose en ambiente basado en rama ${env.BRANCH_NAME}"
                             else
-                                echo "❌ No se pudo clonar la rama Staging"
-                                echo "💡 La rama Staging debe existir para ejecutar este pipeline de Staging"
-                                echo "🔧 Verifica que la rama 'Staging' esté creada en el repositorio"
+                                echo "❌ No se pudo clonar la rama ${env.BRANCH_NAME}"
+                                echo "💡 Verifica que la rama ${env.BRANCH_NAME} exista en el repositorio"
                                 exit 1
                             fi
                             
@@ -52,21 +51,54 @@ pipeline {
         stage('Detectar entorno') {
             steps {
                 script {
-                    // Forzar Staging como el usuario solicitó
-                    env.ENVIRONMENT = 'staging'
-                    
-                    // Usar los archivos Docker Compose correctos como en develop
-                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-staging.yml"
-                    env.COMPOSE_FILE_API = "Devops/docker-compose-api-staging.yml"
-                    env.ENV_FILE = "Devops/staging/.env.staging"
+                    def branch = env.BRANCH_NAME?.toLowerCase()
+                    switch (branch) {
+                        case 'main':
+                            env.ENVIRONMENT = 'prod'
+                            break
+                        case 'staging':
+                            env.ENVIRONMENT = 'staging'
+                            break
+                        case 'qa':
+                            env.ENVIRONMENT = 'qa'
+                            break
+                        default:
+                            env.ENVIRONMENT = 'develop'
+                            break
+                    }
+
+                    // Configurar archivos según el ambiente detectado
+                    switch (env.ENVIRONMENT) {
+                        case 'develop':
+                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
+                            env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                            env.ENV_FILE = "Devops/develop/.env.dev"
+                            break
+                        case 'qa':
+                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
+                            env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                            env.ENV_FILE = "Devops/qa/.env.qa"
+                            break
+                        case 'staging':
+                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-staging.yml"
+                            env.COMPOSE_FILE_API = "Devops/docker-compose-api-staging.yml"
+                            env.ENV_FILE = "Devops/staging/.env.staging"
+                            break
+                        case 'prod':
+                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
+                            env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                            env.ENV_FILE = "Devops/prod/.env.prod"
+                            break
+                    }
 
                     echo """
-                    ✅ Entorno forzado: ${env.ENVIRONMENT}
+
+                    ✅ Rama detectada: ${env.BRANCH_NAME}
+                    🌎 Entorno asignado: ${env.ENVIRONMENT}
                     📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
                     """
-
                     echo "🔍 Verificando estructura del workspace..."
                     sh '''
                         echo "📁 Contenido actual del directorio:"
@@ -92,36 +124,36 @@ pipeline {
                     '''
 
                     // Verificar archivos usando la estructura real del repositorio
-                    sh '''
+                    sh """
                         echo "🔍 Verificando archivos de configuración..."
-                        
+
                         # Verificar el Docker Compose de Base de Datos
-                        if [ -f "Devops/docker-compose-databases-staging.yml" ]; then
-                            echo "✅ Devops/docker-compose-databases-staging.yml encontrado"
+                        if [ -f "${env.COMPOSE_FILE_DATABASE}" ]; then
+                            echo "✅ ${env.COMPOSE_FILE_DATABASE} encontrado"
                             echo "📄 Servicio de base de datos definido:"
-                            grep -A 1 "container_name:" Devops/docker-compose-databases-staging.yml | head -5
+                            grep -A 1 "container_name:" ${env.COMPOSE_FILE_DATABASE} | head -5
                         else
-                            echo "❌ Devops/docker-compose-databases-staging.yml no encontrado"
+                            echo "❌ ${env.COMPOSE_FILE_DATABASE} no encontrado"
                             exit 1
                         fi
-                        
+
                         # Verificar el Docker Compose de API
-                        if [ -f "Devops/docker-compose-api-staging.yml" ]; then
-                            echo "✅ Devops/docker-compose-api-staging.yml encontrado"
+                        if [ -f "${env.COMPOSE_FILE_API}" ]; then
+                            echo "✅ ${env.COMPOSE_FILE_API} encontrado"
                             echo "📄 Servicio de API definido:"
-                            grep -A 1 "container_name:" Devops/docker-compose-api-staging.yml | head -5
+                            grep -A 1 "container_name:" ${env.COMPOSE_FILE_API} | head -5
                         else
-                            echo "❌ Devops/docker-compose-api-staging.yml no encontrado"
+                            echo "❌ ${env.COMPOSE_FILE_API} no encontrado"
                             exit 1
                         fi
-                        
-                        if [ -f "Devops/staging/.env.staging" ]; then
-                            echo "✅ Devops/staging/.env.staging encontrado"
+
+                        if [ -f "${env.ENV_FILE}" ]; then
+                            echo "✅ ${env.ENV_FILE} encontrado"
                         else
-                            echo "❌ Devops/staging/.env.staging no encontrado"
+                            echo "❌ ${env.ENV_FILE} no encontrado"
                             exit 1
                         fi
-                    '''
+                    """
                 }
             }
         }
@@ -159,12 +191,12 @@ pipeline {
         stage('Limpiar Base de Datos') {
             steps {
                 sh """
-                    echo "🗄️ Limpiando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🗄️ Limpiando base de datos MySQL para: ${env.ENVIRONMENT}"
                     echo "🧹 Eliminando volumen de datos anterior para fresh start..."
-                    
+
                     # Eliminar el volumen anterior para start limpio
-                    docker volume rm postgres_data_staging 2>/dev/null || true
-                    
+                    docker volume rm mysql_data_${env.ENVIRONMENT} 2>/dev/null || true
+
                     echo "✅ Volumen de base de datos limpio - listo para fresh start"
                 """
             }
@@ -173,24 +205,24 @@ pipeline {
         stage('Desplegar Base de Datos') {
             steps {
                 sh """
-                    echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
-                    
+
                     # Limpiar contenedores anteriores para evitar conflictos
                     echo "🧹 Limpiando contenedores anteriores de base de datos..."
                     docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-                    
-                    echo "📦 Levantando base de datos de Staging..."
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-staging
-                    
+
+                    echo "📦 Levantando base de datos de ${env.ENVIRONMENT}..."
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d mysql-${env.ENVIRONMENT}
+
                     echo "⏳ Esperando que la base de datos esté lista..."
-                    sleep 15
-                    
+                    sleep 30
+
                     echo "🔍 Verificando que la base de datos esté corriendo:"
-                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_Staging
-                    
-                    echo "✅ Base de datos DB_Staging desplegada correctamente en puerto: 5434"
+                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_${env.ENVIRONMENT}
+
+                    echo "✅ Base de datos DB_${env.ENVIRONMENT} desplegada correctamente"
                 """
             }
         }
@@ -200,29 +232,24 @@ pipeline {
                 sh """
                     echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
-                    
+
                     # Limpiar contenedores anteriores para evitar conflictos
                     echo "🧹 Limpiando contenedores anteriores de API..."
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-                    
-                    echo "📦 Levantando API de Staging..."
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-staging
-                    
+
+                    echo "📦 Levantando API de ${env.ENVIRONMENT}..."
+                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+
                     echo "⏳ Esperando que la API esté lista..."
-                    sleep 15
-                    
+                    sleep 30
+
                     echo "🔍 Verificando contenedores que están corriendo:"
                     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                    
-                    echo "✅ Despliegue completado - Contenedores de Staging:"
-                    echo "   🗄️ DB_Staging (Base de datos PostgreSQL)"
-                    echo "   🚀 API_Staging (Spring Boot API)"
+
+                    echo "✅ Despliegue completado - Contenedores de ${env.ENVIRONMENT}:"
+                    echo "   🗄️ DB_${env.ENVIRONMENT} (Base de datos MySQL)"
+                    echo "   🚀 API_${env.ENVIRONMENT} (Spring Boot API)"
                     echo ""
-                    echo "🌐 Swagger UI disponible en:"
-                    echo "   http://localhost:8084/swagger-ui/index.html"
-                    echo "🔗 Health check:"
-                    echo "   http://localhost:8084/actuator/health"
-                    echo "🗄️ Base de datos PostgreSQL en puerto: 5434"
                 """
             }
         }
@@ -230,17 +257,34 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
-            echo "🌐 Tu API está disponible en: http://localhost:8084"
-            echo "📚 Swagger UI: http://localhost:8084/swagger-ui/index.html"
-            echo "🔍 Health check: http://localhost:8084/actuator/health"
+            script {
+                def port = ""
+                switch(env.ENVIRONMENT) {
+                    case 'develop':
+                        port = "8082"
+                        break
+                    case 'qa':
+                        port = "8083"
+                        break
+                    case 'staging':
+                        port = "8084"
+                        break
+                    case 'prod':
+                        port = "8085"
+                        break
+                }
+                echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
+                echo "🌐 Tu API está disponible en: http://localhost:${port}"
+                echo "📚 Swagger UI: http://localhost:${port}/swagger-ui/index.html"
+                echo "🔍 Health check: http://localhost:${port}/actuator/health"
+            }
         }
         failure {
             echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
             echo "🔍 Revisa los logs arriba para más detalles"
         }
         always {
-            echo "🧹 Limppieza final del pipeline completada."
+            echo "🧹 Limpieza final del pipeline completada."
         }
     }
 }

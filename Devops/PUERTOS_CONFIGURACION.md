@@ -30,7 +30,7 @@
 - **Puerto API**: 8085
 - **Swagger UI**: http://localhost:8085/swagger-ui/index.html
 - **API Docs**: http://localhost:8085/api-docs
-- **Base de Datos**: PostgreSQL en puerto 5435
+- **Base de Datos**: MySQL en puerto 3310
 - **Container DB**: DB_Prod
 - **URL Base**: http://localhost:8085
 

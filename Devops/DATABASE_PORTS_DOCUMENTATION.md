@@ -1,4 +1,4 @@
-# Documentación de Puertos de Base de Datos PostgreSQL - SGH
+# Documentación de Puertos de Base de Datos MySQL - SGH
 
 ## Resumen de Configuración de Ambientes
 
@@ -8,12 +8,12 @@ Este documento detalla la configuración de puertos para las bases de datos Post
 
 ## 📊 Tabla de Puertos por Ambiente
 
-| Ambiente | Puerto Host | Puerto Contenedor | Nombre Base de Datos | Usuario | Contenedor |
-|----------|-------------|-------------------|---------------------|---------|------------|
-| **Develop** | `5432` | `5432` | `DB_SGH_Develop` | `sgh_user` | `sgh-postgres-develop` |
-| **QA** | `5433` | `5432` | `DB_SGH_QA` | `sgh_user` | `sgh-postgres-qa` |
-| **Staging** | `5434` | `5432` | `DB_SGH_Staging` | `sgh_user` | `sgh-postgres-staging` |
-| **Production** | `5435` | `5432` | `DB_SGH_Production` | `sgh_user` | `sgh-postgres-prod` |
+| Ambiente | Puerto Host | Puerto Contenedor | Nombre Base de Datos | Usuario | Contenedor | Motor |
+|----------|-------------|-------------------|---------------------|---------|------------|--------|
+| **Develop** | `3307` | `3306` | `DB_SGH_Develop` | `sgh_user` | `mysql-develop` | MySQL |
+| **QA** | `3308` | `3306` | `DB_SGH_QA` | `sgh_user` | `mysql-qa` | MySQL |
+| **Staging** | `3309` | `3306` | `DB_SGH_Staging` | `sgh_user` | `mysql-staging` | MySQL |
+| **Production** | `3310` | `3306` | `DB_SGH_Production` | `sgh_user` | `mysql-prod` | MySQL |
 
 ---
 
@@ -65,15 +65,16 @@ Este documento detalla la configuración de puertos para las bases de datos Post
   ```
 
 ### 4. Ambiente de Producción (Production)
-- **Puerto de acceso:** `5435`
+- **Puerto de acceso:** `3310`
 - **Base de datos:** `DB_SGH_Production`
 - **Usuario:** `sgh_user`
+- **Motor:** MySQL 8.0
 - **Archivo de configuración:** `Devops/prod/.env.prod`
-- **Docker Compose:** `Devops/Docker-Compose.yml` (centralizado)
+- **Docker Compose:** `Devops/docker-compose-databases.yml`
 - **Conexión desde host:**
   ```
   Host: localhost
-  Port: 5435
+  Port: 3310
   Database: DB_SGH_Production
   User: sgh_user
   Password: [ver .env.prod]
@@ -145,36 +146,36 @@ docker-compose stop postgres-prod
 
 ## 🔍 Verificación de Conectividad
 
-### Verificar que PostgreSQL está corriendo:
+### Verificar que MySQL está corriendo:
 
 ```bash
 # Develop
-docker exec -it sgh-postgres-develop pg_isready -U postgres
+docker exec -it mysql-develop mysqladmin ping -h localhost
 
 # QA
-docker exec -it sgh-postgres-qa pg_isready -U postgres
+docker exec -it mysql-qa mysqladmin ping -h localhost
 
 # Staging
-docker exec -it sgh-postgres-staging pg_isready -U postgres
+docker exec -it mysql-staging mysqladmin ping -h localhost
 
 # Production
-docker exec -it sgh-postgres-prod pg_isready -U postgres
+docker exec -it mysql-prod mysqladmin ping -h localhost
 ```
 
 ### Conectarse a la base de datos desde el contenedor:
 
 ```bash
 # Develop
-docker exec -it sgh-postgres-develop psql -U sgh_user -d DB_SGH_Develop
+docker exec -it mysql-develop mysql -u sgh_user -p DB_SGH_Develop
 
 # QA
-docker exec -it sgh-postgres-qa psql -U sgh_user -d DB_SGH_QA
+docker exec -it mysql-qa mysql -u sgh_user -p DB_SGH_QA
 
 # Staging
-docker exec -it sgh-postgres-staging psql -U sgh_user -d DB_SGH_Staging
+docker exec -it mysql-staging mysql -u sgh_user -p DB_SGH_Staging
 
 # Production
-docker exec -it sgh-postgres-prod psql -U sgh_user -d DB_SGH_Production
+docker exec -it mysql-prod mysql -u sgh_user -p DB_SGH_Production
 ```
 
 ---
@@ -186,19 +187,19 @@ El backend de Spring Boot debe configurarse para conectarse a cada ambiente seg�
 ### application.properties (ejemplo para Develop):
 
 ```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/DB_SGH_Develop
+spring.datasource.url=jdbc:mysql://localhost:3307/DB_SGH_Develop
 spring.datasource.username=sgh_user
 spring.datasource.password=${DB_PASSWORD}
-spring.datasource.driver-class-name=org.postgresql.Driver
-spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
 ```
 
 ### Variables de entorno por ambiente:
 
-- **Develop:** `DB_PORT=5432`
-- **QA:** `DB_PORT=5433`
-- **Staging:** `DB_PORT=5434`
-- **Production:** `DB_PORT=5435`
+- **Develop:** `DB_PORT=3307`
+- **QA:** `DB_PORT=3308`
+- **Staging:** `DB_PORT=3309`
+- **Production:** `DB_PORT=3310`
 
 ---
 
@@ -220,10 +221,10 @@ Cada ambiente tiene su propio volumen persistente:
 - **Production:** `postgres_data_prod`
 
 Los backups se almacenan en:
-- `Devops/develop/backups/develop/`
-- `Devops/qa/backups/qa/`
-- `Devops/staging/backups/staging/`
-- `Devops/prod/backups/prod/`
+- `Devops/backups/develop/`
+- `Devops/backups/qa/`
+- `Devops/backups/staging/`
+- `Devops/backups/prod/`
 
 ---
 
@@ -241,10 +242,11 @@ Cada ambiente tiene su propia red aislada:
 ## ⚠️ Notas Importantes
 
 1. **Puertos únicos:** Cada ambiente usa un puerto diferente para evitar conflictos
-2. **Locale:** Todas las bases de datos están configuradas con locale `es_ES.UTF-8`
-3. **Health checks:** Cada contenedor tiene configurado un health check para verificar su estado
-4. **Restart policy:** Todos los contenedores están configurados con `restart: always`
-5. **Jenkins:** Esta configuración es compatible con pipelines de Jenkins para CI/CD
+2. **Motor de base de datos:** Todos los ambientes usan MySQL 8.0
+3. **Configuración MySQL:** Todas las bases de datos están configuradas con UTF-8 y collation unicode
+4. **Health checks:** Cada contenedor tiene configurado un health check para verificar su estado
+5. **Restart policy:** Todos los contenedores están configurados con `restart: always`
+6. **Jenkins:** Esta configuración es compatible con pipelines de Jenkins para CI/CD
 
 ---
 
