@@ -154,21 +154,30 @@ pipeline {
 
                     # Asegurar que la base de datos esté funcionando antes de desplegar la API
                     echo "🔍 Verificando estado de la base de datos..."
-                    sleep 60
+                    sleep 90
 
-                    # Verificar que la base de datos esté saludable
-                    echo "⏳ Esperando a que la base de datos esté lista..."
+                    # Verificar que el contenedor de MySQL esté corriendo
+                    echo "🔍 Verificando que MySQL esté corriendo..."
                     cd Devops
-                    for i in {1..30}; do
-                        if docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} ps ${env.DB_SERVICE} | grep -q "healthy"; then
-                            echo "✅ Base de datos está saludable"
+                    if ! docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} ps ${env.DB_SERVICE} | grep -q "Up"; then
+                        echo "❌ MySQL container no está corriendo"
+                        docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
+                        exit 1
+                    fi
+                    echo "✅ MySQL container está corriendo"
+
+                    # Verificar conectividad básica a MySQL
+                    echo "🔍 Probando conectividad a MySQL..."
+                    for i in {1..20}; do
+                        if docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} exec -T ${env.DB_SERVICE} mysqladmin ping -h localhost --silent; then
+                            echo "✅ MySQL está respondiendo"
                             break
                         fi
-                        echo "⏳ Esperando... intento \$i/30"
-                        sleep 10
-                        if [ \$i -eq 30 ]; then
-                            echo "❌ Timeout esperando que la base de datos esté saludable"
-                            docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
+                        echo "⏳ Esperando conectividad MySQL... intento \$i/20"
+                        sleep 5
+                        if [ \$i -eq 20 ]; then
+                            echo "❌ MySQL no responde después de 100 segundos"
+                            docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
                             exit 1
                         fi
                     done
