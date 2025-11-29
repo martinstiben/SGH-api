@@ -46,12 +46,16 @@ networks:
   network_develop:
     driver: bridge
     name: network_develop
+    external: true
   network_qa:
     driver: bridge
     name: network_qa
+    external: true
   network_staging:
     driver: bridge
     name: network_staging
+    external: true
   network_prod:
     driver: bridge
     name: network_prod
+    external: true
