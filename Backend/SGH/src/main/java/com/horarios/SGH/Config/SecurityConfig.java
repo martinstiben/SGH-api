@@ -19,6 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import java.util.Arrays;
 
 @Configuration
@@ -33,32 +34,31 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(UserDetailsService userDetailsService,
-                                                          JwtTokenProvider jwtTokenProvider,
-                                                          TokenRevocationService tokenRevocationService) {
+                                                           JwtTokenProvider jwtTokenProvider,
+                                                           TokenRevocationService tokenRevocationService) {
         return new JwtAuthenticationFilter(userDetailsService, jwtTokenProvider, tokenRevocationService);
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // BCrypt para login con password en texto plano
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permitir múltiples orígenes comunes de desarrollo
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
-            "http://localhost:5173",  // Vite dev server
+            "http://localhost:5173",
             "http://127.0.0.1:5173"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L); // Cache preflight por 1 hora
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -78,35 +78,31 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos (sin autenticación)
                 .requestMatchers(
-                    "/auth/**",          // login y register
-                    "/teachers/**",      // CRUD completo de profesores
-                    "/subjects/**",      // materias para dashboard
-                    "/courses/**",       // cursos para dashboard (excepto estudiantes)
-                    "/schedules/history", // historial de horarios
-                    "/schedules/debug-courses", // debug estado de cursos
-                    "/schedules/pdf/**", // exportar PDFs
-                    "/schedules/excel/**", // exportar Excel
-                    "/schedules/image/**", // exportar imágenes
-                    "/schedules-crud/by-course/**",  // ver horarios de curso
-                    "/schedules-crud/by-teacher/**", // ver horarios de profesor
-                    "/availability/**",  // disponibilidad de profesores
-                    "/users/*/photo",    // obtener foto de usuario
+                    "/auth/**",
+                    "/teachers/**",
+                    "/subjects/**",
+                    "/courses/**",
+                    "/schedules/history",
+                    "/schedules/debug-courses",
+                    "/schedules/pdf/**",
+                    "/schedules/excel/**",
+                    "/schedules/image/**",
+                    "/schedules-crud/by-course/**",
+                    "/schedules-crud/by-teacher/**",
+                    "/availability/**",
+                    "/users/*/photo",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
-                    "/api-docs/**"
+                    "/api-docs/**",
+                    "/actuator/**" // ✅ acceso público para health checks
                 ).permitAll()
-                // Endpoint específico para estudiantes requiere rol COORDINADOR
                 .requestMatchers("/courses/*/students").hasAuthority("ROLE_COORDINADOR")
-                // Endpoints que requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/schedules-crud/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/schedules-crud/**").authenticated()
-                // Endpoint específico para estudiantes requiere autenticación
                 .requestMatchers("/schedules-crud/my-schedule").authenticated()
-                // Solo subjects y courses requieren autenticación para operaciones de escritura
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/subjects/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/subjects/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/subjects/**").authenticated()
