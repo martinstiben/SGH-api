@@ -1,15 +1,6 @@
 pipeline {
     agent any
 
-    options {
-        // Deshabilitar el checkout automático de Jenkins
-        skipDefaultCheckout()
-        // Timeout general del pipeline
-        timeout(time: 20, unit: 'MINUTES')
-        // Log rotation
-        buildDiscarder(logRotator(numToKeepStr: '5'))
-    }
-
     environment {
         PROJECT_PATH = 'Backend/SGH'
     }
@@ -18,114 +9,49 @@ pipeline {
 
         stage('Checkout código fuente') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        echo "🧹 Limpiando workspace completamente..."
-                        deleteDir()
-                        
-                        echo "📥 Clonando repositorio desde GitHub..."
-                        sh '''
-                            echo "🔄 Verificando ramas disponibles en el repositorio..."
-                            
-                            # Intentar listar las ramas disponibles
-                            git ls-remote --heads https://github.com/martinstiben/SGH-api.git
-                            
-                            echo "🔄 Intentando clonar la rama más apropiada..."
-                            
-                            # SOLO usar la rama QA - es independiente
-                            if git clone -b QA https://github.com/martinstiben/SGH-api.git .; then
-                                echo "✅ Clonado rama QA exitosamente"
-                                echo "🎯 Pipeline ejecutándose en ambiente QA (independiente)"
-                            else
-                                echo "❌ No se pudo clonar la rama QA"
-                                echo "💡 La rama QA debe existir para ejecutar este pipeline de QA"
-                                echo "🔧 Verifica que la rama 'QA' esté creada en el repositorio"
-                                exit 1
-                            fi
-                            
-                            echo "📁 Verificando estructura del repositorio:"
-                            ls -la
-                        '''
-                    }
-                }
+                echo "📥 Clonando repositorio desde GitHub..."
+                checkout scm
+                sh 'ls -R Devops || true'
             }
         }
 
         stage('Detectar entorno') {
             steps {
                 script {
-                    // Forzar QA como el usuario solicitó
+                    // Forzar QA como el usuario solicitó - este pipeline es específico para QA
                     env.ENVIRONMENT = 'qa'
 
-                    // Usar los archivos Docker Compose generales
+                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
                     env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
                     env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
-                    env.ENV_FILE = "Devops/qa/.env.qa"
                     env.DB_SERVICE = "mysql-qa"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.qa"
 
                     echo """
-                    ✅ Entorno forzado: ${env.ENVIRONMENT}
+                    ✅ Rama detectada: ${env.BRANCH_NAME}
+                    🌎 Entorno asignado: ${env.ENVIRONMENT}
                     📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
-                    🗄️ DB Service: ${env.DB_SERVICE}
                     """
 
-                    echo "🔍 Verificando estructura del workspace..."
-                    sh '''
-                        echo "📁 Contenido actual del directorio:"
-                        ls -la
-                        echo "📂 Verificando directorio Backend/SGH:"
-                        if [ -d "Backend/SGH" ]; then
-                            echo "✅ Backend/SGH encontrado"
-                        else
-                            echo "❌ Backend/SGH no encontrado"
-                            echo "💡 ERROR: La estructura del repositorio no es correcta"
-                            exit 1
-                        fi
-                        echo "📂 Verificando directorio Devops:"
-                        if [ -d "Devops" ]; then
-                            echo "✅ Devops encontrado"
-                            echo "📁 Contenido de Devops:"
-                            ls -la Devops/
-                        else
-                            echo "❌ Devops no encontrado"
-                            echo "💡 ERROR: La estructura del repositorio no es correcta"
-                            exit 1
-                        fi
-                    '''
+                    if (!fileExists(env.COMPOSE_FILE_DATABASE)) {
+                        error "❌ No se encontró ${env.COMPOSE_FILE_DATABASE}"
+                    }
 
-                    // Verificar archivos usando la estructura real del repositorio
-                    sh '''
-                        echo "🔍 Verificando archivos de configuración..."
+                    if (!fileExists(env.COMPOSE_FILE_API)) {
+                        error "❌ No se encontró ${env.COMPOSE_FILE_API}"
+                    }
 
-                        # Verificar el Docker Compose de Base de Datos
-                        if [ -f "Devops/docker-compose-databases.yml" ]; then
-                            echo "✅ Devops/docker-compose-databases.yml encontrado"
-                            echo "📄 Servicios de base de datos definidos:"
-                            grep -A 1 "container_name:" Devops/docker-compose-databases.yml | grep -E "(DB_QA|mysql-qa)"
-                        else
-                            echo "❌ Devops/docker-compose-databases.yml no encontrado"
-                            exit 1
-                        fi
-
-                        # Verificar el Docker Compose de API
-                        if [ -f "Devops/docker-compose-apis.yml" ]; then
-                            echo "✅ Devops/docker-compose-apis.yml encontrado"
-                            echo "📄 Servicios de API definidos:"
-                            grep -A 1 "container_name:" Devops/docker-compose-apis.yml | grep -E "(API_QA|sgh-api-qa)"
-                        else
-                            echo "❌ Devops/docker-compose-apis.yml no encontrado"
-                            exit 1
-                        fi
-
-                        if [ -f "Devops/qa/.env.qa" ]; then
-                            echo "✅ Devops/qa/.env.qa encontrado"
-                        else
-                            echo "❌ Devops/qa/.env.qa no encontrado"
-                            exit 1
-                        fi
-                    '''
+                    if (!fileExists(env.ENV_FILE)) {
+                        echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
+                        writeFile file: env.ENV_FILE, text: '''
+                            PORT=8083
+                            DB_URL=jdbc:mysql://mysql-qa:3306/DB_SGH_QA
+                            DB_USER=sgh_user
+                            DB_PASSWORD=qa_S3cur3_P@ss_2024
+                        '''
+                    }
                 }
             }
         }
@@ -160,30 +86,46 @@ pipeline {
             }
         }
 
+        stage('Crear Redes Docker') {
+            steps {
+                sh """
+                    echo "🌐 Creando redes Docker"
+                    docker network create --driver bridge network_qa || echo "Red network_qa ya existe"
+                    echo "✅ Redes creadas correctamente"
+                """
+            }
+        }
+
         stage('Desplegar Base de Datos') {
             steps {
-                dir("Devops") {
-                    sh """
-                        echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
-                        echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
-                        echo "📁 Ubicación actual: \$(pwd)"
+                sh """
+                    echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
+                    echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
+                    echo "📁 Ubicación actual: \$(pwd)"
+                    ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
+                    cd Devops && docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
+                    echo "✅ Base de datos desplegada correctamente"
+                """
+            }
+        }
 
-                        # Limpiar contenedores anteriores para evitar conflictos
-                        echo "🧹 Limpiando contenedores anteriores de base de datos..."
-                        docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
+        stage('Desplegar SGH Backend') {
+            steps {
+                sh """
+                    echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
+                    echo "📦 Desplegando solo el contenedor de la API..."
+                    echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
 
-                        echo "📦 Levantando base de datos de QA..."
-                        docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
-
-                        # Asegurar que la base de datos esté funcionando antes de desplegar la API
-                        echo "🔍 Verificando estado de la base de datos..."
-                        sleep 90
+                    # Asegurar que la base de datos esté funcionando antes de desplegar la API
+                    echo "🔍 Verificando estado de la base de datos..."
+                    sleep 90
 
                     # Verificar que el contenedor de MySQL esté corriendo
                     echo "🔍 Verificando que MySQL esté corriendo..."
-                    if ! docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} ps ${env.DB_SERVICE} | grep -q "Up"; then
+                    cd Devops
+                    if ! docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} ps ${env.DB_SERVICE} | grep -q "Up"; then
                         echo "❌ MySQL container no está corriendo"
-                        docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
+                        docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
                         exit 1
                     fi
                     echo "✅ MySQL container está corriendo"
@@ -191,7 +133,7 @@ pipeline {
                     # Verificar conectividad básica a MySQL
                     echo "🔍 Probando conectividad a MySQL..."
                     for i in {1..20}; do
-                        if docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} exec -T ${env.DB_SERVICE} mysqladmin ping -h localhost --silent; then
+                        if docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} exec -T ${env.DB_SERVICE} mysqladmin ping -h localhost --silent; then
                             echo "✅ MySQL está respondiendo"
                             break
                         fi
@@ -199,48 +141,19 @@ pipeline {
                         sleep 5
                         if [ \$i -eq 20 ]; then
                             echo "❌ MySQL no responde después de 100 segundos"
-                            docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
+                            docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
                             exit 1
                         fi
                     done
 
-                    echo "🔍 Verificando que la base de datos esté corriendo:"
-                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_QA
-
-                    echo "✅ Base de datos DB_QA desplegada correctamente en puerto: 3308"
-                """
-            }
-        }
-
-        stage('Desplegar SGH Backend') {
-            steps {
-                dir("Devops") {
-                    sh """
-                        echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
-                        echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
-
-                        # Limpiar contenedores anteriores para evitar conflictos
-                        echo "🧹 Limpiando contenedores anteriores de API..."
-                        docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-
-                        echo "📦 Levantando API de QA..."
-                        docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-qa
-                    
-                    echo "⏳ Esperando que la API esté lista..."
-                    sleep 15
-                    
-                    echo "🔍 Verificando contenedores que están corriendo:"
-                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                    
-                    echo "✅ Despliegue completado - Contenedores de QA:"
-                    echo "   🗄️ DB_QA (Base de datos MySQL)"
-                    echo "   🚀 API_QA (Spring Boot API)"
-                    echo ""
+                    docker-compose -f docker-compose-apis.yml -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+                    echo "✅ API desplegada correctamente"
                     echo "🌐 Swagger UI disponible en:"
-                    echo "   http://localhost:8083/swagger-ui/index.html"
-                    echo "🔗 Health check:"
-                    echo "   http://localhost:8083/actuator/health"
-                    echo "🗄️ Base de datos MySQL en puerto: 3308"
+                    case ${env.ENVIRONMENT} in
+                        "qa")
+                            echo "   http://localhost:8083/swagger-ui/index.html"
+                            ;;
+                    esac
                 """
             }
         }
@@ -249,13 +162,9 @@ pipeline {
     post {
         success {
             echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
-            echo "🌐 Tu API está disponible en: http://localhost:8083"
-            echo "📚 Swagger UI: http://localhost:8083/swagger-ui/index.html"
-            echo "🔍 Health check: http://localhost:8083/actuator/health"
         }
         failure {
             echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
-            echo "🔍 Revisa los logs arriba para más detalles"
         }
         always {
             echo "🧹 Limpieza final del pipeline completada."
