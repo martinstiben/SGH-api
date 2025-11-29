@@ -141,7 +141,7 @@ pipeline {
                     
                     # Asegurar que la base de datos esté funcionando antes de desplegar la API
                     echo "🔍 Verificando estado de la base de datos..."
-                    sleep 30
+                    sleep 60
                     
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
                     echo "✅ API desplegada correctamente"

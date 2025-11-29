@@ -12,8 +12,6 @@ services:
       - "8082:8082"
     networks:
       - network_develop
-    external_links:
-      - DB_Develop:mysql-develop
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
       interval: 30s
@@ -98,16 +96,12 @@ networks:
   network_develop:
     driver: bridge
     name: network_develop
-    external: true
   network_qa:
     driver: bridge
     name: network_qa
-    external: true
   network_staging:
     driver: bridge
     name: network_staging
-    external: true
   network_prod:
     driver: bridge
     name: network_prod
-    external: true
