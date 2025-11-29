@@ -52,76 +52,40 @@ pipeline {
         stage('Detectar entorno') {
             steps {
                 script {
-                    // Forzar Staging como el usuario solicitó
+                    // Forzar Staging como el usuario solicitó - este pipeline es específico para Staging
                     env.ENVIRONMENT = 'staging'
-                    
-                    // Usar los archivos Docker Compose correctos como en develop
-                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-staging.yml"
-                    env.COMPOSE_FILE_API = "Devops/docker-compose-api-staging.yml"
-                    env.ENV_FILE = "Devops/staging/.env.staging"
+
+                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
+                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
+                    env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                    env.DB_SERVICE = "mysql-staging"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.staging"
 
                     echo """
-                    ✅ Entorno forzado: ${env.ENVIRONMENT}
+                    ✅ Rama detectada: ${env.BRANCH_NAME}
+                    🌎 Entorno asignado: ${env.ENVIRONMENT}
                     📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
                     """
 
-                    echo "🔍 Verificando estructura del workspace..."
-                    sh '''
-                        echo "📁 Contenido actual del directorio:"
-                        ls -la
-                        echo "📂 Verificando directorio Backend/SGH:"
-                        if [ -d "Backend/SGH" ]; then
-                            echo "✅ Backend/SGH encontrado"
-                        else
-                            echo "❌ Backend/SGH no encontrado"
-                            echo "💡 ERROR: La estructura del repositorio no es correcta"
-                            exit 1
-                        fi
-                        echo "📂 Verificando directorio Devops:"
-                        if [ -d "Devops" ]; then
-                            echo "✅ Devops encontrado"
-                            echo "📁 Contenido de Devops:"
-                            ls -la Devops/
-                        else
-                            echo "❌ Devops no encontrado"
-                            echo "💡 ERROR: La estructura del repositorio no es correcta"
-                            exit 1
-                        fi
-                    '''
+                    if (!fileExists(env.COMPOSE_FILE_DATABASE)) {
+                        error "❌ No se encontró ${env.COMPOSE_FILE_DATABASE}"
+                    }
 
-                    // Verificar archivos usando la estructura real del repositorio
-                    sh '''
-                        echo "🔍 Verificando archivos de configuración..."
-                        
-                        # Verificar el Docker Compose de Base de Datos
-                        if [ -f "Devops/docker-compose-databases-staging.yml" ]; then
-                            echo "✅ Devops/docker-compose-databases-staging.yml encontrado"
-                            echo "📄 Servicio de base de datos definido:"
-                            grep -A 1 "container_name:" Devops/docker-compose-databases-staging.yml | head -5
-                        else
-                            echo "❌ Devops/docker-compose-databases-staging.yml no encontrado"
-                            exit 1
-                        fi
-                        
-                        # Verificar el Docker Compose de API
-                        if [ -f "Devops/docker-compose-api-staging.yml" ]; then
-                            echo "✅ Devops/docker-compose-api-staging.yml encontrado"
-                            echo "📄 Servicio de API definido:"
-                            grep -A 1 "container_name:" Devops/docker-compose-api-staging.yml | head -5
-                        else
-                            echo "❌ Devops/docker-compose-api-staging.yml no encontrado"
-                            exit 1
-                        fi
-                        
-                        if [ -f "Devops/staging/.env.staging" ]; then
-                            echo "✅ Devops/staging/.env.staging encontrado"
-                        else
-                            echo "❌ Devops/staging/.env.staging no encontrado"
-                            exit 1
-                        fi
-                    '''
+                    if (!fileExists(env.COMPOSE_FILE_API)) {
+                        error "❌ No se encontró ${env.COMPOSE_FILE_API}"
+                    }
+
+                    if (!fileExists(env.ENV_FILE)) {
+                        echo "⚠️ Archivo de entorno no encontrado, creando uno temporal..."
+                        writeFile file: env.ENV_FILE, text: '''
+                            PORT=8084
+                            DB_URL=jdbc:mysql://mysql-staging:3306/DB_SGH_Staging
+                            DB_USER=sgh_user
+                            DB_PASSWORD=stg_C0mpl3x_K3y_2024
+                        '''
+                    }
                 }
             }
         }
@@ -153,6 +117,16 @@ pipeline {
                         docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
                     """
                 }
+            }
+        }
+
+        stage('Crear Redes Docker') {
+            steps {
+                sh """
+                    echo "🌐 Creando redes Docker"
+                    docker network create --driver bridge network_staging || echo "Red network_staging ya existe"
+                    echo "✅ Redes creadas correctamente"
+                """
             }
         }
 
