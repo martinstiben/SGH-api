@@ -159,12 +159,12 @@ pipeline {
         stage('Limpiar Base de Datos') {
             steps {
                 sh """
-                    echo "🗄️ Limpiando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🗄️ Limpiando base de datos MySQL para: ${env.ENVIRONMENT}"
                     echo "🧹 Eliminando volumen de datos anterior para fresh start..."
-                    
+
                     # Eliminar el volumen anterior para start limpio
-                    docker volume rm postgres_data_staging 2>/dev/null || true
-                    
+                    docker volume rm mysql_data_staging 2>/dev/null || true
+
                     echo "✅ Volumen de base de datos limpio - listo para fresh start"
                 """
             }
@@ -173,24 +173,24 @@ pipeline {
         stage('Desplegar Base de Datos') {
             steps {
                 sh """
-                    echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
-                    
+
                     # Limpiar contenedores anteriores para evitar conflictos
                     echo "🧹 Limpiando contenedores anteriores de base de datos..."
                     docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-                    
-                    echo "📦 Levantando base de datos de Staging..."
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-staging
-                    
+
+                    echo "📦 Levantando base de datos MySQL de Staging..."
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d mysql-staging
+
                     echo "⏳ Esperando que la base de datos esté lista..."
-                    sleep 15
-                    
+                    sleep 60
+
                     echo "🔍 Verificando que la base de datos esté corriendo:"
                     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_Staging
-                    
-                    echo "✅ Base de datos DB_Staging desplegada correctamente en puerto: 5434"
+
+                    echo "✅ Base de datos DB_Staging desplegada correctamente en puerto: 3309"
                 """
             }
         }
@@ -200,29 +200,29 @@ pipeline {
                 sh """
                     echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
-                    
+
                     # Limpiar contenedores anteriores para evitar conflictos
                     echo "🧹 Limpiando contenedores anteriores de API..."
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-                    
+
                     echo "📦 Levantando API de Staging..."
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-staging
-                    
+
                     echo "⏳ Esperando que la API esté lista..."
-                    sleep 15
-                    
+                    sleep 90
+
                     echo "🔍 Verificando contenedores que están corriendo:"
                     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                    
+
                     echo "✅ Despliegue completado - Contenedores de Staging:"
-                    echo "   🗄️ DB_Staging (Base de datos PostgreSQL)"
+                    echo "   🗄️ DB_Staging (Base de datos MySQL)"
                     echo "   🚀 API_Staging (Spring Boot API)"
                     echo ""
                     echo "🌐 Swagger UI disponible en:"
                     echo "   http://localhost:8084/swagger-ui/index.html"
                     echo "🔗 Health check:"
                     echo "   http://localhost:8084/actuator/health"
-                    echo "🗄️ Base de datos PostgreSQL en puerto: 5434"
+                    echo "🗄️ Base de datos MySQL en puerto: 3309"
                 """
             }
         }
@@ -234,13 +234,14 @@ pipeline {
             echo "🌐 Tu API está disponible en: http://localhost:8084"
             echo "📚 Swagger UI: http://localhost:8084/swagger-ui/index.html"
             echo "🔍 Health check: http://localhost:8084/actuator/health"
+            echo "🗄️ Base de datos MySQL: localhost:3309"
         }
         failure {
             echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
             echo "🔍 Revisa los logs arriba para más detalles"
         }
         always {
-            echo "🧹 Limppieza final del pipeline completada."
+            echo "🧹 Limpieza final del pipeline completada."
         }
     }
 }

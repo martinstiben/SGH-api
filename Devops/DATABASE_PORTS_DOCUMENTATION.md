@@ -12,7 +12,7 @@ Este documento detalla la configuración de puertos para las bases de datos Post
 |----------|-------------|-------------------|---------------------|---------|------------|
 | **Develop** | `5432` | `5432` | `DB_SGH_Develop` | `sgh_user` | `sgh-postgres-develop` |
 | **QA** | `5433` | `5432` | `DB_SGH_QA` | `sgh_user` | `sgh-postgres-qa` |
-| **Staging** | `5434` | `5432` | `DB_SGH_Staging` | `sgh_user` | `sgh-postgres-staging` |
+| **Staging** | `3309` | `3306` | `DB_SGH_Staging` | `sgh_user` | `mysql-staging` |
 | **Production** | `5435` | `5432` | `DB_SGH_Production` | `sgh_user` | `sgh-postgres-prod` |
 
 ---
@@ -50,15 +50,15 @@ Este documento detalla la configuración de puertos para las bases de datos Post
   ```
 
 ### 3. Ambiente de Staging
-- **Puerto de acceso:** `5434`
+- **Puerto de acceso:** `3309`
 - **Base de datos:** `DB_SGH_Staging`
 - **Usuario:** `sgh_user`
 - **Archivo de configuración:** `Devops/staging/.env.staging`
-- **Docker Compose:** `Devops/Docker-Compose.yml` (centralizado)
+- **Docker Compose:** `Devops/docker-compose-databases-staging.yml` y `Devops/docker-compose-api-staging.yml`
 - **Conexión desde host:**
   ```
   Host: localhost
-  Port: 5434
+  Port: 3309
   Database: DB_SGH_Staging
   User: sgh_user
   Password: [ver .env.staging]
@@ -195,9 +195,9 @@ spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
 
 ### Variables de entorno por ambiente:
 
-- **Develop:** `DB_PORT=5432`
-- **QA:** `DB_PORT=5433`
-- **Staging:** `DB_PORT=5434`
+- **Develop:** `DB_PORT=3307`
+- **QA:** `DB_PORT=3308`
+- **Staging:** `DB_PORT=3309`
 - **Production:** `DB_PORT=5435`
 
 ---
@@ -214,9 +214,9 @@ spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
 
 Cada ambiente tiene su propio volumen persistente:
 
-- **Develop:** `postgres_data_develop`
-- **QA:** `postgres_data_qa`
-- **Staging:** `postgres_data_staging`
+- **Develop:** `mysql_data_develop`
+- **QA:** `mysql_data_qa`
+- **Staging:** `mysql_data_staging`
 - **Production:** `postgres_data_prod`
 
 Los backups se almacenan en:
