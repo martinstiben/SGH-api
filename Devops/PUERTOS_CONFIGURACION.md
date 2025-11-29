@@ -6,7 +6,7 @@
 - **Puerto API**: 8082
 - **Swagger UI**: http://localhost:8082/swagger-ui/index.html
 - **API Docs**: http://localhost:8082/api-docs
-- **Base de Datos**: MySQL en puerto 3306
+- **Base de Datos**: MySQL en puerto 3307
 - **Container DB**: DB_Develop
 - **URL Base**: http://localhost:8082
 

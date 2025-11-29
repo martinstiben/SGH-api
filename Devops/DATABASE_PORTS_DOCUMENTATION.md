@@ -1,8 +1,8 @@
-# Documentación de Puertos de Base de Datos PostgreSQL - SGH
+# Documentación de Puertos de Base de Datos - SGH
 
 ## Resumen de Configuración de Ambientes
 
-Este documento detalla la configuración de puertos para las bases de datos PostgreSQL en cada ambiente del proyecto SGH (Sistema de Gestión de Horarios).
+Este documento detalla la configuración de puertos para las bases de datos en cada ambiente del proyecto SGH (Sistema de Gestión de Horarios). Actualmente, Develop usa MySQL mientras que QA, Staging y Producción usan PostgreSQL.
 
 ---
 
@@ -10,7 +10,7 @@ Este documento detalla la configuración de puertos para las bases de datos Post
 
 | Ambiente | Puerto Host | Puerto Contenedor | Nombre Base de Datos | Usuario | Contenedor |
 |----------|-------------|-------------------|---------------------|---------|------------|
-| **Develop** | `3306` | `3306` | `horarios` | `user` | `DB_Develop` |
+| **Develop** | `3307` | `3306` | `horarios` | `user` | `DB_Develop` |
 | **QA** | `5433` | `5432` | `DB_SGH_QA` | `sgh_user` | `sgh-postgres-qa` |
 | **Staging** | `5434` | `5432` | `DB_SGH_Staging` | `sgh_user` | `sgh-postgres-staging` |
 | **Production** | `5435` | `5432` | `DB_SGH_Production` | `sgh_user` | `sgh-postgres-prod` |
@@ -20,7 +20,7 @@ Este documento detalla la configuración de puertos para las bases de datos Post
 ## 🔧 Detalles de Configuración por Ambiente
 
 ### 1. Ambiente de Desarrollo (Develop)
-- **Puerto de acceso:** `3306`
+- **Puerto de acceso:** `3307`
 - **Base de datos:** `horarios`
 - **Usuario:** `user`
 - **Archivo de configuración:** `Devops/develop/.env.dev`
@@ -28,7 +28,7 @@ Este documento detalla la configuración de puertos para las bases de datos Post
 - **Conexión desde host:**
   ```
   Host: localhost
-  Port: 3306
+  Port: 3307
   Database: horarios
   User: user
   Password: [ver .env.dev]
