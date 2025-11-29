@@ -119,6 +119,16 @@ pipeline {
             }
         }
 
+        stage('Crear Redes Docker') {
+            steps {
+                sh """
+                    echo "🌐 Creando redes Docker externas para: ${env.ENVIRONMENT}"
+                    docker network create --driver bridge network_${env.ENVIRONMENT} || echo "Red ya existe o error al crear"
+                    echo "✅ Redes creadas correctamente"
+                """
+            }
+        }
+
         stage('Desplegar Base de Datos') {
             steps {
                 sh """
@@ -126,7 +136,7 @@ pipeline {
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
                     ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d mysql-${env.ENVIRONMENT}
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
                     echo "✅ Base de datos desplegada correctamente"
                 """
             }
@@ -138,11 +148,27 @@ pipeline {
                     echo "🚀 Desplegando backend SGH API para: ${env.ENVIRONMENT}"
                     echo "📦 Desplegando solo el contenedor de la API..."
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_API}"
-                    
+
                     # Asegurar que la base de datos esté funcionando antes de desplegar la API
                     echo "🔍 Verificando estado de la base de datos..."
                     sleep 60
-                    
+
+                    # Verificar que la base de datos esté saludable
+                    echo "⏳ Esperando a que la base de datos esté lista..."
+                    for i in {1..30}; do
+                        if docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} ps ${env.DB_SERVICE} | grep -q "healthy"; then
+                            echo "✅ Base de datos está saludable"
+                            break
+                        fi
+                        echo "⏳ Esperando... intento \$i/30"
+                        sleep 10
+                        if [ \$i -eq 30 ]; then
+                            echo "❌ Timeout esperando que la base de datos esté saludable"
+                            docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
+                            exit 1
+                        fi
+                    done
+
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
                     echo "✅ API desplegada correctamente"
                     echo "🌐 Swagger UI disponible en:"
