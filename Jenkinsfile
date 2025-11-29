@@ -114,7 +114,8 @@ pipeline {
                 dir("${PROJECT_PATH}") {
                     sh """
                         echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
-                        docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
+                        # Asegurar que Docker tenga acceso a internet
+                        docker build --network host -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
                     """
                 }
             }
