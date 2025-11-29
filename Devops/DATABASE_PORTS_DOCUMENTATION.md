@@ -1,19 +1,19 @@
-# Documentación de Puertos de Base de Datos PostgreSQL - SGH
+# Documentación de Puertos de Base de Datos - SGH
 
 ## Resumen de Configuración de Ambientes
 
-Este documento detalla la configuración de puertos para las bases de datos PostgreSQL en cada ambiente del proyecto SGH (Sistema de Gestión de Horarios).
+Este documento detalla la configuración de puertos para las bases de datos (MySQL y PostgreSQL) en cada ambiente del proyecto SGH (Sistema de Gestión de Horarios).
 
 ---
 
 ## 📊 Tabla de Puertos por Ambiente
 
-| Ambiente | Puerto Host | Puerto Contenedor | Nombre Base de Datos | Usuario | Contenedor |
-|----------|-------------|-------------------|---------------------|---------|------------|
-| **Develop** | `5432` | `5432` | `DB_SGH_Develop` | `sgh_user` | `sgh-postgres-develop` |
-| **QA** | `5433` | `5432` | `DB_SGH_QA` | `sgh_user` | `sgh-postgres-qa` |
-| **Staging** | `5434` | `5432` | `DB_SGH_Staging` | `sgh_user` | `sgh-postgres-staging` |
-| **Production** | `5435` | `5432` | `DB_SGH_Production` | `sgh_user` | `sgh-postgres-prod` |
+| Ambiente | Puerto Host | Puerto Contenedor | Nombre Base de Datos | Usuario | Contenedor | Motor DB |
+|----------|-------------|-------------------|---------------------|---------|------------|----------|
+| **Develop** | `3307` | `3306` | `DB_SGH_Develop` | `sgh_user` | `mysql-develop` | MySQL |
+| **QA** | `3308` | `3306` | `DB_SGH_QA` | `sgh_user` | `mysql-qa` | MySQL |
+| **Staging** | `5434` | `5432` | `DB_SGH_Staging` | `sgh_user` | `sgh-postgres-staging` | PostgreSQL |
+| **Production** | `5435` | `5432` | `DB_SGH_Production` | `sgh_user` | `sgh-postgres-prod` | PostgreSQL |
 
 ---
 
@@ -35,15 +35,16 @@ Este documento detalla la configuración de puertos para las bases de datos Post
   ```
 
 ### 2. Ambiente de QA
-- **Puerto de acceso:** `5433`
+- **Puerto de acceso:** `3308`
 - **Base de datos:** `DB_SGH_QA`
 - **Usuario:** `sgh_user`
+- **Motor de base de datos:** MySQL 8.0
 - **Archivo de configuración:** `Devops/qa/.env.qa`
-- **Docker Compose:** `Devops/Docker-Compose.yml` (centralizado)
+- **Docker Compose:** `Devops/docker-compose-databases.yml` y `Devops/docker-compose-apis.yml`
 - **Conexión desde host:**
   ```
   Host: localhost
-  Port: 5433
+  Port: 3308
   Database: DB_SGH_QA
   User: sgh_user
   Password: [ver .env.qa]

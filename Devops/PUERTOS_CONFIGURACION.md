@@ -14,7 +14,7 @@
 - **Puerto API**: 8083
 - **Swagger UI**: http://localhost:8083/swagger-ui/index.html
 - **API Docs**: http://localhost:8083/api-docs
-- **Base de Datos**: PostgreSQL en puerto 5433
+- **Base de Datos**: MySQL en puerto 3308
 - **Container DB**: DB_QA
 - **URL Base**: http://localhost:8083
 

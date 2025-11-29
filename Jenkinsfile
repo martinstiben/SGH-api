@@ -56,17 +56,19 @@ pipeline {
                 script {
                     // Forzar QA como el usuario solicitó
                     env.ENVIRONMENT = 'qa'
-                    
-                    // Usar los archivos Docker Compose correctos como en develop
-                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-qa.yml"
-                    env.COMPOSE_FILE_API = "Devops/docker-compose-api-qa.yml"
+
+                    // Usar los archivos Docker Compose generales
+                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
+                    env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
                     env.ENV_FILE = "Devops/qa/.env.qa"
+                    env.DB_SERVICE = "mysql-qa"
 
                     echo """
                     ✅ Entorno forzado: ${env.ENVIRONMENT}
                     📄 Database Compose file: ${env.COMPOSE_FILE_DATABASE}
                     📄 API Compose file: ${env.COMPOSE_FILE_API}
                     📁 Env file: ${env.ENV_FILE}
+                    🗄️ DB Service: ${env.DB_SERVICE}
                     """
 
                     echo "🔍 Verificando estructura del workspace..."
@@ -96,27 +98,27 @@ pipeline {
                     // Verificar archivos usando la estructura real del repositorio
                     sh '''
                         echo "🔍 Verificando archivos de configuración..."
-                        
+
                         # Verificar el Docker Compose de Base de Datos
-                        if [ -f "Devops/docker-compose-databases-qa.yml" ]; then
-                            echo "✅ Devops/docker-compose-databases-qa.yml encontrado"
-                            echo "📄 Servicio de base de datos definido:"
-                            grep -A 1 "container_name:" Devops/docker-compose-databases-qa.yml | head -5
+                        if [ -f "Devops/docker-compose-databases.yml" ]; then
+                            echo "✅ Devops/docker-compose-databases.yml encontrado"
+                            echo "📄 Servicios de base de datos definidos:"
+                            grep -A 1 "container_name:" Devops/docker-compose-databases.yml | grep -E "(DB_QA|mysql-qa)"
                         else
-                            echo "❌ Devops/docker-compose-databases-qa.yml no encontrado"
+                            echo "❌ Devops/docker-compose-databases.yml no encontrado"
                             exit 1
                         fi
-                        
+
                         # Verificar el Docker Compose de API
-                        if [ -f "Devops/docker-compose-api-qa.yml" ]; then
-                            echo "✅ Devops/docker-compose-api-qa.yml encontrado"
-                            echo "📄 Servicio de API definido:"
-                            grep -A 1 "container_name:" Devops/docker-compose-api-qa.yml | head -5
+                        if [ -f "Devops/docker-compose-apis.yml" ]; then
+                            echo "✅ Devops/docker-compose-apis.yml encontrado"
+                            echo "📄 Servicios de API definidos:"
+                            grep -A 1 "container_name:" Devops/docker-compose-apis.yml | grep -E "(API_QA|sgh-api-qa)"
                         else
-                            echo "❌ Devops/docker-compose-api-qa.yml no encontrado"
+                            echo "❌ Devops/docker-compose-apis.yml no encontrado"
                             exit 1
                         fi
-                        
+
                         if [ -f "Devops/qa/.env.qa" ]; then
                             echo "✅ Devops/qa/.env.qa encontrado"
                         else
@@ -161,24 +163,50 @@ pipeline {
         stage('Desplegar Base de Datos') {
             steps {
                 sh """
-                    echo "🗄️ Desplegando base de datos PostgreSQL para: ${env.ENVIRONMENT}"
+                    echo "🗄️ Desplegando base de datos MySQL para: ${env.ENVIRONMENT}"
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
-                    
+
                     # Limpiar contenedores anteriores para evitar conflictos
                     echo "🧹 Limpiando contenedores anteriores de base de datos..."
                     docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
-                    
+
                     echo "📦 Levantando base de datos de QA..."
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d postgres-qa
-                    
-                    echo "⏳ Esperando que la base de datos esté lista..."
-                    sleep 10
-                    
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
+
+                    # Asegurar que la base de datos esté funcionando antes de desplegar la API
+                    echo "🔍 Verificando estado de la base de datos..."
+                    sleep 90
+
+                    # Verificar que el contenedor de MySQL esté corriendo
+                    echo "🔍 Verificando que MySQL esté corriendo..."
+                    if ! docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} ps ${env.DB_SERVICE} | grep -q "Up"; then
+                        echo "❌ MySQL container no está corriendo"
+                        docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
+                        exit 1
+                    fi
+                    echo "✅ MySQL container está corriendo"
+
+                    # Verificar conectividad básica a MySQL
+                    echo "🔍 Probando conectividad a MySQL..."
+                    for i in {1..20}; do
+                        if docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} exec -T ${env.DB_SERVICE} mysqladmin ping -h localhost --silent; then
+                            echo "✅ MySQL está respondiendo"
+                            break
+                        fi
+                        echo "⏳ Esperando conectividad MySQL... intento \$i/20"
+                        sleep 5
+                        if [ \$i -eq 20 ]; then
+                            echo "❌ MySQL no responde después de 100 segundos"
+                            docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} logs ${env.DB_SERVICE}
+                            exit 1
+                        fi
+                    done
+
                     echo "🔍 Verificando que la base de datos esté corriendo:"
                     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_QA
-                    
-                    echo "✅ Base de datos DB_QA desplegada correctamente en puerto: 5433"
+
+                    echo "✅ Base de datos DB_QA desplegada correctamente en puerto: 3308"
                 """
             }
         }
@@ -203,14 +231,14 @@ pipeline {
                     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
                     
                     echo "✅ Despliegue completado - Contenedores de QA:"
-                    echo "   🗄️ DB_QA (Base de datos PostgreSQL)"
+                    echo "   🗄️ DB_QA (Base de datos MySQL)"
                     echo "   🚀 API_QA (Spring Boot API)"
                     echo ""
                     echo "🌐 Swagger UI disponible en:"
                     echo "   http://localhost:8083/swagger-ui/index.html"
                     echo "🔗 Health check:"
                     echo "   http://localhost:8083/actuator/health"
-                    echo "🗄️ Base de datos PostgreSQL en puerto: 5433"
+                    echo "🗄️ Base de datos MySQL en puerto: 3308"
                 """
             }
         }

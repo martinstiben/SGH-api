@@ -27,26 +27,25 @@ services:
       - com.sgh.environment=develop
 
   # ==================== QA ====================
-  postgres-qa:
+  mysql-qa:
+    image: mysql:8.0
     container_name: DB_QA
-    build:
-      context: .
-      dockerfile: Dockerfile
     restart: always
     env_file:
       - ./qa/.env.qa
     ports:
-      - "5433:5432"
+      - "3308:3306"
     networks:
       - network_qa
     volumes:
-      - postgres_data_qa:/var/lib/postgresql
-      - "./backups/qa:/backups/postgres"
+      - mysql_data_qa:/var/lib/mysql
+      - "./backups/qa:/backups/mysql"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      start_period: 30s
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     labels:
       - com.sgh.group=sgh
       - com.sgh.environment=qa
@@ -103,12 +102,12 @@ services:
 
 # ==================== VOLÚMENES ====================
 volumes:
-  postgres_data_develop:
+  mysql_data_develop:
     driver: local
-    name: postgres_data_develop
-  postgres_data_qa:
+    name: mysql_data_develop
+  mysql_data_qa:
     driver: local
-    name: postgres_data_qa
+    name: mysql_data_qa
   postgres_data_staging:
     driver: local
     name: postgres_data_staging
