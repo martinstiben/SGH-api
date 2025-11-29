@@ -20,26 +20,27 @@ pipeline {
                     script {
                         echo "🧹 Limpiando workspace completamente..."
                         deleteDir()
-                        
+
                         echo "📥 Clonando repositorio desde GitHub..."
                         sh '''
                             echo "🔄 Verificando ramas disponibles en el repositorio..."
-                            
+
                             # Intentar listar las ramas disponibles
                             git ls-remote --heads https://github.com/martinstiben/SGH-api.git
-                            
+
                             echo "🔄 Intentando clonar la rama más apropiada..."
-                            
-                            # Usar la rama actual del pipeline
-                            if git clone -b ${env.BRANCH_NAME} https://github.com/martinstiben/SGH-api.git .; then
-                                echo "✅ Clonado rama ${env.BRANCH_NAME} exitosamente"
-                                echo "🎯 Pipeline ejecutándose en ambiente basado en rama ${env.BRANCH_NAME}"
+
+                            # SOLO usar la rama main - es independiente
+                            if git clone -b main https://github.com/martinstiben/SGH-api.git .; then
+                                echo "✅ Clonado rama main exitosamente"
+                                echo "🎯 Pipeline ejecutándose en ambiente Production (independiente)"
                             else
-                                echo "❌ No se pudo clonar la rama ${env.BRANCH_NAME}"
-                                echo "💡 Verifica que la rama ${env.BRANCH_NAME} exista en el repositorio"
+                                echo "❌ No se pudo clonar la rama main"
+                                echo "💡 La rama main debe existir para ejecutar este pipeline de Production"
+                                echo "🔧 Verifica que la rama 'main' esté creada en el repositorio"
                                 exit 1
                             fi
-                            
+
                             echo "📁 Verificando estructura del repositorio:"
                             ls -la
                         '''
@@ -51,45 +52,14 @@ pipeline {
         stage('Detectar entorno') {
             steps {
                 script {
-                    def branch = env.BRANCH_NAME?.toLowerCase()
-                    switch (branch) {
-                        case 'main':
-                            env.ENVIRONMENT = 'prod'
-                            break
-                        case 'staging':
-                            env.ENVIRONMENT = 'staging'
-                            break
-                        case 'qa':
-                            env.ENVIRONMENT = 'qa'
-                            break
-                        default:
-                            env.ENVIRONMENT = 'develop'
-                            break
-                    }
+                    // Forzar Production como el usuario solicitó - este pipeline es específico para Production
+                    env.ENVIRONMENT = 'prod'
 
-                    // Configurar archivos según el ambiente detectado
-                    switch (env.ENVIRONMENT) {
-                        case 'develop':
-                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
-                            env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
-                            env.ENV_FILE = "Devops/develop/.env.dev"
-                            break
-                        case 'qa':
-                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
-                            env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
-                            env.ENV_FILE = "Devops/qa/.env.qa"
-                            break
-                        case 'staging':
-                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases-staging.yml"
-                            env.COMPOSE_FILE_API = "Devops/docker-compose-api-staging.yml"
-                            env.ENV_FILE = "Devops/staging/.env.staging"
-                            break
-                        case 'prod':
-                            env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
-                            env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
-                            env.ENV_FILE = "Devops/prod/.env.prod"
-                            break
-                    }
+                    env.ENV_DIR = "Devops/${env.ENVIRONMENT}"
+                    env.COMPOSE_FILE_DATABASE = "Devops/docker-compose-databases.yml"
+                    env.COMPOSE_FILE_API = "Devops/docker-compose-apis.yml"
+                    env.DB_SERVICE = "mysql-prod"
+                    env.ENV_FILE = "${env.ENV_DIR}/.env.prod"
 
                     echo """
 
@@ -182,9 +152,20 @@ pipeline {
                 dir("${PROJECT_PATH}") {
                     sh """
                         echo "🐳 Construyendo imagen Docker para SGH (${env.ENVIRONMENT})"
-                        docker build -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
+                        # Asegurar que Docker tenga acceso a internet
+                        docker build --network host -t sgh-api-${env.ENVIRONMENT}:latest -f Dockerfile .
                     """
                 }
+            }
+        }
+
+        stage('Crear Redes Docker') {
+            steps {
+                sh """
+                    echo "🌐 Creando redes Docker"
+                    docker network create --driver bridge network_prod || echo "Red network_prod ya existe"
+                    echo "✅ Redes creadas correctamente"
+                """
             }
         }
 
@@ -213,16 +194,16 @@ pipeline {
                     echo "🧹 Limpiando contenedores anteriores de base de datos..."
                     docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
 
-                    echo "📦 Levantando base de datos de ${env.ENVIRONMENT}..."
-                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d mysql-${env.ENVIRONMENT}
+                    echo "📦 Levantando base de datos MySQL de Production..."
+                    docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d mysql-prod
 
                     echo "⏳ Esperando que la base de datos esté lista..."
-                    sleep 30
+                    sleep 60
 
                     echo "🔍 Verificando que la base de datos esté corriendo:"
-                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_${env.ENVIRONMENT}
+                    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep DB_Prod
 
-                    echo "✅ Base de datos DB_${env.ENVIRONMENT} desplegada correctamente"
+                    echo "✅ Base de datos DB_Prod desplegada correctamente en puerto: 3310"
                 """
             }
         }
@@ -237,19 +218,24 @@ pipeline {
                     echo "🧹 Limpiando contenedores anteriores de API..."
                     docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} down 2>/dev/null || true
 
-                    echo "📦 Levantando API de ${env.ENVIRONMENT}..."
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+                    echo "📦 Levantando API de Production..."
+                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-prod
 
                     echo "⏳ Esperando que la API esté lista..."
-                    sleep 30
+                    sleep 90
 
                     echo "🔍 Verificando contenedores que están corriendo:"
                     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-                    echo "✅ Despliegue completado - Contenedores de ${env.ENVIRONMENT}:"
-                    echo "   🗄️ DB_${env.ENVIRONMENT} (Base de datos MySQL)"
-                    echo "   🚀 API_${env.ENVIRONMENT} (Spring Boot API)"
+                    echo "✅ Despliegue completado - Contenedores de Production:"
+                    echo "   🗄️ DB_Prod (Base de datos MySQL)"
+                    echo "   🚀 API_Prod (Spring Boot API)"
                     echo ""
+                    echo "🌐 Swagger UI disponible en:"
+                    echo "   http://localhost:8085/swagger-ui/index.html"
+                    echo "🔗 Health check:"
+                    echo "   http://localhost:8085/actuator/health"
+                    echo "🗄️ Base de datos MySQL en puerto: 3310"
                 """
             }
         }
@@ -257,27 +243,11 @@ pipeline {
 
     post {
         success {
-            script {
-                def port = ""
-                switch(env.ENVIRONMENT) {
-                    case 'develop':
-                        port = "8082"
-                        break
-                    case 'qa':
-                        port = "8083"
-                        break
-                    case 'staging':
-                        port = "8084"
-                        break
-                    case 'prod':
-                        port = "8085"
-                        break
-                }
-                echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
-                echo "🌐 Tu API está disponible en: http://localhost:${port}"
-                echo "📚 Swagger UI: http://localhost:${port}/swagger-ui/index.html"
-                echo "🔍 Health check: http://localhost:${port}/actuator/health"
-            }
+            echo "🎉 Despliegue de SGH completado correctamente para ${env.ENVIRONMENT}"
+            echo "🌐 Tu API está disponible en: http://localhost:8085"
+            echo "📚 Swagger UI: http://localhost:8085/swagger-ui/index.html"
+            echo "🔍 Health check: http://localhost:8085/actuator/health"
+            echo "🗄️ Base de datos MySQL: localhost:3310"
         }
         failure {
             echo "💥 Error durante el despliegue de SGH en ${env.ENVIRONMENT}"
