@@ -139,7 +139,7 @@ pipeline {
                     echo "📄 Usando compose file: ${env.COMPOSE_FILE_DATABASE}"
                     echo "📁 Ubicación actual: \$(pwd)"
                     ls -la Devops/ || { echo "❌ No se encontró el directorio Devops"; exit 1; }
-                    cd Devops && docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
+                    cd Devops && docker-compose -f docker-compose-databases.yml -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
                     echo "✅ Base de datos desplegada correctamente"
                 """
             }
@@ -173,7 +173,7 @@ pipeline {
                         fi
                     done
 
-                    docker-compose -f ${env.COMPOSE_FILE_API} -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
+                    docker-compose -f docker-compose-apis.yml -p sgh-${env.ENVIRONMENT} up -d sgh-api-${env.ENVIRONMENT}
                     echo "✅ API desplegada correctamente"
                     echo "🌐 Swagger UI disponible en:"
                     case ${env.ENVIRONMENT} in
