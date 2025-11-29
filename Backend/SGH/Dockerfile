@@ -1,13 +1,14 @@
-FROM openjdk:17
+FROM eclipse-temurin:17-jdk-alpine
 
 # Instalar curl para health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl
 
 VOLUME /tmp
 WORKDIR /app
 COPY pom.xml .
 COPY mvnw .
 COPY .mvn .mvn
+RUN chmod +x mvnw
 RUN ./mvnw dependency:go-offline -B
 COPY src ./src
 RUN ./mvnw clean package -DskipTests
