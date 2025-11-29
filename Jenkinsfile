@@ -175,9 +175,9 @@ pipeline {
                         echo "📦 Levantando base de datos de QA..."
                         docker-compose -f ${env.COMPOSE_FILE_DATABASE} -p sgh-${env.ENVIRONMENT} up -d ${env.DB_SERVICE}
 
-                    # Asegurar que la base de datos esté funcionando antes de desplegar la API
-                    echo "🔍 Verificando estado de la base de datos..."
-                    sleep 90
+                        # Asegurar que la base de datos esté funcionando antes de desplegar la API
+                        echo "🔍 Verificando estado de la base de datos..."
+                        sleep 90
 
                     # Verificar que el contenedor de MySQL esté corriendo
                     echo "🔍 Verificando que MySQL esté corriendo..."
