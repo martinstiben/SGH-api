@@ -25,7 +25,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Busca notificaciones por usuario activo (no archivadas y no expiradas)
      */
-    @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.isArchived = false " +
+    @Query("SELECT n FROM in_app_notifications n WHERE n.user.userId = :userId AND n.isArchived = false " +
            "AND (n.expiresAt IS NULL OR n.expiresAt > :now) ORDER BY n.createdAt DESC")
     Page<InAppNotification> findActiveByUserId(@Param("userId") Integer userId, 
                                               @Param("now") LocalDateTime now, 
@@ -34,7 +34,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Busca notificaciones no leídas por usuario
      */
-    @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.isRead = false " +
+    @Query("SELECT n FROM in_app_notifications n WHERE n.user.userId = :userId AND n.isRead = false " +
            "AND n.isArchived = false AND (n.expiresAt IS NULL OR n.expiresAt > :now) " +
            "ORDER BY n.priority DESC, n.createdAt DESC")
     List<InAppNotification> findUnreadByUserId(@Param("userId") Integer userId, 
@@ -43,14 +43,14 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Cuenta notificaciones no leídas por usuario
      */
-    @Query("SELECT COUNT(n) FROM in_app_notifications n WHERE n.userId = :userId AND n.isRead = false " +
+    @Query("SELECT COUNT(n) FROM in_app_notifications n WHERE n.user.userId = :userId AND n.isRead = false " +
            "AND n.isArchived = false AND (n.expiresAt IS NULL OR n.expiresAt > :now)")
     Long countUnreadByUserId(@Param("userId") Integer userId, @Param("now") LocalDateTime now);
     
     /**
      * Busca notificaciones por tipo y usuario
      */
-    @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.notificationType = :type " +
+    @Query("SELECT n FROM in_app_notifications n WHERE n.user.userId = :userId AND n.notificationType = :type " +
            "AND n.isArchived = false ORDER BY n.createdAt DESC")
     Page<InAppNotification> findByUserIdAndType(@Param("userId") Integer userId, 
                                                @Param("type") NotificationType type, 
@@ -59,29 +59,29 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Busca notificaciones por prioridad
      */
-    @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.priority = :priority " +
+    @Query("SELECT n FROM in_app_notifications n WHERE n.user.userId = :userId AND n.priority = :priority " +
            "AND n.isArchived = false ORDER BY n.createdAt DESC")
     Page<InAppNotification> findByUserIdAndPriority(@Param("userId") Integer userId, 
-                                                   @Param("priority") NotificationPriority priority, 
-                                                   Pageable pageable);
+                                                    @Param("priority") NotificationPriority priority, 
+                                                    Pageable pageable);
     
     /**
      * Busca notificaciones por categoría
      */
-    @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.category = :category " +
+    @Query("SELECT n FROM in_app_notifications n WHERE n.user.userId = :userId AND n.category = :category " +
            "AND n.isArchived = false ORDER BY n.createdAt DESC")
     Page<InAppNotification> findByUserIdAndCategory(@Param("userId") Integer userId, 
-                                                   @Param("category") String category, 
-                                                   Pageable pageable);
+                                                    @Param("category") String category, 
+                                                    Pageable pageable);
     
     /**
      * Busca notificaciones recientes (últimas 24 horas)
      */
-    @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId " +
+    @Query("SELECT n FROM in_app_notifications n WHERE n.user.userId = :userId " +
            "AND n.createdAt >= :since AND n.isArchived = false " +
            "ORDER BY n.createdAt DESC")
     List<InAppNotification> findRecentByUserId(@Param("userId") Integer userId, 
-                                             @Param("since") LocalDateTime since);
+                                              @Param("since") LocalDateTime since);
     
     /**
      * Marca todas las notificaciones de un usuario como leídas
@@ -89,7 +89,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     @Modifying
     @Transactional
     @Query("UPDATE in_app_notifications n SET n.isRead = true, n.readAt = :now " +
-           "WHERE n.userId = :userId AND n.isRead = false")
+           "WHERE n.user.userId = :userId AND n.isRead = false")
     void markAllAsReadByUserId(@Param("userId") Integer userId, @Param("now") LocalDateTime now);
     
     /**
@@ -107,7 +107,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     @Modifying
     @Transactional
     @Query("UPDATE in_app_notifications n SET n.isArchived = true " +
-           "WHERE n.userId = :userId AND n.createdAt < :cutoffDate AND n.isArchived = false")
+           "WHERE n.user.userId = :userId AND n.createdAt < :cutoffDate AND n.isArchived = false")
     void archiveOldByUserId(@Param("userId") Integer userId, @Param("cutoffDate") LocalDateTime cutoffDate);
     
     /**
@@ -121,7 +121,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Busca notificaciones que requieren atención inmediata (alta prioridad y no leídas)
      */
-    @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.priority IN :highPriorities " +
+    @Query("SELECT n FROM in_app_notifications n WHERE n.user.userId = :userId AND n.priority IN :highPriorities " +
            "AND n.isRead = false AND n.isArchived = false " +
            "ORDER BY n.priority DESC, n.createdAt DESC")
     List<InAppNotification> findHighPriorityUnreadByUserId(@Param("userId") Integer userId, 
@@ -130,7 +130,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     /**
      * Obtiene estadísticas de notificaciones por usuario
      */
-    @Query("SELECT n.priority, COUNT(n) FROM in_app_notifications n WHERE n.userId = :userId " +
+    @Query("SELECT n.priority, COUNT(n) FROM in_app_notifications n WHERE n.user.userId = :userId " +
            "AND n.isArchived = false GROUP BY n.priority")
     List<Object[]> getPriorityStatsByUserId(@Param("userId") Integer userId);
     
@@ -138,7 +138,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
      * Busca notificaciones por múltiples criterios
      */
     @Query("SELECT n FROM in_app_notifications n WHERE " +
-           "(:userId IS NULL OR n.userId = :userId) AND " +
+           "(:userId IS NULL OR n.user.userId = :userId) AND " +
            "(:type IS NULL OR n.notificationType = :type) AND " +
            "(:priority IS NULL OR n.priority = :priority) AND " +
            "(:category IS NULL OR n.category = :category) AND " +

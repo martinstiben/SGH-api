@@ -29,13 +29,13 @@ public interface INotificationLogRepository extends JpaRepository<NotificationLo
     /**
      * Busca notificaciones por destinatario
      */
-    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipientEmail = :email ORDER BY nl.createdAt DESC")
+    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipient.person.email = :email ORDER BY nl.createdAt DESC")
     Page<NotificationLog> findByRecipientEmail(@Param("email") String email, Pageable pageable);
 
     /**
      * Busca notificaciones recientes por destinatario (últimas 24 horas)
      */
-    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipientEmail = :email AND nl.createdAt >= :since ORDER BY nl.createdAt DESC")
+    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipient.person.email = :email AND nl.createdAt >= :since ORDER BY nl.createdAt DESC")
     List<NotificationLog> findRecentByRecipientEmail(@Param("email") String email, @Param("since") LocalDateTime since);
     
     /**
@@ -47,7 +47,7 @@ public interface INotificationLogRepository extends JpaRepository<NotificationLo
     /**
      * Busca notificaciones por rol del destinatario
      */
-    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipientRole = :role ORDER BY nl.createdAt DESC")
+    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipient.role.roleName = :role ORDER BY nl.createdAt DESC")
     Page<NotificationLog> findByRecipientRole(@Param("role") String role, Pageable pageable);
     
     /**
@@ -80,7 +80,7 @@ public interface INotificationLogRepository extends JpaRepository<NotificationLo
     /**
      * Busca notificaciones recientes de un destinatario
      */
-    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipientEmail = :email AND nl.createdAt >= :since ORDER BY nl.createdAt DESC")
+    @Query("SELECT nl FROM notification_logs nl WHERE nl.recipient.person.email = :email AND nl.createdAt >= :since ORDER BY nl.createdAt DESC")
     List<NotificationLog> findRecentNotifications(@Param("email") String email, @Param("since") LocalDateTime since);
     
     /**
