@@ -32,7 +32,6 @@ import com.horarios.SGH.DTO.LoginRequestDTO;
 import com.horarios.SGH.DTO.LoginResponseDTO;
 import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.jwt.JwtTokenProvider;
-import com.horarios.SGH.Service.ValidationUtils;
 
 
 /**
