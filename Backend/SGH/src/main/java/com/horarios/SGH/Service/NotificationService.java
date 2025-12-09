@@ -62,10 +62,14 @@ public class NotificationService {
         NotificationType notificationType = NotificationType.valueOf(notification.getNotificationType());
         validateNotificationTypeForRole(notificationType, notification.getRecipientRole());
 
+        // Buscar el usuario por email para normalizar la relación
+        users user = userService.findByEmail(notification.getRecipientEmail());
+        if (user == null) {
+            throw new IllegalArgumentException("Usuario no encontrado: " + notification.getRecipientEmail());
+        }
+
         NotificationLog logEntry = new NotificationLog(
-            notification.getRecipientEmail(),
-            notification.getRecipientName(),
-            notification.getRecipientRole(),
+            user,
             notificationType,
             notification.getSubject(),
             notification.getContent()

@@ -9,6 +9,14 @@ import java.time.LocalDateTime;
  * Estas notificaciones se muestran en tiempo real en las interfaces web y móvil
  */
 @Entity(name = "in_app_notifications")
+@Table(name = "in_app_notifications", indexes = {
+    @Index(name = "idx_in_app_notification_user_id", columnList = "user_id"),
+    @Index(name = "idx_in_app_notification_type", columnList = "notification_type"),
+    @Index(name = "idx_in_app_notification_priority", columnList = "priority"),
+    @Index(name = "idx_in_app_notification_is_read", columnList = "is_read"),
+    @Index(name = "idx_in_app_notification_created_at", columnList = "created_at"),
+    @Index(name = "idx_in_app_notification_expires_at", columnList = "expires_at")
+})
 @Data
 public class InAppNotification {
     
@@ -17,17 +25,9 @@ public class InAppNotification {
     @Column(name = "notification_id")
     private Long notificationId;
     
-    @Column(name = "user_id", nullable = false)
-    private Integer userId;
-    
-    @Column(name = "user_email", nullable = false, length = 255)
-    private String userEmail;
-    
-    @Column(name = "user_name", nullable = false, length = 100)
-    private String userName;
-    
-    @Column(name = "user_role", nullable = false, length = 50)
-    private String userRole;
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private users user;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "notification_type", nullable = false)
@@ -82,13 +82,9 @@ public class InAppNotification {
     }
     
     // Constructor con parámetros principales
-    public InAppNotification(Integer userId, String userEmail, String userName, String userRole,
-                           NotificationType notificationType, String title, String message) {
+    public InAppNotification(users user, NotificationType notificationType, String title, String message) {
         this();
-        this.userId = userId;
-        this.userEmail = userEmail;
-        this.userName = userName;
-        this.userRole = userRole;
+        this.user = user;
         this.notificationType = notificationType;
         this.title = title;
         this.message = message;
@@ -155,7 +151,24 @@ public class InAppNotification {
     public String toString() {
         return String.format(
             "InAppNotification{id=%d, user='%s', type=%s, title='%s', priority=%s, isRead=%s}",
-            notificationId, userEmail, notificationType, title, priority, isRead
+            notificationId, user != null ? user.getUserName() : "null", notificationType, title, priority, isRead
         );
+    }
+    
+    // Métodos de compatibilidad para mantener la API funcionando
+    public Integer getUserId() {
+        return user != null ? user.getUserId() : null;
+    }
+    
+    public String getUserEmail() {
+        return user != null ? user.getUserName() : null;
+    }
+    
+    public String getUserName() {
+        return user != null && user.getPerson() != null ? user.getPerson().getFullName() : null;
+    }
+    
+    public String getUserRole() {
+        return user != null && user.getRole() != null ? user.getRole().getRoleName() : null;
     }
 }

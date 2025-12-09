@@ -11,6 +11,13 @@ import java.util.List;
  * Registra el estado de cada envío de notificación en el sistema SGH
  */
 @Entity(name = "notification_logs")
+@Table(name = "notification_logs", indexes = {
+    @Index(name = "idx_notification_log_recipient_email", columnList = "recipient_email"),
+    @Index(name = "idx_notification_log_type", columnList = "notification_type"),
+    @Index(name = "idx_notification_log_status", columnList = "status"),
+    @Index(name = "idx_notification_log_created_at", columnList = "created_at"),
+    @Index(name = "idx_notification_log_attempts_count", columnList = "attempts_count")
+})
 @Data
 public class NotificationLog {
     
@@ -19,14 +26,9 @@ public class NotificationLog {
     @Column(name = "log_id")
     private Long logId;
     
-    @Column(name = "recipient_email", nullable = false, length = 255)
-    private String recipientEmail;
-    
-    @Column(name = "recipient_name", nullable = false, length = 100)
-    private String recipientName;
-    
-    @Column(name = "recipient_role", nullable = false, length = 50)
-    private String recipientRole;
+    @ManyToOne
+    @JoinColumn(name = "recipient_id", nullable = false)
+    private users recipient;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "notification_type", nullable = false, length = 50)
@@ -79,12 +81,9 @@ public class NotificationLog {
     }
     
     // Constructor con parámetros principales
-    public NotificationLog(String recipientEmail, String recipientName, String recipientRole,
-                          NotificationType notificationType, String subject, String content) {
+    public NotificationLog(users recipient, NotificationType notificationType, String subject, String content) {
         this();
-        this.recipientEmail = recipientEmail;
-        this.recipientName = recipientName;
-        this.recipientRole = recipientRole;
+        this.recipient = recipient;
         this.notificationType = notificationType;
         this.subject = subject;
         this.content = content;
@@ -177,7 +176,20 @@ public class NotificationLog {
     public String toString() {
         return String.format(
             "NotificationLog{id=%d, recipient='%s', type=%s, status=%s, attempts=%d/%d, elapsed=%s}",
-            logId, recipientEmail, notificationType, status, attemptsCount, maxAttempts, getElapsedTime()
+            logId, recipient != null ? recipient.getUserName() : "null", notificationType, status, attemptsCount, maxAttempts, getElapsedTime()
         );
+    }
+    
+    // Métodos de compatibilidad para mantener la API funcionando
+    public String getRecipientEmail() {
+        return recipient != null ? recipient.getUserName() : null;
+    }
+    
+    public String getRecipientName() {
+        return recipient != null && recipient.getPerson() != null ? recipient.getPerson().getFullName() : null;
+    }
+    
+    public String getRecipientRole() {
+        return recipient != null && recipient.getRole() != null ? recipient.getRole().getRoleName() : null;
     }
 }

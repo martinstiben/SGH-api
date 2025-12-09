@@ -7,6 +7,9 @@ import lombok.Data;
 import java.util.List;
 
 @Entity(name = "roles")
+@Table(name = "roles", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"role_name"}, name = "uk_roles_role_name")
+})
 @Data
 public class Roles {
     @Id

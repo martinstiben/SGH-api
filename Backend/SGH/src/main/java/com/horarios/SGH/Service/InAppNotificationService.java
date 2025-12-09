@@ -53,10 +53,7 @@ public class InAppNotificationService {
 
             // Crear notificación
             InAppNotification notification = new InAppNotification(
-                user.getUserId(),
-                user.getPerson().getEmail(),
-                user.getPerson().getFullName(),
-                user.getRole().getRoleName(),
+                user,
                 type,
                 notificationDTO.getTitle(),
                 notificationDTO.getMessage()

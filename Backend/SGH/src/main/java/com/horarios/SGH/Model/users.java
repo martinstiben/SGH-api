@@ -3,8 +3,16 @@ package com.horarios.SGH.Model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 @Entity(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_person_id", columnList = "person_id"),
+    @Index(name = "idx_users_role_id", columnList = "role_id"),
+    @Index(name = "idx_users_account_status", columnList = "account_status"),
+    @Index(name = "idx_users_is_verified", columnList = "is_verified"),
+    @Index(name = "idx_users_created_at", columnList = "created_at")
+})
 public class users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,6 +62,13 @@ public class users {
 
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private java.time.LocalDateTime createdAt;
+    
+    // Relaciones normalizadas
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<InAppNotification> inAppNotifications;
+    
+    @OneToMany(mappedBy = "recipient", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<NotificationLog> notificationLogs;
 
     // Constructor vacío
     public users() {

@@ -178,22 +178,14 @@ public class TeacherService {
         }
 
         // Remover referencias TeacherSubject en cursos antes de eliminarlas
-        List<TeacherSubject> tsList = teacherSubjectRepo.findByTeacher_Id(id);
-        for (TeacherSubject ts : tsList) {
-            List<courses> coursesUsingTs = courseRepo.findAll().stream()
-                .filter(c -> c.getTeacherSubject() != null && c.getTeacherSubject().getId().equals(ts.getId()))
-                .collect(Collectors.toList());
-            for (courses course : coursesUsingTs) {
-                course.setTeacherSubject(null);
-                courseRepo.save(course);
-            }
-        }
+        // Nota: Ya no hay teacherSubject en courses, así que no es necesario
 
         // Eliminar disponibilidad del profesor
         List<TeacherAvailability> availabilities = availabilityRepo.findByTeacher_Id(id);
         availabilityRepo.deleteAll(availabilities);
 
         // Eliminar relaciones TeacherSubject
+        List<TeacherSubject> tsList = teacherSubjectRepo.findByTeacher_Id(id);
         teacherSubjectRepo.deleteAll(tsList);
 
         // Finalmente eliminar el profesor

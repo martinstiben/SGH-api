@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Entity(name = "people")
+@Table(name = "people", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"email"}, name = "uk_people_email")
+})
 @Data
 public class People {
     @Id

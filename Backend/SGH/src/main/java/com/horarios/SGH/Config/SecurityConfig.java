@@ -46,18 +46,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permitir múltiples orígenes comunes de desarrollo
+        // Permitir orígenes para desarrollo y producción (incluyendo apps móviles)
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
             "http://localhost:5173",  // Vite dev server
-            "http://127.0.0.1:5173"
+            "http://127.0.0.1:5173",
+            "*"  // Permitir cualquier origen para apps móviles y producción
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(false);  // Cambiado a false para permitir "*" y compatibilidad con JWT
         configuration.setMaxAge(3600L); // Cache preflight por 1 hora
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

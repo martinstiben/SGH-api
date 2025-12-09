@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 @Entity(name="subjects")
 public class subjects {
@@ -20,6 +21,13 @@ public class subjects {
     @Size(min = 4, max = 20, message = "El nombre de la materia debe tener entre 4 y 20 caracteres")
     @Pattern(regexp = "^[a-zA-ZÀ-ÿ\\s]+$", message = "El nombre de la materia solo puede contener letras y espacios")
     private String subjectName;
+
+    // Relaciones normalizadas
+    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<TeacherSubject> teacherSubjects;
+    
+    @OneToMany(mappedBy = "subjectId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<schedule> schedules;
 
     public subjects() {}
 
@@ -42,5 +50,22 @@ public class subjects {
 
     public void setSubjectName(String subjectName) {
         this.subjectName = subjectName;
+    }
+
+    // Getters y setters para relaciones
+    public List<TeacherSubject> getTeacherSubjects() {
+        return teacherSubjects;
+    }
+
+    public void setTeacherSubjects(List<TeacherSubject> teacherSubjects) {
+        this.teacherSubjects = teacherSubjects;
+    }
+
+    public List<schedule> getSchedules() {
+        return schedules;
+    }
+
+    public void setSchedules(List<schedule> schedules) {
+        this.schedules = schedules;
     }
 }
