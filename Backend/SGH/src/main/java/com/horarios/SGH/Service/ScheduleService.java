@@ -122,13 +122,7 @@ public class ScheduleService {
 
         scheduleRepo.saveAll(entities);
 
-        // Enviar notificaciones después de crear los horarios
-        try {
-            sendScheduleNotifications(entities, "CREATED");
-        } catch (Exception e) {
-            // No fallar la creación si las notificaciones fallan
-            System.err.println("Error enviando notificaciones de creación de horarios: " + e.getMessage());
-        }
+
 
         return entities.stream().map(this::toDTO).collect(Collectors.toList());
     }
@@ -225,14 +219,6 @@ public class ScheduleService {
         existing.setScheduleName(dto.getScheduleName());
 
         schedule saved = scheduleRepo.save(existing);
-
-        // Enviar notificaciones después de actualizar el horario
-        try {
-            sendScheduleNotifications(List.of(saved), "UPDATED");
-        } catch (Exception e) {
-            // No fallar la actualización si las notificaciones fallan
-            System.err.println("Error enviando notificaciones de actualización de horario: " + e.getMessage());
-        }
 
         return toDTO(saved);
     }
