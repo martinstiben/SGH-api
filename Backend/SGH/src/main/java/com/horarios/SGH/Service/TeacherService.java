@@ -32,13 +32,16 @@ public class TeacherService {
     private final ITeacherAvailabilityRepository availabilityRepo;
     private final IScheduleRepository scheduleRepo;
     private final Icourses courseRepo;
-    private final FileStorageService fileStorageService;
+    private final PhotoStorageStrategy photoStorage;
+    private final TeacherValidationService validationService;
 
     /**
      * Crea un docente. Si se envía subjectId, crea también la relación TeacherSubject.
      * Automáticamente registra disponibilidad predeterminada de 06:00am a 12:00pm Lunes a Viernes.
      */
     public TeacherDTO create(TeacherDTO dto) {
+        // Validaciones centralizadas
+        validationService.validateForCreate(dto);
         teachers teacher = new teachers();
         teacher.setTeacherName(dto.getTeacherName());
         teachers savedTeacher = teacherRepo.save(teacher);
@@ -133,6 +136,9 @@ public class TeacherService {
      * Actualiza un docente y su relación con materia.
      */
     public TeacherDTO update(int id, TeacherDTO dto) {
+        // Validar entrada y existencia
+        validationService.validateForUpdate(id, dto);
+
         teachers teacher = teacherRepo.findById(id).orElse(null);
         if (teacher == null) return null;
 
@@ -230,7 +236,7 @@ public class TeacherService {
                 .orElseThrow(() -> new IllegalArgumentException("Profesor no encontrado"));
 
             if (photo != null && !photo.isEmpty()) {
-                FileStorageService.PhotoData photoData = fileStorageService.processImageFile(photo);
+                PhotoStorageStrategy.PhotoData photoData = photoStorage.storePhoto(photo);
                 teacher.setPhotoData(photoData.getData());
                 teacher.setPhotoContentType(photoData.getContentType());
                 teacher.setPhotoFileName(photoData.getFileName());

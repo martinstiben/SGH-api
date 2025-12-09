@@ -1,9 +1,6 @@
 package com.horarios.SGH.Service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -52,9 +49,7 @@ public class AuthService {
     private final AuthenticationManager authManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final InAppNotificationService inAppNotificationService;
-
-    @Autowired
-    private JavaMailSender mailSender;
+    private final EmailService emailService;
 
     @Autowired
     private NotificationService notificationService;
@@ -69,7 +64,8 @@ public class AuthService {
                               PasswordEncoder encoder,
                               AuthenticationManager authManager,
                               JwtTokenProvider jwtTokenProvider,
-                              InAppNotificationService inAppNotificationService) {
+                              InAppNotificationService inAppNotificationService,
+                              EmailService emailService) {
         this.repo = repo;
         this.peopleRepo = peopleRepo;
         this.rolesRepo = rolesRepo;
@@ -81,6 +77,7 @@ public class AuthService {
         this.authManager = authManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.inAppNotificationService = inAppNotificationService;
+        this.emailService = emailService;
     }
 
     public String register(String name, String email, String rawPassword, Role role, Integer subjectId, Integer courseId) {
@@ -225,8 +222,12 @@ public class AuthService {
         user.setCodeExpiration(java.time.LocalDateTime.now().plusMinutes(10));
         repo.save(user);
 
-        // Enviar código por email (simulado)
-        sendVerificationEmail(user.getPerson().getEmail(), verificationCode);
+        // Enviar código por email usando EmailService
+        try {
+            emailService.sendVerificationEmail(user.getPerson().getEmail(), verificationCode);
+        } catch (Exception e) {
+            System.err.println("Error delegando envío de verificación: " + e.getMessage());
+        }
 
         return "Código de verificación enviado al correo electrónico";
     }
@@ -283,134 +284,6 @@ public class AuthService {
         int code = 100000 + random.nextInt(900000); // Código de 6 dígitos
         return String.valueOf(code);
     }
-
-    /**
-     * Envía el código de verificación por email usando JavaMailSender con formato HTML.
-     *
-     * @param email Dirección de email del destinatario
-     * @param code Código de verificación
-     */
-    private void sendVerificationEmail(String email, String code) {
-    try {
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-        helper.setTo(email);
-        helper.setSubject("Código de Verificación - SGH");
-
-        String htmlContent = "<!DOCTYPE html>" +
-            "<html lang='es'>" +
-            "<head>" +
-            "<meta charset='UTF-8'>" +
-            "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-            "<title>Verificación de Seguridad - SGH</title>" +
-            "</head>" +
-            "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #e8eaed 0%, #d1d5db 100%); min-height: 100vh; padding: 40px 20px;'>" +
-            "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
-            "<tr>" +
-            "<td style='background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); padding: 55px 40px; text-align: center;'>" +
-            "<div style='margin: 0 auto 28px;'>" +
-            "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
-            "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
-            "<span style='font-size: 52px; font-weight: 700; color: #2c3e50; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 6px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
-            "</div>" +
-            "</div>" +
-            "</div>" +
-            "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>Verificación de Seguridad</h1>" +
-            "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
-            "</td>" +
-            "</tr>" +
-            "<tr>" +
-            "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
-            "<div style='margin-bottom: 15px;'>" +
-            "<span style='display: inline-block; font-size: 48px;'>👋</span>" +
-            "</div>" +
-            "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>¡Hola!</h2>" +
-            "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
-            "Para proteger tu cuenta, hemos generado un código de verificación.<br>" +
-            "<strong style='color: #1f2937;'>Ingresa este código en la aplicación</strong> para completar tu inicio de sesión de forma segura." +
-            "</p>" +
-            "<div style='background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(44, 62, 80, 0.3);'>" +
-            "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>Tu código de verificación</p>" +
-            "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px;'>" +
-            "<div style='font-size: 48px; font-weight: 900; color: #ffffff; letter-spacing: 12px; font-family: \"Courier New\", Courier, monospace; text-shadow: 0 2px 8px rgba(0,0,0,0.2);'>" +
-            code +
-            "</div>" +
-            "</div>" +
-            "</div>" +
-            "<div style='display: inline-block; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 50px; padding: 12px 24px; margin: 25px 0; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);'>" +
-            "<span style='font-size: 14px;'>⏱️</span>" +
-            "<span style='color: #92400e; font-weight: 700; font-size: 14px; margin-left: 8px;'>Expira en 10 minutos</span>" +
-            "</div>" +
-            "<div style='background: #fee; border: 2px solid #fca5a5; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
-            "<p style='margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.6;'>" +
-            "<span style='font-size: 18px; margin-right: 8px;'>🔒</span>" +
-            "<strong>Importante:</strong> Si no solicitaste este código, alguien podría estar intentando acceder a tu cuenta. Por favor, <strong>ignora este mensaje</strong> y contacta inmediatamente con el administrador del sistema." +
-            "</p>" +
-            "</div>" +
-            "<div style='background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: left;'>" +
-            "<p style='margin: 0 0 12px 0; color: #075985; font-size: 15px; font-weight: 700;'>" +
-            "💡 Consejos de seguridad:" +
-            "</p>" +
-            "<ul style='margin: 0; padding-left: 20px; color: #075985; font-size: 14px; line-height: 1.8;'>" +
-            "<li>Nunca compartas este código con nadie</li>" +
-            "<li>SGH nunca te pedirá tu código por teléfono o correo</li>" +
-            "<li>Usa contraseñas seguras y cámbialas regularmente</li>" +
-            "</ul>" +
-            "</div>" +
-            "</td>" +
-            "</tr>" +
-            "<tr>" +
-            "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
-            "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
-            "Este es un mensaje automático generado por el sistema SGH.<br>" +
-            "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
-            "Si necesitas ayuda, contacta al equipo de soporte técnico." +
-            "</p>" +
-            "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
-            "<div style='margin-bottom: 16px;'>" +
-            "<div style='width: 64px; height: 64px; background: #2c3e50; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(44, 62, 80, 0.4); display: table;'>" +
-            "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
-            "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
-            "</div>" +
-            "</div>" +
-            "</div>" +
-            "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
-            "Sistema de Gestión de Horarios" +
-            "</p>" +
-            "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
-            "Tu sistema de confianza para la gestión académica" +
-            "</p>" +
-            "</div>" +
-            "</td>" +
-            "</tr>" +
-            "</table>" +
-            "<div style='text-align: center; padding-top: 25px;'>" +
-            "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
-            "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
-            "</p>" +
-            "</div>" +
-            "</body>" +
-            "</html>";
-
-        helper.setText(htmlContent, true);
-
-        mailSender.send(message);
-
-        System.out.println("=== EMAIL ENVIADO ===");
-        System.out.println("Destinatario: " + email);
-        System.out.println("Código: " + code);
-        System.out.println("====================");
-
-    } catch (Exception e) {
-        System.err.println("Error enviando email: " + e.getMessage());
-        System.out.println("=== CÓDIGO DE VERIFICACIÓN SGH (FALLBACK) ===");
-        System.out.println("Email: " + email);
-        System.out.println("Código: " + code);
-        System.out.println("Este código expira en 10 minutos");
-        System.out.println("===========================================");
-    }
-}
 
     public users getProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -615,8 +488,12 @@ public class AuthService {
                     return null;
                 });
 
-            // Enviar email de aprobación
-            sendApprovalEmail(user.getPerson().getEmail(), user.getPerson().getFullName());
+            // Enviar email de aprobación usando EmailService
+            try {
+                emailService.sendApprovalEmail(user.getPerson().getEmail(), user.getPerson().getFullName());
+            } catch (Exception e) {
+                System.err.println("Error delegando envío de email de aprobación: " + e.getMessage());
+            }
 
         } catch (Exception e) {
             System.err.println("Error notificando aprobación al usuario: " + e.getMessage());
@@ -646,8 +523,12 @@ public class AuthService {
                     return null;
                 });
 
-            // Enviar email de rechazo
-            sendRejectionEmail(user.getPerson().getEmail(), user.getPerson().getFullName(), reason);
+            // Enviar email de rechazo usando EmailService
+            try {
+                emailService.sendRejectionEmail(user.getPerson().getEmail(), user.getPerson().getFullName(), reason);
+            } catch (Exception e) {
+                System.err.println("Error delegando envío de email de rechazo: " + e.getMessage());
+            }
 
         } catch (Exception e) {
             System.err.println("Error notificando rechazo al usuario: " + e.getMessage());
@@ -679,8 +560,12 @@ public class AuthService {
             user.setPasswordResetExpiration(java.time.LocalDateTime.now().plusMinutes(10)); // 10 minutos para reset
             repo.save(user);
 
-            // Enviar código por email
-            sendPasswordResetEmail(user.getPerson().getEmail(), resetCode, user.getPerson().getFullName());
+            // Enviar código por email usando EmailService
+            try {
+                emailService.sendPasswordResetEmail(user.getPerson().getEmail(), resetCode, user.getPerson().getFullName());
+            } catch (Exception e) {
+                System.err.println("Error delegando envío de reset: " + e.getMessage());
+            }
 
             return "Se ha enviado un código de verificación a su email para restablecer la contraseña";
         } catch (Exception e) {
@@ -734,135 +619,8 @@ public class AuthService {
         }
     }
 
-
-    /**
-     * Envía el código de verificación para restablecimiento de contraseña por email
-     *
-     * @param email Email del destinatario
-     * @param verificationCode Código de verificación
-     * @param userName Nombre del usuario
-     */
-    private void sendPasswordResetEmail(String email, String verificationCode, String userName) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setTo(email);
-            helper.setSubject("Código de Verificación - Restablecimiento de Contraseña - SGH");
-
-            String htmlContent = "<!DOCTYPE html>" +
-                "<html lang='es'>" +
-                "<head>" +
-                "<meta charset='UTF-8'>" +
-                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-                "<title>Restablecimiento de Contraseña - SGH</title>" +
-                "</head>" +
-                "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); min-height: 100vh; padding: 40px 20px;'>" +
-                "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
-                "<tr>" +
-                "<td style='background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); padding: 55px 40px; text-align: center;'>" +
-                "<div style='margin: 0 auto 28px;'>" +
-                "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
-                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
-                "<span style='font-size: 52px; font-weight: 700; color: #6b7280; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 6px; line-height: 1; text-transform: uppercase;'>🔐</span>" +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>Restablecimiento de Contraseña</h1>" +
-                "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
-                "</td>" +
-                "</tr>" +
-                "<tr>" +
-                "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
-                "<div style='margin-bottom: 15px;'>" +
-                "<span style='display: inline-block; font-size: 48px;'>👋</span>" +
-                "</div>" +
-                "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>¡Hola, " + userName + "!</h2>" +
-                "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
-                "Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.<br>" +
-                "<strong style='color: #1f2937;'>Ingresa este código en la aplicación</strong> para crear una nueva contraseña y recuperar el acceso de forma segura." +
-                "</p>" +
-                "<div style='background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(107, 114, 128, 0.3);'>" +
-                "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>Tu código de verificación</p>" +
-                "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px;'>" +
-                "<div style='font-size: 48px; font-weight: 900; color: #ffffff; letter-spacing: 12px; font-family: \"Courier New\", Courier, monospace; text-shadow: 0 2px 8px rgba(0,0,0,0.2);'>" +
-                verificationCode +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<div style='display: inline-block; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 50px; padding: 12px 24px; margin: 25px 0; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);'>" +
-                "<span style='font-size: 14px;'>⏱️</span>" +
-                "<span style='color: #92400e; font-weight: 700; font-size: 14px; margin-left: 8px;'>Expira en 10 minutos</span>" +
-                "</div>" +
-                "<div style='background: #fee; border: 2px solid #fca5a5; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
-                "<p style='margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.6;'>" +
-                "<span style='font-size: 18px; margin-right: 8px;'>🛡️</span>" +
-                "<strong>Importante:</strong> Si no solicitaste este restablecimiento, alguien podría estar intentando acceder a tu cuenta. Por favor, <strong>ignora este mensaje</strong> y contacta inmediatamente con el administrador del sistema." +
-                "</p>" +
-                "</div>" +
-                "<div style='background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: left;'>" +
-                "<p style='margin: 0 0 12px 0; color: #075985; font-size: 15px; font-weight: 700;'>" +
-                "💡 Consejos de seguridad:" +
-                "</p>" +
-                "<ul style='margin: 0; padding-left: 20px; color: #075985; font-size: 14px; line-height: 1.8;'>" +
-                "<li>Nunca compartas este código con nadie</li>" +
-                "<li>SGH nunca te pedirá tu código por teléfono o correo</li>" +
-                "<li>Usa contraseñas seguras y cámbialas regularmente</li>" +
-                "</ul>" +
-                "</div>" +
-                "</td>" +
-                "</tr>" +
-                "<tr>" +
-                "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
-                "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
-                "Este es un mensaje automático generado por el sistema SGH.<br>" +
-                "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
-                "Si necesitas ayuda, contacta al equipo de soporte técnico." +
-                "</p>" +
-                "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
-                "<div style='margin-bottom: 16px;'>" +
-                "<div style='width: 64px; height: 64px; background: #6b7280; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4); display: table;'>" +
-                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
-                "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
-                "Sistema de Gestión de Horarios" +
-                "</p>" +
-                "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
-                "Tu sistema de confianza para la gestión académica" +
-                "</p>" +
-                "</div>" +
-                "</td>" +
-                "</tr>" +
-                "</table>" +
-                "<div style='text-align: center; padding-top: 25px;'>" +
-                "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
-                "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
-                "</p>" +
-                "</div>" +
-                "</body>" +
-                "</html>";
-
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-
-            System.out.println("=== EMAIL DE RESET ENVIADO ===");
-            System.out.println("Destinatario: " + email);
-            System.out.println("Código: " + verificationCode);
-            System.out.println("============================");
-
-        } catch (Exception e) {
-            System.err.println("Error enviando email de reset: " + e.getMessage());
-            System.out.println("=== CÓDIGO DE RESET SGH (FALLBACK) ===");
-            System.out.println("Email: " + email);
-            System.out.println("Código: " + verificationCode);
-            System.out.println("Este código expira en 10 minutos");
-            System.out.println("=====================================");
-        }
-    }
+    // Email templates and sending moved to `EmailService` and `HtmlTemplateService`.
+    // Private inline email helper methods were removed to keep AuthService single-responsibility.
 
     /**
      * Obtiene lista de usuarios pendientes de aprobación
@@ -879,236 +637,7 @@ public class AuthService {
             throw e;
         }
     }
+    // Approval email sending moved to EmailService; helper removed from AuthService.
 
-    /**
-     * Envía email de aprobación de registro al usuario
-     *
-     * @param email Email del destinatario
-     * @param userName Nombre del usuario
-     */
-    private void sendApprovalEmail(String email, String userName) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setTo(email);
-            helper.setSubject("¡Registro Aprobado! - Sistema de Gestión de Horarios");
-
-            String htmlContent = "<!DOCTYPE html>" +
-                "<html lang='es'>" +
-                "<head>" +
-                "<meta charset='UTF-8'>" +
-                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-                "<title>Registro Aprobado - SGH</title>" +
-                "</head>" +
-                "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); min-height: 100vh; padding: 40px 20px;'>" +
-                "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
-                "<tr>" +
-                "<td style='background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); padding: 55px 40px; text-align: center;'>" +
-                "<div style='margin: 0 auto 28px;'>" +
-                "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
-                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
-                "<span style='font-size: 52px;'>✅</span>" +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>¡Registro Aprobado!</h1>" +
-                "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
-                "</td>" +
-                "</tr>" +
-                "<tr>" +
-                "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
-                "<div style='margin-bottom: 15px;'>" +
-                "<span style='display: inline-block; font-size: 48px;'>🎉</span>" +
-                "</div>" +
-                "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>¡Felicitaciones, " + userName + "!</h2>" +
-                "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
-                "Tu solicitud de registro ha sido <strong style='color: #4caf50;'>aprobada exitosamente</strong> por el coordinador.<br>" +
-                "Ya puedes acceder a todas las funcionalidades disponibles para tu rol en el sistema SGH." +
-                "</p>" +
-                "<div style='background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(76, 175, 80, 0.3);'>" +
-                "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>¿Qué sigue?</p>" +
-                "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px; text-align: left;'>" +
-                "<div style='font-size: 16px; font-weight: 700; color: #ffffff; margin-bottom: 12px;'>🚀 Inicia sesión en el sistema</div>" +
-                "<div style='font-size: 14px; color: rgba(255,255,255,0.9); line-height: 1.6;'>" +
-                "Utiliza tu email y contraseña para acceder al portal web o aplicación móvil de SGH." +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<div style='background: #e8f5e8; border: 2px solid #4caf50; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
-                "<p style='margin: 0; color: #2e7d32; font-size: 14px; line-height: 1.6;'>" +
-                "<span style='font-size: 18px; margin-right: 8px;'>🎯</span>" +
-                "<strong>¡Bienvenido al equipo!</strong> Tu cuenta está ahora activa y lista para usar. Explora todas las funcionalidades disponibles según tu rol asignado." +
-                "</p>" +
-                "</div>" +
-                "</td>" +
-                "</tr>" +
-                "<tr>" +
-                "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
-                "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
-                "Este es un mensaje automático generado por el sistema SGH.<br>" +
-                "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
-                "Si necesitas ayuda, contacta al equipo de soporte técnico." +
-                "</p>" +
-                "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
-                "<div style='margin-bottom: 16px;'>" +
-                "<div style='width: 64px; height: 64px; background: #4caf50; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4); display: table;'>" +
-                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
-                "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
-                "Sistema de Gestión de Horarios" +
-                "</p>" +
-                "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
-                "Tu sistema de confianza para la gestión académica" +
-                "</p>" +
-                "</div>" +
-                "</td>" +
-                "</tr>" +
-                "</table>" +
-                "<div style='text-align: center; padding-top: 25px;'>" +
-                "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
-                "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
-                "</p>" +
-                "</div>" +
-                "</body>" +
-                "</html>";
-
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-
-            System.out.println("=== EMAIL DE APROBACIÓN ENVIADO ===");
-            System.out.println("Destinatario: " + email);
-            System.out.println("Usuario: " + userName);
-            System.out.println("===================================");
-
-        } catch (Exception e) {
-            System.err.println("Error enviando email de aprobación: " + e.getMessage());
-            System.out.println("=== EMAIL DE APROBACIÓN FALLÓ ===");
-            System.out.println("Destinatario: " + email);
-            System.out.println("Usuario: " + userName);
-            System.out.println("=================================");
-        }
-    }
-
-    /**
-     * Envía email de rechazo de registro al usuario
-     *
-     * @param email Email del destinatario
-     * @param userName Nombre del usuario
-     * @param reason Motivo del rechazo (opcional)
-     */
-    private void sendRejectionEmail(String email, String userName, String reason) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setTo(email);
-            helper.setSubject("Registro No Aprobado - Sistema de Gestión de Horarios");
-
-            String reasonText = (reason != null && !reason.trim().isEmpty()) ? " Motivo: " + reason : "";
-
-            String htmlContent = "<!DOCTYPE html>" +
-                "<html lang='es'>" +
-                "<head>" +
-                "<meta charset='UTF-8'>" +
-                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-                "<title>Registro No Aprobado - SGH</title>" +
-                "</head>" +
-                "<body style='margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif; background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%); min-height: 100vh; padding: 40px 20px;'>" +
-                "<table cellpadding='0' cellspacing='0' border='0' width='100%' style='max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; border: 1px solid #e5e7eb;'>" +
-                "<tr>" +
-                "<td style='background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); padding: 55px 40px; text-align: center;'>" +
-                "<div style='margin: 0 auto 28px;'>" +
-                "<div style='width: 120px; height: 120px; background: #ffffff; border-radius: 28px; margin: 0 auto; box-shadow: 0 12px 35px rgba(0,0,0,0.35); display: table;'>" +
-                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 20px;'>" +
-                "<span style='font-size: 52px;'>❌</span>" +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<h1 style='margin: 0 0 10px 0; font-size: 34px; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.4); letter-spacing: -0.5px;'>Registro No Aprobado</h1>" +
-                "<p style='margin: 0; font-size: 17px; color: rgba(255,255,255,0.92); font-weight: 500; letter-spacing: 0.3px;'>Sistema de Gestión de Horarios</p>" +
-                "</td>" +
-                "</tr>" +
-                "<tr>" +
-                "<td style='padding: 50px 40px; text-align: center; background: #f9fafb;'>" +
-                "<div style='margin-bottom: 15px;'>" +
-                "<span style='display: inline-block; font-size: 48px;'>😔</span>" +
-                "</div>" +
-                "<h2 style='font-size: 26px; color: #1f2937; margin: 0 0 12px 0; font-weight: 700;'>Lo sentimos, " + userName + "</h2>" +
-                "<p style='font-size: 16px; color: #4b5563; line-height: 1.7; margin: 0 0 35px 0;'>" +
-                "Tu solicitud de registro ha sido <strong style='color: #f44336;'>rechazada</strong> por el coordinador." + reasonText +
-                "</p>" +
-                "<div style='background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); border-radius: 16px; padding: 40px 30px; margin: 35px 0; box-shadow: 0 8px 24px rgba(244, 67, 54, 0.3);'>" +
-                "<p style='color: rgba(255,255,255,0.95); font-size: 12px; margin: 0 0 18px 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;'>¿Qué puedes hacer?</p>" +
-                "<div style='background: rgba(255,255,255,0.15); border-radius: 12px; padding: 18px; text-align: left;'>" +
-                "<div style='font-size: 16px; font-weight: 700; color: #ffffff; margin-bottom: 12px;'>📞 Contacta al coordinador</div>" +
-                "<div style='font-size: 14px; color: rgba(255,255,255,0.9); line-height: 1.6;'>" +
-                "Comunícate con el coordinador del sistema para obtener más información sobre el motivo del rechazo." +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<div style='background: #ffebee; border: 2px solid #f44336; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: left;'>" +
-                "<p style='margin: 0; color: #c62828; font-size: 14px; line-height: 1.6;'>" +
-                "<span style='font-size: 18px; margin-right: 8px;'>💡</span>" +
-                "<strong>Información importante:</strong> Si crees que ha habido un error, por favor contacta directamente con el coordinador para resolver cualquier malentendido." +
-                "</p>" +
-                "</div>" +
-                "</td>" +
-                "</tr>" +
-                "<tr>" +
-                "<td style='background: #f3f4f6; padding: 40px; text-align: center; border-top: 1px solid #e5e7eb;'>" +
-                "<p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>" +
-                "Este es un mensaje automático generado por el sistema SGH.<br>" +
-                "<strong style='color: #374151;'>Por seguridad, no respondas a este correo electrónico.</strong><br>" +
-                "Si necesitas ayuda, contacta al equipo de soporte técnico." +
-                "</p>" +
-                "<div style='margin-top: 25px; padding-top: 25px; border-top: 1px solid #e5e7eb;'>" +
-                "<div style='margin-bottom: 16px;'>" +
-                "<div style='width: 64px; height: 64px; background: #f44336; border-radius: 16px; margin: 0 auto; box-shadow: 0 6px 16px rgba(244, 67, 54, 0.4); display: table;'>" +
-                "<div style='display: table-cell; vertical-align: middle; text-align: center; padding: 12px;'>" +
-                "<span style='font-size: 24px; font-weight: 700; color: #ffffff; font-family: \"Segoe UI\", -apple-system, BlinkMacSystemFont, Arial, sans-serif; letter-spacing: 3px; line-height: 1; text-transform: uppercase;'>SGH</span>" +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<p style='color: #1f2937; font-weight: 700; font-size: 16px; margin: 0 0 6px 0;'>" +
-                "Sistema de Gestión de Horarios" +
-                "</p>" +
-                "<p style='color: #6b7280; font-size: 13px; margin: 0;'>" +
-                "Tu sistema de confianza para la gestión académica" +
-                "</p>" +
-                "</div>" +
-                "</td>" +
-                "</tr>" +
-                "</table>" +
-                "<div style='text-align: center; padding-top: 25px;'>" +
-                "<p style='color: #94a3b8; font-size: 13px; margin: 0;'>" +
-                "© 2025 Sistema de Gestión de Horarios. Todos los derechos reservados." +
-                "</p>" +
-                "</div>" +
-                "</body>" +
-                "</html>";
-
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-
-            System.out.println("=== EMAIL DE RECHAZO ENVIADO ===");
-            System.out.println("Destinatario: " + email);
-            System.out.println("Usuario: " + userName);
-            System.out.println("Motivo: " + (reason != null ? reason : "No especificado"));
-            System.out.println("=================================");
-
-        } catch (Exception e) {
-            System.err.println("Error enviando email de rechazo: " + e.getMessage());
-            System.out.println("=== EMAIL DE RECHAZO FALLÓ ===");
-            System.out.println("Destinatario: " + email);
-            System.out.println("Usuario: " + userName);
-            System.out.println("Motivo: " + (reason != null ? reason : "No especificado"));
-            System.out.println("===============================");
-        }
-    }
+    // Private inline email helper methods removed. Email sending delegated to `EmailService`.
 }
