@@ -8,18 +8,18 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
-@Entity(name = "roles")
+@Entity(name = "permissions")
 @Data
-public class Role {
+public class Permission {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "role_id")
-    private Long roleId;
+    @Column(name = "permission_id")
+    private Long permissionId;
 
-    @Column(name = "role_name", nullable = false, unique = true, length = 50)
-    @NotNull(message = "El nombre del rol es obligatorio")
-    @Size(min = 3, max = 50, message = "El nombre del rol debe tener entre 3 y 50 caracteres")
-    private String roleName;
+    @Column(name = "permission_name", nullable = false, unique = true, length = 100)
+    @NotNull(message = "El nombre del permiso es obligatorio")
+    @Size(min = 3, max = 100, message = "El nombre del permiso debe tener entre 3 y 100 caracteres")
+    private String permissionName;
 
     @Column(name = "description", length = 255)
     @Size(max = 255, message = "La descripción debe tener máximo 255 caracteres")
@@ -34,20 +34,17 @@ public class Role {
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
 
-    @ManyToMany(mappedBy = "roles")
-    private Set<UserRole> userRoles = new HashSet<>();
-
-    @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "permission", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<RolePermission> rolePermissions = new HashSet<>();
 
-    public Role() {
+    public Permission() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
-    public Role(String roleName, String description) {
+    public Permission(String permissionName, String description) {
         this();
-        this.roleName = roleName;
+        this.permissionName = permissionName;
         this.description = description;
     }
 }

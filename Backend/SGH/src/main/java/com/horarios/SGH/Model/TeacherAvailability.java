@@ -21,7 +21,8 @@ public class TeacherAvailability {
     @Schema(description = "Profesor asociado")
     private teachers teacher;
 
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "day", nullable = false)
     @Schema(description = "Día de la semana", example = "Lunes")
     private Days day;
 

@@ -18,9 +18,9 @@ public class People {
     @Size(min = 1, max = 100, message = "El nombre completo debe tener entre 1 y 100 caracteres")
     private String fullName;
 
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(name = "email", nullable = false, unique = true, length = 254)
     @NotNull(message = "El email es obligatorio")
-    @Size(min = 1, max = 150, message = "El email debe tener entre 1 y 150 caracteres")
+    @Size(min = 1, max = 254, message = "El email debe tener entre 1 y 254 caracteres")
     private String email;
 
     @Column(name = "photo_file_name", length = 255)

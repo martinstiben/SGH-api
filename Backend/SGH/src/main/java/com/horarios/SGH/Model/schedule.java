@@ -1,6 +1,7 @@
 package com.horarios.SGH.Model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalTime;
 
 @Entity
@@ -22,15 +23,22 @@ public class schedule {
     @JoinColumn(name = "subjectId", nullable = false)
     private subjects subjectId;
 
-    private String day;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "day", nullable = false)
+    private Days day;
+
+    @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
+
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
+    @Column(name = "schedule_name", length = 100)
     private String scheduleName;
 
     public schedule() {}
 
-    public schedule(Integer id, courses courseId, teachers teacherId, subjects subjectId, String day, LocalTime startTime, LocalTime endTime, String scheduleName) {
+    public schedule(Integer id, courses courseId, teachers teacherId, subjects subjectId, Days day, LocalTime startTime, LocalTime endTime, String scheduleName) {
         this.id = id;
         this.courseId = courseId;
         this.teacherId = teacherId;
@@ -73,11 +81,11 @@ public class schedule {
         this.subjectId = subjectId;
     }
 
-    public String getDay() {
+    public Days getDay() {
         return day;
     }
 
-    public void setDay(String day) {
+    public void setDay(Days day) {
         this.day = day;
     }
 

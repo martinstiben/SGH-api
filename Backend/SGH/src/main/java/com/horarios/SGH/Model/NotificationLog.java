@@ -19,12 +19,12 @@ public class NotificationLog {
     @Column(name = "log_id")
     private Long logId;
     
-    @Column(name = "recipient_email", nullable = false, length = 255)
+    @Column(name = "recipient_email", nullable = false, length = 254)
     private String recipientEmail;
-    
+
     @Column(name = "recipient_name", nullable = false, length = 100)
     private String recipientName;
-    
+
     @Column(name = "recipient_role", nullable = false, length = 50)
     private String recipientRole;
     

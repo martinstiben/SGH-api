@@ -20,12 +20,12 @@ public class InAppNotification {
     @Column(name = "user_id", nullable = false)
     private Integer userId;
     
-    @Column(name = "user_email", nullable = false, length = 255)
+    @Column(name = "user_email", nullable = false, length = 254)
     private String userEmail;
-    
+
     @Column(name = "user_name", nullable = false, length = 100)
     private String userName;
-    
+
     @Column(name = "user_role", nullable = false, length = 50)
     private String userRole;
     

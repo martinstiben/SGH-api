@@ -14,10 +14,10 @@ public class subjects {
     @Column(name="subjectId")
     private int id;
 
-    @Column(name="subjectName", nullable=false, unique=true)
+    @Column(name="subjectName", nullable=false, unique=true, length = 100)
     @NotNull(message = "El nombre de la materia no puede ser nulo")
     @NotBlank(message = "El nombre de la materia no puede estar vacío")
-    @Size(min = 4, max = 20, message = "El nombre de la materia debe tener entre 4 y 20 caracteres")
+    @Size(min = 4, max = 100, message = "El nombre de la materia debe tener entre 4 y 100 caracteres")
     @Pattern(regexp = "^[a-zA-ZÀ-ÿ\\s]+$", message = "El nombre de la materia solo puede contener letras y espacios")
     private String subjectName;
 
