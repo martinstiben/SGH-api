@@ -68,7 +68,9 @@ public class DataInitializer {
                         return rolesRepo.save(new Role("MAESTRO", "Rol de profesor"));
                     });
 
-                users u = new users(masterPerson, maestroRole, encoder.encode(masterPassword));
+                users u = new users(masterPerson, encoder.encode(masterPassword));
+                u.setUsername(masterUsername);
+                u.setEmail(masterUsername);
                 repo.save(u);
                 System.out.println(">> Master creado: " + masterUsername);
             } else {

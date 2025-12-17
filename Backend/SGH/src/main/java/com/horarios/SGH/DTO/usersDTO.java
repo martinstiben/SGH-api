@@ -1,6 +1,5 @@
 package com.horarios.SGH.DTO;
 
-import com.horarios.SGH.Model.Role;
 import lombok.Data;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

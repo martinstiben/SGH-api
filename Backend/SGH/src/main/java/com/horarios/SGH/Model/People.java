@@ -43,4 +43,12 @@ public class People {
         this.fullName = fullName;
         this.personalEmail = personalEmail;
     }
+
+    public String getEmail() {
+        return personalEmail;
+    }
+
+    public void setEmail(String email) {
+        this.personalEmail = email;
+    }
 }

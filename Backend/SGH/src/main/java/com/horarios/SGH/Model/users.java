@@ -1,4 +1,4 @@
-package com.horarios.SGH.Model;
+                                                                                    package com.horarios.SGH.Model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -129,6 +129,22 @@ public class users {
         this.createdAt = createdAt;
     }
 
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getUserName() {
         return person != null ? person.getPersonalEmail() : null;
     }
@@ -136,4 +152,9 @@ public class users {
     public void setUserName(String userName) {
         // Este método puede no ser necesario, pero lo incluimos por compatibilidad
     }
+
+    public boolean isVerified() {
+        return isVerified;
+    }
+
 }

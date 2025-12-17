@@ -43,6 +43,9 @@ public class UserSecurity {
     @Column(name = "mfa_secret")
     private String mfaSecret;
 
+    @Column(name = "mfa_secret_encrypted", nullable = false)
+    private boolean mfaSecretEncrypted = true;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
 
@@ -145,6 +148,14 @@ public class UserSecurity {
 
     public void setMfaSecret(String mfaSecret) {
         this.mfaSecret = mfaSecret;
+    }
+
+    public boolean isMfaSecretEncrypted() {
+        return mfaSecretEncrypted;
+    }
+
+    public void setMfaSecretEncrypted(boolean mfaSecretEncrypted) {
+        this.mfaSecretEncrypted = mfaSecretEncrypted;
     }
 
     public LocalDateTime getCreatedAt() {
