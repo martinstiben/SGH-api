@@ -21,6 +21,11 @@ public class courses {
     @Pattern(regexp = "^[a-zA-Z0-9\\s]+$", message = "El nombre del curso solo puede contener letras, números y espacios")
     private String courseName;
 
+    @Column(name="academic_year", nullable=false, length = 20)
+    @NotNull(message = "El año académico es obligatorio")
+    @Size(min = 4, max = 20, message = "El año académico debe tener entre 4 y 20 caracteres")
+    private String academicYear;
+
     // Docente+Materia que imparte el curso
     @ManyToOne
     @JoinColumn(name = "teacher_subject_id")
@@ -52,6 +57,14 @@ public class courses {
 
     public void setCourseName(String courseName) {
         this.courseName = courseName;
+    }
+
+    public String getAcademicYear() {
+        return academicYear;
+    }
+
+    public void setAcademicYear(String academicYear) {
+        this.academicYear = academicYear;
     }
 
     public TeacherSubject getTeacherSubject() {

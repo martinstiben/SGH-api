@@ -7,6 +7,7 @@ import java.time.LocalTime;
 
 @Entity(name = "schedules")
 @Data
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"courseId", "day", "start_time", "end_time"}))
 public class schedule {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

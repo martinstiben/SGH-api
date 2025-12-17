@@ -24,11 +24,11 @@ public class UserCredentials {
 
     @Column(name = "password_salt", length = 255)
     @Size(max = 255, message = "El salt debe tener máximo 255 caracteres")
-    private String passwordSalt;
+    private String passwordSalt; // Opcional para BCrypt, pero mantenido para compatibilidad con otros algoritmos
 
     @Column(name = "password_algorithm", length = 50)
     @Size(max = 50, message = "El algoritmo debe tener máximo 50 caracteres")
-    private String passwordAlgorithm = "BCrypt";
+    private String passwordAlgorithm = "BCrypt"; // BCrypt maneja salt internamente
 
     @Column(name = "password_changed_at", columnDefinition = "TIMESTAMP")
     private LocalDateTime passwordChangedAt;

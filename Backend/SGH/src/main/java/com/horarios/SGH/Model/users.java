@@ -38,32 +38,8 @@ public class users {
     private People person;
 
     @ManyToOne
-    @JoinColumn(name = "role_id", nullable = false)
-    @NotNull(message = "El rol es obligatorio")
-    private Role role;
-
-    @ManyToOne
     @JoinColumn(name = "course_id")
     private courses course;
-
-    @Column(name = "password_hash", nullable = false, length = 72)
-    @NotNull(message = "El hash de la contraseña es obligatorio")
-    @Size(min = 72, max = 72, message = "El hash de la contraseña debe tener exactamente 72 caracteres (BCrypt)")
-    private String passwordHash;
-
-    @Column(name = "verification_code", length = 6)
-    @Size(min = 6, max = 6, message = "El código de verificación debe tener exactamente 6 caracteres")
-    private String verificationCode;
-
-    @Column(name = "code_expiration", columnDefinition = "DATETIME(6)")
-    private java.time.LocalDateTime codeExpiration;
-
-    @Column(name = "password_reset_code", length = 6)
-    @Size(min = 6, max = 6, message = "El código de reset debe tener exactamente 6 caracteres")
-    private String passwordResetCode;
-
-    @Column(name = "password_reset_expiration", columnDefinition = "DATETIME(6)")
-    private java.time.LocalDateTime passwordResetExpiration;
 
     @Column(name = "is_verified", nullable = false)
     private boolean isVerified = false;
@@ -87,10 +63,8 @@ public class users {
     }
 
     // Constructor con parámetros principales
-    public users(People person, Role role, String passwordHash) {
+    public users(People person, String passwordHash) {
         this.person = person;
-        this.role = role;
-        this.passwordHash = passwordHash;
         this.createdAt = java.time.LocalDateTime.now();
     }
 
@@ -111,64 +85,12 @@ public class users {
         this.person = person;
     }
 
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
     public courses getCourse() {
         return course;
     }
 
     public void setCourse(courses course) {
         this.course = course;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public String getVerificationCode() {
-        return verificationCode;
-    }
-
-    public void setVerificationCode(String verificationCode) {
-        this.verificationCode = verificationCode;
-    }
-
-    public java.time.LocalDateTime getCodeExpiration() {
-        return codeExpiration;
-    }
-
-    public void setCodeExpiration(java.time.LocalDateTime codeExpiration) {
-        this.codeExpiration = codeExpiration;
-    }
-
-    public String getPasswordResetCode() {
-        return passwordResetCode;
-    }
-
-    public void setPasswordResetCode(String passwordResetCode) {
-        this.passwordResetCode = passwordResetCode;
-    }
-
-    public java.time.LocalDateTime getPasswordResetExpiration() {
-        return passwordResetExpiration;
-    }
-
-    public void setPasswordResetExpiration(java.time.LocalDateTime passwordResetExpiration) {
-        this.passwordResetExpiration = passwordResetExpiration;
-    }
-
-    public boolean isVerified() {
-        return isVerified;
     }
 
     public void setVerified(boolean verified) {
@@ -183,6 +105,22 @@ public class users {
         this.accountStatus = accountStatus;
     }
 
+    public LocalDateTime getLastPasswordChange() {
+        return lastPasswordChange;
+    }
+
+    public void setLastPasswordChange(LocalDateTime lastPasswordChange) {
+        this.lastPasswordChange = lastPasswordChange;
+    }
+
+    public boolean isPasswordNeverExpires() {
+        return passwordNeverExpires;
+    }
+
+    public void setPasswordNeverExpires(boolean passwordNeverExpires) {
+        this.passwordNeverExpires = passwordNeverExpires;
+    }
+
     public java.time.LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -192,7 +130,7 @@ public class users {
     }
 
     public String getUserName() {
-        return person != null ? person.getEmail() : null;
+        return person != null ? person.getPersonalEmail() : null;
     }
 
     public void setUserName(String userName) {
