@@ -29,7 +29,7 @@ public class People {
     @Column(name = "photo_content_type", length = 100)
     private String photoContentType;
 
-    @Column(name = "photo_data", columnDefinition = "LONGBLOB")
+    @Column(name = "photo_data", columnDefinition = "MEDIUMBLOB")
     @Lob
     private byte[] photoData;
 

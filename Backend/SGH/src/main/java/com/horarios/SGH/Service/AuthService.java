@@ -11,7 +11,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.Roles;
 import com.horarios.SGH.Model.TeacherSubject;
 import com.horarios.SGH.Model.courses;
@@ -84,7 +83,7 @@ public class AuthService {
         this.inAppNotificationService = inAppNotificationService;
     }
 
-    public String register(String name, String email, String rawPassword, Role role, Integer subjectId, Integer courseId) {
+    public String register(String name, String email, String rawPassword, String role, Integer subjectId, Integer courseId) {
         try {
             // Validar entradas usando ValidationUtils
             ValidationUtils.validateName(name);
@@ -96,12 +95,12 @@ public class AuthService {
             }
 
             // Validar subjectId para maestros
-            if (role == Role.MAESTRO && subjectId == null) {
+            if ("MAESTRO".equals(role) && subjectId == null) {
                 throw new IllegalArgumentException("Los maestros deben tener una materia asignada");
             }
 
             // Validar courseId para estudiantes
-            if (role == Role.ESTUDIANTE && courseId == null) {
+            if ("ESTUDIANTE".equals(role) && courseId == null) {
                 throw new IllegalArgumentException("Los estudiantes deben tener un curso asignado");
             }
 
@@ -129,15 +128,15 @@ public class AuthService {
             });
 
             // Obtener rol
-            Roles userRole = rolesRepo.findByRoleName(role.name())
-                .orElseThrow(() -> new IllegalStateException("Rol no encontrado: " + role.name()));
+            Roles userRole = rolesRepo.findByRoleName(role)
+                .orElseThrow(() -> new IllegalStateException("Rol no encontrado: " + role));
 
             // Crear y guardar el nuevo usuario con estado pendiente de aprobación
             users newUser = new users(person, userRole, encoder.encode(rawPassword));
             newUser.setAccountStatus(AccountStatus.PENDING_APPROVAL);
 
             // Asignar curso para estudiantes
-            if (role == Role.ESTUDIANTE && courseId != null) {
+            if ("ESTUDIANTE".equals(role) && courseId != null) {
                 courses course = courseRepo.findById(courseId)
                     .orElseThrow(() -> new IllegalArgumentException("El curso especificado no existe"));
                 newUser.setCourse(course);
@@ -146,7 +145,7 @@ public class AuthService {
             users savedUser = repo.save(newUser);
 
             // Crear profesor si el rol es MAESTRO
-            if (role == Role.MAESTRO && subjectId != null) {
+            if ("MAESTRO".equals(role) && subjectId != null) {
                 teachers newTeacher = new teachers();
                 newTeacher.setTeacherName(person.getFullName());
                 teachers savedTeacher = teacherRepo.save(newTeacher);

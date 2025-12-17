@@ -1,7 +1,6 @@
 package com.horarios.SGH.Model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalTime;
 
 @Entity

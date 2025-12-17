@@ -30,15 +30,15 @@ public class users {
     @Size(min = 1, max = 255, message = "El hash de la contraseña debe tener entre 1 y 255 caracteres")
     private String passwordHash;
 
-    @Column(name = "verification_code", length = 255)
-    @Size(max = 255, message = "El código de verificación debe tener máximo 255 caracteres")
+    @Column(name = "verification_code", length = 6)
+    @Size(min = 6, max = 6, message = "El código de verificación debe tener exactamente 6 caracteres")
     private String verificationCode;
 
     @Column(name = "code_expiration", columnDefinition = "DATETIME(6)")
     private java.time.LocalDateTime codeExpiration;
 
-    @Column(name = "password_reset_code", length = 255)
-    @Size(max = 255, message = "El código de reset debe tener máximo 255 caracteres")
+    @Column(name = "password_reset_code", length = 6)
+    @Size(min = 6, max = 6, message = "El código de reset debe tener exactamente 6 caracteres")
     private String passwordResetCode;
 
     @Column(name = "password_reset_expiration", columnDefinition = "DATETIME(6)")

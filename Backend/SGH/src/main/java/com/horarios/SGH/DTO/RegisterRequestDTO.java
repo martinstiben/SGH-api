@@ -1,6 +1,5 @@
 package com.horarios.SGH.DTO;
 
-import com.horarios.SGH.Model.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,7 +26,7 @@ public class RegisterRequestDTO {
 
     @NotNull(message = "El rol no puede ser nulo")
     @Schema(description = "Rol del usuario", example = "MAESTRO", required = true, allowableValues = {"MAESTRO", "ESTUDIANTE"})
-    private Role role;
+    private String role;
 
     @Schema(description = "ID de la materia (requerido solo para maestros)", example = "1", required = false)
     private Integer subjectId;
@@ -44,8 +43,8 @@ public class RegisterRequestDTO {
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
 
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 
     public Integer getSubjectId() { return subjectId; }
     public void setSubjectId(Integer subjectId) { this.subjectId = subjectId; }

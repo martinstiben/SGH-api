@@ -64,8 +64,6 @@ public class NotificationService {
 
         NotificationLog logEntry = new NotificationLog(
             notification.getRecipientEmail(),
-            notification.getRecipientName(),
-            notification.getRecipientRole(),
             notificationType,
             notification.getSubject(),
             notification.getContent()
@@ -161,8 +159,6 @@ public class NotificationService {
                     Thread.sleep(retryDelay);
                     NotificationDTO notification = new NotificationDTO();
                     notification.setRecipientEmail(failedLog.getRecipientEmail());
-                    notification.setRecipientName(failedLog.getRecipientName());
-                    notification.setRecipientRole(failedLog.getRecipientRole());
                     notification.setNotificationType(failedLog.getNotificationType().name());
                     notification.setSubject(failedLog.getSubject());
                     notification.setContent(failedLog.getContent());

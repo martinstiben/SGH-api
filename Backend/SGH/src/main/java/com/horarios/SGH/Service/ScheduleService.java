@@ -116,7 +116,6 @@ public class ScheduleService {
             }
 
             schedule s = toEntity(dto);
-            s.setCourseId(course);
             entities.add(s);
         }
 
@@ -213,7 +212,7 @@ public class ScheduleService {
         existing.setCourseId(course);
         existing.setTeacherId(teacher);
         existing.setSubjectId(subject);
-        existing.setDay(dto.getDay());
+        existing.setDay(Days.valueOf(dto.getDay()));
         existing.setStartTime(dto.getStartTimeAsLocalTime());
         existing.setEndTime(dto.getEndTimeAsLocalTime());
         existing.setScheduleName(dto.getScheduleName());
@@ -247,7 +246,7 @@ public class ScheduleService {
         s.setCourseId(courseRepo.findById(dto.getCourseId()).orElseThrow());
         s.setTeacherId(teacherRepo.findById(dto.getTeacherId()).orElseThrow());
         s.setSubjectId(subjectRepo.findById(dto.getSubjectId()).orElseThrow());
-        s.setDay(dto.getDay());
+        s.setDay(Days.valueOf(dto.getDay()));
         s.setStartTime(dto.getStartTimeAsLocalTime());
         s.setEndTime(dto.getEndTimeAsLocalTime());
         s.setScheduleName(dto.getScheduleName());
@@ -260,7 +259,7 @@ public class ScheduleService {
         dto.setCourseId(s.getCourseId().getId());
         dto.setTeacherId(s.getTeacherId().getId());
         dto.setSubjectId(s.getSubjectId().getId());
-        dto.setDay(s.getDay());
+        dto.setDay(s.getDay().name());
         dto.setStartTimeFromLocalTime(s.getStartTime());
         dto.setEndTimeFromLocalTime(s.getEndTime());
         dto.setScheduleName(s.getScheduleName());

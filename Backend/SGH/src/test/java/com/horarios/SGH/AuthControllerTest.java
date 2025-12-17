@@ -3,7 +3,6 @@ package com.horarios.SGH;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.horarios.SGH.Controller.AuthController;
 import com.horarios.SGH.DTO.LoginRequestDTO;
-import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Service.AuthService;
 import com.horarios.SGH.Service.TokenRevocationService;
 import org.junit.jupiter.api.Test;
@@ -72,7 +71,7 @@ public class AuthControllerTest {
 
     @Test
     public void testRegisterSuccess() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any())).thenReturn("Usuario registrado correctamente. Pendiente de aprobación por el coordinador.");
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(String.class), any(), any())).thenReturn("Usuario registrado correctamente. Pendiente de aprobación por el coordinador.");
 
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +82,7 @@ public class AuthControllerTest {
 
     @Test
     public void testRegisterFailure() throws Exception {
-        when(authService.register(any(String.class), any(String.class), any(String.class), any(Role.class), any(), any()))
+        when(authService.register(any(String.class), any(String.class), any(String.class), any(String.class), any(), any()))
                 .thenThrow(new IllegalStateException("El correo electrónico ya está en uso"));
 
         mockMvc.perform(post("/auth/register")

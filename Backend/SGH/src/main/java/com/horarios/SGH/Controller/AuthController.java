@@ -6,7 +6,6 @@ import com.horarios.SGH.DTO.RegisterRequestDTO;
 import com.horarios.SGH.DTO.VerifyCodeDTO;
 import com.horarios.SGH.DTO.PasswordResetRequestDTO;
 import com.horarios.SGH.DTO.PasswordResetDTO;
-import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Service.AuthService;
 import com.horarios.SGH.Service.TokenRevocationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -193,10 +192,9 @@ public class AuthController {
     })
     public ResponseEntity<?> getRoles() {
         try {
-            List<Map<String, String>> roles = Arrays.stream(Role.values())
-                .filter(role -> role == Role.MAESTRO || role == Role.ESTUDIANTE)
+            List<Map<String, String>> roles = Arrays.stream(new String[]{"MAESTRO", "ESTUDIANTE"})
                 .map(role -> Map.of(
-                    "value", role.name(),
+                    "value", role,
                     "label", getRoleLabel(role)
                 ))
                 .collect(Collectors.toList());
@@ -206,18 +204,18 @@ public class AuthController {
         }
     }
 
-    private String getRoleLabel(Role role) {
+    private String getRoleLabel(String role) {
         switch (role) {
-            case MAESTRO:
+            case "MAESTRO":
                 return "Maestro";
-            case COORDINADOR:
+            case "COORDINADOR":
                 return "Coordinador";
-            case ESTUDIANTE:
+            case "ESTUDIANTE":
                 return "Estudiante";
-            case DIRECTOR_DE_AREA:
+            case "DIRECTOR_DE_AREA":
                 return "Director de Área";
             default:
-                return role.name();
+                return role;
         }
     }
 

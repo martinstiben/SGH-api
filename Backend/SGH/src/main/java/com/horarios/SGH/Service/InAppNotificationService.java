@@ -3,6 +3,7 @@ package com.horarios.SGH.Service;
 import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.DTO.InAppNotificationResponseDTO;
 import com.horarios.SGH.Model.InAppNotification;
+import com.horarios.SGH.Model.NotificationCategory;
 import com.horarios.SGH.Model.NotificationPriority;
 import com.horarios.SGH.Model.NotificationType;
 import com.horarios.SGH.Model.users;
@@ -54,9 +55,6 @@ public class InAppNotificationService {
             // Crear notificación
             InAppNotification notification = new InAppNotification(
                 user.getUserId(),
-                user.getPerson().getEmail(),
-                user.getPerson().getFullName(),
-                user.getRole().getRoleName(),
                 type,
                 notificationDTO.getTitle(),
                 notificationDTO.getMessage()
@@ -64,7 +62,7 @@ public class InAppNotificationService {
 
             // Configurar campos adicionales
             notification.setPriority(priority);
-            notification.setCategory(notificationDTO.getCategory());
+            notification.setCategory(NotificationCategory.valueOf(notificationDTO.getCategory()));
             notification.setActionUrl(notificationDTO.getActionUrl());
             notification.setActionText(notificationDTO.getActionText());
             notification.setIcon(notificationDTO.getIcon());
@@ -186,9 +184,6 @@ public class InAppNotificationService {
 
         dto.setNotificationId(notification.getNotificationId());
         dto.setUserId(notification.getUserId());
-        dto.setUserEmail(notification.getUserEmail());
-        dto.setUserName(notification.getUserName());
-        dto.setUserRole(notification.getUserRole());
         dto.setNotificationType(notification.getNotificationType().name());
         dto.setTitle(notification.getTitle());
         dto.setMessage(notification.getMessage());
@@ -196,7 +191,7 @@ public class InAppNotificationService {
         dto.setActionText(notification.getActionText());
         dto.setIcon(notification.getIcon());
         dto.setPriority(notification.getPriority().name());
-        dto.setCategory(notification.getCategory());
+        dto.setCategory(notification.getCategory().name());
         dto.setRead(notification.isRead());
         dto.setArchived(notification.isArchived());
         dto.setCreatedAt(notification.getCreatedAt());

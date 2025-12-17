@@ -174,7 +174,7 @@ public class InAppNotificationController {
             testNotification.setTitle("Notificación de Prueba");
             testNotification.setMessage("Esta es una notificación de prueba creada manualmente.");
             testNotification.setPriority("MEDIUM");
-            testNotification.setCategory("test");
+            testNotification.setCategory("GENERAL");
 
             inAppNotificationService.sendInAppNotificationAsync(testNotification)
                 .thenAccept(notification -> {
@@ -207,7 +207,7 @@ public class InAppNotificationController {
         dto.setRead(notification.isRead());
         dto.setCreatedAt(notification.getCreatedAt());
         dto.setPriority(notification.getPriority().name());
-        dto.setCategory(notification.getCategory());
+        dto.setCategory(notification.getCategory().name());
         return dto;
     }
 

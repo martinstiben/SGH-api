@@ -19,9 +19,9 @@ public class UserCredentials {
     @NotNull(message = "El usuario es obligatorio")
     private User user;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = false, length = 72)
     @NotNull(message = "El hash de la contraseña es obligatorio")
-    @Size(min = 60, max = 255, message = "El hash de la contraseña debe tener entre 60 y 255 caracteres")
+    @Size(min = 72, max = 72, message = "El hash de la contraseña debe tener exactamente 72 caracteres")
     private String passwordHash;
 
     @Column(name = "password_salt", length = 255)

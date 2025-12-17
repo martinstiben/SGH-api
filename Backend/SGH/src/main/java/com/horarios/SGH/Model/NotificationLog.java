@@ -22,23 +22,18 @@ public class NotificationLog {
     @Column(name = "recipient_email", nullable = false, length = 254)
     private String recipientEmail;
 
-    @Column(name = "recipient_name", nullable = false, length = 100)
-    private String recipientName;
-
-    @Column(name = "recipient_role", nullable = false, length = 50)
-    private String recipientRole;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "notification_type", nullable = false, length = 50)
     private NotificationType notificationType;
     
-    @Column(name = "subject", nullable = false, length = 500)
+    @Column(name = "subject", nullable = false, length = 255)
     private String subject;
     
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
     
-    @Column(name = "template_path", length = 500)
+    @Column(name = "template_path", length = 255)
     private String templatePath;
     
     @Enumerated(EnumType.STRING)
@@ -79,12 +74,9 @@ public class NotificationLog {
     }
     
     // Constructor con parámetros principales
-    public NotificationLog(String recipientEmail, String recipientName, String recipientRole,
-                          NotificationType notificationType, String subject, String content) {
+    public NotificationLog(String recipientEmail, NotificationType notificationType, String subject, String content) {
         this();
         this.recipientEmail = recipientEmail;
-        this.recipientName = recipientName;
-        this.recipientRole = recipientRole;
         this.notificationType = notificationType;
         this.subject = subject;
         this.content = content;

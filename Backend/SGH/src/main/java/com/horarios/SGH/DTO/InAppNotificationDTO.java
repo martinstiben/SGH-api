@@ -70,7 +70,8 @@ public class InAppNotificationDTO {
             allowableValues = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}, defaultValue = "MEDIUM")
     private String priority = "MEDIUM";
 
-    @Schema(description = "Categoría de la notificación", example = "schedule", defaultValue = "general")
+    @Schema(description = "Categoría de la notificación", example = "SCHEDULE", defaultValue = "GENERAL",
+            allowableValues = {"SCHEDULE", "CLASS", "SYSTEM", "GENERAL"})
     @Size(max = 50, message = "La categoría no puede exceder 50 caracteres")
-    private String category = "general";
+    private String category = "GENERAL";
 }
