@@ -116,7 +116,7 @@ public class AuthControllerTest {
         user.setUserId(1);
         user.setPerson(person);
         user.setPasswordHash("password");
-        com.horarios.SGH.Model.Roles role = new com.horarios.SGH.Model.Roles();
+        com.horarios.SGH.Model.Role role = new com.horarios.SGH.Model.Role();
         role.setRoleName("MAESTRO");
         user.setRole(role);
         when(authService.getProfile()).thenReturn(user);

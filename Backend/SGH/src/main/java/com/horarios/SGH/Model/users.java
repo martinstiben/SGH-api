@@ -3,13 +3,34 @@ package com.horarios.SGH.Model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDateTime;
 
 @Entity(name = "users")
 public class users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private int userId;
+    private Long userId;
+
+    @Column(name = "username", nullable = false, unique = true, length = 50)
+    @NotNull(message = "El nombre de usuario es obligatorio")
+    @Size(min = 4, max = 50, message = "El nombre de usuario debe tener entre 4 y 50 caracteres")
+    private String username;
+
+    @Column(name = "email", nullable = false, unique = true, length = 254)
+    @NotNull(message = "El email es obligatorio")
+    @Size(max = 254, message = "El email debe tener máximo 254 caracteres")
+    private String email;
+
+    @Column(name = "first_name", nullable = false, length = 100)
+    @NotNull(message = "El nombre es obligatorio")
+    @Size(min = 1, max = 100, message = "El nombre debe tener entre 1 y 100 caracteres")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 100)
+    @NotNull(message = "El apellido es obligatorio")
+    @Size(min = 1, max = 100, message = "El apellido debe tener entre 1 y 100 caracteres")
+    private String lastName;
 
     @OneToOne
     @JoinColumn(name = "person_id", nullable = false)
@@ -19,15 +40,15 @@ public class users {
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
     @NotNull(message = "El rol es obligatorio")
-    private Roles role;
+    private Role role;
 
     @ManyToOne
     @JoinColumn(name = "course_id")
     private courses course;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = false, length = 72)
     @NotNull(message = "El hash de la contraseña es obligatorio")
-    @Size(min = 1, max = 255, message = "El hash de la contraseña debe tener entre 1 y 255 caracteres")
+    @Size(min = 72, max = 72, message = "El hash de la contraseña debe tener exactamente 72 caracteres (BCrypt)")
     private String passwordHash;
 
     @Column(name = "verification_code", length = 6)
@@ -52,6 +73,12 @@ public class users {
     @NotNull(message = "El estado de la cuenta es obligatorio")
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 
+    @Column(name = "last_password_change", columnDefinition = "TIMESTAMP")
+    private LocalDateTime lastPasswordChange;
+
+    @Column(name = "password_never_expires", nullable = false)
+    private boolean passwordNeverExpires = false;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private java.time.LocalDateTime createdAt;
 
@@ -60,7 +87,7 @@ public class users {
     }
 
     // Constructor con parámetros principales
-    public users(People person, Roles role, String passwordHash) {
+    public users(People person, Role role, String passwordHash) {
         this.person = person;
         this.role = role;
         this.passwordHash = passwordHash;
@@ -68,11 +95,11 @@ public class users {
     }
 
     // Getters y setters
-    public int getUserId() {
+    public Long getUserId() {
         return userId;
     }
 
-    public void setUserId(int userId) {
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 
@@ -84,11 +111,11 @@ public class users {
         this.person = person;
     }
 
-    public Roles getRole() {
+    public Role getRole() {
         return role;
     }
 
-    public void setRole(Roles role) {
+    public void setRole(Role role) {
         this.role = role;
     }
 

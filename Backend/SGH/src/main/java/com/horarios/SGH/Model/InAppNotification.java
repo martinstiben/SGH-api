@@ -18,7 +18,7 @@ public class InAppNotification {
     private Long notificationId;
     
     @Column(name = "user_id", nullable = false)
-    private Integer userId;
+    private Long userId;
     
     
     @Enumerated(EnumType.STRING)
@@ -75,7 +75,7 @@ public class InAppNotification {
     }
     
     // Constructor con parámetros principales
-    public InAppNotification(Integer userId, NotificationType notificationType, String title, String message) {
+    public InAppNotification(Long userId, NotificationType notificationType, String title, String message) {
         this();
         this.userId = userId;
         this.notificationType = notificationType;

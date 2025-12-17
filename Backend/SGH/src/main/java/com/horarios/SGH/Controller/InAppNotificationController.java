@@ -48,7 +48,7 @@ public class InAppNotificationController {
             @RequestParam(defaultValue = "20") int size) {
 
         try {
-            Integer userId = getCurrentUserId();
+            Long userId = getCurrentUserId();
             log.info("Obteniendo notificaciones para usuario ID: {}", userId);
 
             Page<InAppNotification> notifications = inAppNotificationService.getActiveNotificationsByUserId(userId, page, size);
@@ -97,7 +97,7 @@ public class InAppNotificationController {
                description = "Marca una notificación específica como leída para el usuario autenticado")
     public ResponseEntity<?> markAsRead(@PathVariable Long notificationId) {
         try {
-            Integer userId = getCurrentUserId();
+            Long userId = getCurrentUserId();
 
             // Verificar que la notificación pertenece al usuario
             InAppNotification notification = inAppNotificationService.getNotificationById(notificationId);
@@ -145,7 +145,7 @@ public class InAppNotificationController {
                  description = "Obtiene el número de notificaciones no leídas del usuario")
     public ResponseEntity<?> getUnreadCount() {
         try {
-            Integer userId = getCurrentUserId();
+            Long userId = getCurrentUserId();
 
             long unreadCount = inAppNotificationService.getUnreadCount(userId);
 
@@ -214,7 +214,7 @@ public class InAppNotificationController {
     /**
      * Obtiene el ID del usuario actual desde el contexto de seguridad
      */
-    private Integer getCurrentUserId() {
+    private Long getCurrentUserId() {
         log.info("Iniciando obtención de userId actual");
         
         try {

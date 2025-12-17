@@ -21,7 +21,7 @@ import com.horarios.SGH.Repository.ITeacherAvailabilityRepository;
 import com.horarios.SGH.Repository.IPeopleRepository;
 import com.horarios.SGH.Repository.IRolesRepository;
 import com.horarios.SGH.Model.People;
-import com.horarios.SGH.Model.Roles;
+import com.horarios.SGH.Model.Role;
 
 import org.springframework.boot.CommandLineRunner;
 import java.time.LocalTime;
@@ -40,10 +40,10 @@ public class DataInitializer {
         return args -> {
             // Primero crear los roles si no existen
             if (rolesRepo.count() == 0) {
-                rolesRepo.save(new Roles("MAESTRO"));
-                rolesRepo.save(new Roles("ESTUDIANTE"));
-                rolesRepo.save(new Roles("COORDINADOR"));
-                rolesRepo.save(new Roles("DIRECTOR_DE_AREA"));
+                rolesRepo.save(new Role("MAESTRO", "Rol de profesor"));
+                rolesRepo.save(new Role("ESTUDIANTE", "Rol de estudiante"));
+                rolesRepo.save(new Role("COORDINADOR", "Rol de coordinador"));
+                rolesRepo.save(new Role("DIRECTOR_DE_AREA", "Rol de director de área"));
                 System.out.println(">> Roles iniciales creados");
             } else {
                 System.out.println(">> Roles ya existen");
@@ -62,10 +62,10 @@ public class DataInitializer {
                 masterPerson = peopleRepo.save(masterPerson);
 
                 // Obtener rol MAESTRO - ahora debería existir
-                Roles maestroRole = rolesRepo.findByRoleName("MAESTRO")
+                Role maestroRole = rolesRepo.findByRoleName("MAESTRO")
                     .orElseGet(() -> {
                         System.out.println(">> Rol MAESTRO no encontrado, creando...");
-                        return rolesRepo.save(new Roles("MAESTRO"));
+                        return rolesRepo.save(new Role("MAESTRO", "Rol de profesor"));
                     });
 
                 users u = new users(masterPerson, maestroRole, encoder.encode(masterPassword));

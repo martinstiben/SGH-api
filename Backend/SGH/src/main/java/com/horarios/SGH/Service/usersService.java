@@ -106,7 +106,7 @@ public class usersService {
                     dto.setUserId(user.getUserId());
                     dto.setUserName(user.getPerson().getFullName());
                     dto.setPassword(user.getPasswordHash());
-                    dto.setRole(Role.valueOf(user.getRole().getRoleName()));
+                    dto.setRole(user.getRole().getRoleName());
                     dto.setPhotoData(user.getPerson().getPhotoData());
                     dto.setPhotoContentType(user.getPerson().getPhotoContentType());
                     dto.setPhotoFileName(user.getPerson().getPhotoFileName());

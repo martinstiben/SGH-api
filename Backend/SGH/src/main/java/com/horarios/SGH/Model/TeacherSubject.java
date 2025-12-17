@@ -3,7 +3,7 @@ package com.horarios.SGH.Model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "teacher_subjects",
+@Table(name = "TeacherSubject",
        uniqueConstraints = @UniqueConstraint(columnNames = {"teacher_id","subject_id"}))
 public class TeacherSubject {
 

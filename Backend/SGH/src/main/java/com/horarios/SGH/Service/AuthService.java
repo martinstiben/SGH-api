@@ -11,7 +11,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.horarios.SGH.Model.Roles;
+import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.TeacherSubject;
 import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.subjects;
@@ -128,7 +128,7 @@ public class AuthService {
             });
 
             // Obtener rol
-            Roles userRole = rolesRepo.findByRoleName(role)
+            Role userRole = rolesRepo.findByRoleName(role)
                 .orElseThrow(() -> new IllegalStateException("Rol no encontrado: " + role));
 
             // Crear y guardar el nuevo usuario con estado pendiente de aprobación

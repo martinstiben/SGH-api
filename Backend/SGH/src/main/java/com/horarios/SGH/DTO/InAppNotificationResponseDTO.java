@@ -18,7 +18,7 @@ public class InAppNotificationResponseDTO {
     private Long notificationId;
 
     @Schema(description = "ID del usuario destinatario", example = "1")
-    private Integer userId;
+    private Long userId;
 
     @Schema(description = "Correo electrónico del usuario", example = "estudiante@universidad.edu")
     private String userEmail;

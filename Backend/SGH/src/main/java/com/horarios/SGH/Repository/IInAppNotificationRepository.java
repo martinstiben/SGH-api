@@ -27,8 +27,8 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
      */
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.isArchived = false " +
            "AND (n.expiresAt IS NULL OR n.expiresAt > :now) ORDER BY n.createdAt DESC")
-    Page<InAppNotification> findActiveByUserId(@Param("userId") Integer userId, 
-                                              @Param("now") LocalDateTime now, 
+    Page<InAppNotification> findActiveByUserId(@Param("userId") Long userId,
+                                              @Param("now") LocalDateTime now,
                                               Pageable pageable);
     
     /**
@@ -37,7 +37,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.isRead = false " +
            "AND n.isArchived = false AND (n.expiresAt IS NULL OR n.expiresAt > :now) " +
            "ORDER BY n.priority DESC, n.createdAt DESC")
-    List<InAppNotification> findUnreadByUserId(@Param("userId") Integer userId, 
+    List<InAppNotification> findUnreadByUserId(@Param("userId") Long userId,
                                               @Param("now") LocalDateTime now);
     
     /**

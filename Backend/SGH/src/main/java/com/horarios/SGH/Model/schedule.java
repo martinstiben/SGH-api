@@ -1,13 +1,16 @@
 package com.horarios.SGH.Model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
 import java.time.LocalTime;
 
-@Entity
+@Entity(name = "schedules")
+@Data
 public class schedule {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "schedule_id")
     private Integer id;
 
     @ManyToOne
@@ -33,6 +36,7 @@ public class schedule {
     private LocalTime endTime;
 
     @Column(name = "schedule_name", length = 100)
+    @Size(max = 100, message = "El nombre del horario debe tener máximo 100 caracteres")
     private String scheduleName;
 
     public schedule() {}

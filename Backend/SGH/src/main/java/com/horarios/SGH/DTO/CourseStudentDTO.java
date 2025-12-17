@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class CourseStudentDTO {
     @NotNull(message = "El ID del usuario es obligatorio")
-    private int userId;
+    private Long userId;
 
     @NotNull(message = "El nombre completo es obligatorio")
     @Size(min = 1, max = 100, message = "El nombre completo debe tener entre 1 y 100 caracteres")

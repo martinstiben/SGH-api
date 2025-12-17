@@ -90,7 +90,7 @@ public class InAppNotificationService {
      * Obtiene notificaciones activas de un usuario
      */
     @Transactional(readOnly = true)
-    public Page<InAppNotification> getActiveNotificationsByUserId(Integer userId, int page, int size) {
+    public Page<InAppNotification> getActiveNotificationsByUserId(Long userId, int page, int size) {
         log.info("Buscando notificaciones activas para usuario {} (página: {}, tamaño: {})", userId, page, size);
         LocalDateTime now = LocalDateTime.now();
         Pageable pageable = PageRequest.of(page, size);
@@ -103,7 +103,7 @@ public class InAppNotificationService {
      * Obtiene notificaciones no leídas de un usuario
      */
     @Transactional(readOnly = true)
-    public List<InAppNotification> getUnreadNotificationsByUserId(Integer userId) {
+    public List<InAppNotification> getUnreadNotificationsByUserId(Long userId) {
         LocalDateTime now = LocalDateTime.now();
         return inAppNotificationRepository.findUnreadByUserId(userId, now);
     }

@@ -20,7 +20,7 @@ public class usersDTO {
     private String password;
 
     @NotNull(message = "El rol no puede ser nulo")
-    private Role role;
+    private String role;
 
     // Información de foto de perfil
     private byte[] photoData;
