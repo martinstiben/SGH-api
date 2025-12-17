@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity(name = "users")
 public class users {
@@ -58,6 +60,29 @@ public class users {
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private java.time.LocalDateTime createdAt;
 
+    @Column(name = "verification_code", length = 10)
+    private String verificationCode;
+
+    @Column(name = "code_expiration", columnDefinition = "TIMESTAMP")
+    private LocalDateTime codeExpiration;
+
+    @Column(name = "password_reset_code", length = 10)
+    private String passwordResetCode;
+
+    @Column(name = "password_reset_expiration", columnDefinition = "TIMESTAMP")
+    private LocalDateTime passwordResetExpiration;
+
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
+    @ManyToMany
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
+
     // Constructor vacío
     public users() {
     }
@@ -65,6 +90,7 @@ public class users {
     // Constructor con parámetros principales
     public users(People person, String passwordHash) {
         this.person = person;
+        this.passwordHash = passwordHash;
         this.createdAt = java.time.LocalDateTime.now();
     }
 
@@ -157,4 +183,62 @@ public class users {
         return isVerified;
     }
 
+    // Métodos para roles
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Set<Role> roles) {
+        this.roles = roles;
+    }
+
+    public Role getRole() {
+        if (roles != null && !roles.isEmpty()) {
+            return roles.iterator().next();
+        }
+        return null;
+    }
+
+    // Métodos para verificación
+    public String getVerificationCode() {
+        return verificationCode;
+    }
+
+    public void setVerificationCode(String verificationCode) {
+        this.verificationCode = verificationCode;
+    }
+
+    public LocalDateTime getCodeExpiration() {
+        return codeExpiration;
+    }
+
+    public void setCodeExpiration(LocalDateTime codeExpiration) {
+        this.codeExpiration = codeExpiration;
+    }
+
+    // Métodos para restablecimiento de contraseña
+    public String getPasswordResetCode() {
+        return passwordResetCode;
+    }
+
+    public void setPasswordResetCode(String passwordResetCode) {
+        this.passwordResetCode = passwordResetCode;
+    }
+
+    public LocalDateTime getPasswordResetExpiration() {
+        return passwordResetExpiration;
+    }
+
+    public void setPasswordResetExpiration(LocalDateTime passwordResetExpiration) {
+        this.passwordResetExpiration = passwordResetExpiration;
+    }
+
+    // Métodos para contraseña
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }

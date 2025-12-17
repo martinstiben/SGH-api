@@ -16,7 +16,7 @@ public class InAppNotificationDTO {
 
     @Schema(description = "ID del usuario destinatario", example = "1", required = true)
     @NotNull(message = "El ID de usuario es obligatorio")
-    private Integer userId;
+    private Long userId;
 
     @Schema(description = "Correo electrónico del usuario", example = "estudiante@universidad.edu", required = true)
     @NotBlank(message = "El email del usuario es obligatorio")

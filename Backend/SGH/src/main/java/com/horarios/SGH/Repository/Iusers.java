@@ -9,7 +9,7 @@ import com.horarios.SGH.Model.AccountStatus;
 import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.users;
 
-public interface Iusers extends JpaRepository<users, Integer> {
+public interface Iusers extends JpaRepository<users, Long> {
     Optional<users> findByPerson_Email(String email);
     boolean existsByPerson_Email(String email);
     long count();

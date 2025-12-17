@@ -35,10 +35,10 @@ public class UsersControllerTest {
         users user = new users();
         com.horarios.SGH.Model.People person = new com.horarios.SGH.Model.People();
         person.setFullName("testuser");
-        user.setUserId(1);
+        user.setUserId(1L);
         user.setPerson(person);
 
-        when(usersService.findById(1)).thenReturn(Optional.of(user));
+        when(usersService.findById(1L)).thenReturn(Optional.of(user));
 
         mockMvc.perform(get("/users/1"))
                 .andExpect(status().isOk())
@@ -47,7 +47,7 @@ public class UsersControllerTest {
 
     @Test
     public void testGetUserByIdNotFound() throws Exception {
-        when(usersService.findById(1)).thenReturn(Optional.empty());
+        when(usersService.findById(1L)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/users/1"))
                 .andExpect(status().isNotFound())
@@ -60,7 +60,7 @@ public class UsersControllerTest {
         com.horarios.SGH.Model.People person = new com.horarios.SGH.Model.People();
         person.setEmail("testuser");
         user.setPerson(person);
-        user.setPasswordHash("password");
+        // user.setPasswordHash("password"); // Comentado porque no existe en users
 
         when(usersRepository.findByUserName("testuser")).thenReturn(Optional.of(user));
 

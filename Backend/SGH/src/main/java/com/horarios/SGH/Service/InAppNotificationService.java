@@ -112,7 +112,7 @@ public class InAppNotificationService {
      * Cuenta notificaciones no leídas de un usuario
      */
     @Transactional(readOnly = true)
-    public Long countUnreadNotificationsByUserId(Integer userId) {
+    public Long countUnreadNotificationsByUserId(Long userId) {
         LocalDateTime now = LocalDateTime.now();
         return inAppNotificationRepository.countUnreadByUserId(userId, now);
     }
@@ -132,7 +132,7 @@ public class InAppNotificationService {
      * Marca todas las notificaciones de un usuario como leídas
      */
     @Transactional
-    public void markAllAsRead(Integer userId) {
+    public void markAllAsRead(Long userId) {
         LocalDateTime now = LocalDateTime.now();
         inAppNotificationRepository.markAllAsReadByUserId(userId, now);
 
@@ -153,7 +153,7 @@ public class InAppNotificationService {
      * Obtiene el conteo de notificaciones no leídas de un usuario
      */
     @Transactional(readOnly = true)
-    public long getUnreadCount(Integer userId) {
+    public long getUnreadCount(Long userId) {
         LocalDateTime now = LocalDateTime.now();
         return inAppNotificationRepository.countUnreadByUserId(userId, now);
     }
@@ -162,7 +162,7 @@ public class InAppNotificationService {
      * Busca notificaciones por tipo y usuario
      */
     @Transactional(readOnly = true)
-    public Page<InAppNotification> getNotificationsByTypeAndUser(Integer userId, NotificationType type, int page, int size) {
+    public Page<InAppNotification> getNotificationsByTypeAndUser(Long userId, NotificationType type, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return inAppNotificationRepository.findByUserIdAndType(userId, type, pageable);
     }
@@ -171,7 +171,7 @@ public class InAppNotificationService {
      * Busca notificaciones por prioridad y usuario
      */
     @Transactional(readOnly = true)
-    public Page<InAppNotification> getNotificationsByPriorityAndUser(Integer userId, NotificationPriority priority, int page, int size) {
+    public Page<InAppNotification> getNotificationsByPriorityAndUser(Long userId, NotificationPriority priority, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return inAppNotificationRepository.findByUserIdAndPriority(userId, priority, pageable);
     }

@@ -34,7 +34,7 @@ public class usersController {
     // Obtener usuario por ID
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('COORDINADOR')")
-    public ResponseEntity<?> getUserById(@PathVariable int id) {
+    public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
             Optional<users> usuarioOptional = usersService.findById(id);
             if (usuarioOptional.isPresent()) {
@@ -84,7 +84,7 @@ public class usersController {
 
     // Actualizar foto de perfil
     @PutMapping("/{id}/photo")
-    public ResponseEntity<responseDTO> updateUserPhoto(@PathVariable int id, @RequestParam("photo") MultipartFile photo) {
+    public ResponseEntity<responseDTO> updateUserPhoto(@PathVariable Long id, @RequestParam("photo") MultipartFile photo) {
         try {
             String result = usersService.updateUserPhoto(id, photo);
             return ResponseEntity.ok(new responseDTO("OK", result));
@@ -98,7 +98,7 @@ public class usersController {
 
     // Eliminar foto de perfil
     @DeleteMapping("/{id}/photo")
-    public ResponseEntity<responseDTO> deleteUserPhoto(@PathVariable int id) {
+    public ResponseEntity<responseDTO> deleteUserPhoto(@PathVariable Long id) {
         try {
             String result = usersService.updateUserPhoto(id, null);
             return ResponseEntity.ok(new responseDTO("OK", result));
@@ -110,7 +110,7 @@ public class usersController {
 
     // Obtener foto de perfil
     @GetMapping("/{id}/photo")
-    public ResponseEntity<byte[]> getUserPhoto(@PathVariable int id) {
+    public ResponseEntity<byte[]> getUserPhoto(@PathVariable Long id) {
         try {
             Optional<com.horarios.SGH.DTO.usersDTO> userOpt = usersService.getUserWithPhoto(id);
             if (!userOpt.isPresent() || userOpt.get().getPhotoData() == null) {
@@ -139,8 +139,8 @@ public class usersController {
                 com.horarios.SGH.DTO.usersDTO dto = new com.horarios.SGH.DTO.usersDTO();
                 dto.setUserId(user.getUserId());
                 dto.setUserName(user.getPerson().getFullName());
-                dto.setPassword(user.getPasswordHash());
-                dto.setRole(user.getRole().getRoleName());
+                // dto.setPassword(user.getPasswordHash()); // Comentado porque no existe en users
+                // dto.setRole(user.getRole().getRoleName()); // Comentado porque no existe en users
                 dto.setPhotoData(user.getPerson().getPhotoData());
                 dto.setPhotoContentType(user.getPerson().getPhotoContentType());
                 dto.setPhotoFileName(user.getPerson().getPhotoFileName());
@@ -156,7 +156,7 @@ public class usersController {
     // Eliminar usuario por ID
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('COORDINADOR')")
-    public ResponseEntity<responseDTO> deleteUserById(@PathVariable int id, Authentication auth) {
+    public ResponseEntity<responseDTO> deleteUserById(@PathVariable Long id, Authentication auth) {
         try {
             if (masterUsername != null && masterUsername.equals(String.valueOf(id))) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -165,7 +165,7 @@ public class usersController {
 
             // Obtener el ID del usuario autenticado
             Optional<users> currentUser = usersRepository.findByUserName(auth.getName());
-            if (currentUser.isPresent() && currentUser.get().getUserId() == id) {
+            if (currentUser.isPresent() && currentUser.get().getUserId().equals(id)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(new responseDTO("ERROR", "No puedes eliminar tu propia cuenta"));
             }

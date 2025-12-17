@@ -293,7 +293,7 @@ public class ScheduleService {
     private void sendTeacherScheduleNotification(schedule s, String action) {
         try {
             // Asumir que teacher.getId() es el userId
-            Integer teacherUserId = s.getTeacherId().getId();
+            Long teacherUserId = (long) s.getTeacherId().getId();
 
             // ===========================================
             // 1. ENVIAR NOTIFICACIÓN IN-APP

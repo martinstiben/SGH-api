@@ -124,7 +124,7 @@ public class InAppNotificationController {
                description = "Marca todas las notificaciones activas del usuario como leídas")
     public ResponseEntity<?> markAllAsRead() {
         try {
-            Integer userId = getCurrentUserId();
+            Long userId = getCurrentUserId();
 
             inAppNotificationService.markAllAsRead(userId);
 
@@ -163,10 +163,10 @@ public class InAppNotificationController {
     @PostMapping("/test-create")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Crear notificación de prueba",
-                description = "Crea una notificación de prueba para el usuario actual")
+                 description = "Crea una notificación de prueba para el usuario actual")
     public ResponseEntity<?> createTestNotification() {
         try {
-            Integer userId = getCurrentUserId();
+            Long userId = getCurrentUserId();
 
             InAppNotificationDTO testNotification = new InAppNotificationDTO();
             testNotification.setUserId(userId);
@@ -230,12 +230,12 @@ public class InAppNotificationController {
 
             Object principal = authentication.getPrincipal();
             String email = null;
-            Integer userId = null;
+            Long userId = null;
 
             // Caso 1: Usuario está directamente en el principal
             if (principal instanceof users) {
                 users user = (users) principal;
-                log.debug("Usuario encontrado como principal: {} (ID: {})", 
+                log.debug("Usuario encontrado como principal: {} (ID: {})",
                          user.getUserName(), user.getUserId());
                 
                 // Intentar obtener email de person o usar username
@@ -247,10 +247,10 @@ public class InAppNotificationController {
                     log.debug("Usando userName como email: {}", email);
                 }
                 userId = user.getUserId();
-            } 
+            }
             // Caso 2: Principal es User de Spring Security
             else if (principal instanceof org.springframework.security.core.userdetails.User) {
-                org.springframework.security.core.userdetails.User securityUser = 
+                org.springframework.security.core.userdetails.User securityUser =
                     (org.springframework.security.core.userdetails.User) principal;
                 email = securityUser.getUsername();
                 log.debug("Principal es User de Spring Security: {}", email);
@@ -259,7 +259,7 @@ public class InAppNotificationController {
             else if (principal instanceof String) {
                 email = (String) principal;
                 log.debug("Principal es String (email): {}", email);
-            } 
+            }
             else {
                 log.error("Tipo de principal no esperado: {}", principal.getClass().getName());
                 log.error("Principal contents: {}", principal.toString());

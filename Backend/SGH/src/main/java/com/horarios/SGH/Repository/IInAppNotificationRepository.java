@@ -45,15 +45,15 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
      */
     @Query("SELECT COUNT(n) FROM in_app_notifications n WHERE n.userId = :userId AND n.isRead = false " +
            "AND n.isArchived = false AND (n.expiresAt IS NULL OR n.expiresAt > :now)")
-    Long countUnreadByUserId(@Param("userId") Integer userId, @Param("now") LocalDateTime now);
+    Long countUnreadByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
     
     /**
      * Busca notificaciones por tipo y usuario
      */
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.notificationType = :type " +
            "AND n.isArchived = false ORDER BY n.createdAt DESC")
-    Page<InAppNotification> findByUserIdAndType(@Param("userId") Integer userId, 
-                                               @Param("type") NotificationType type, 
+    Page<InAppNotification> findByUserIdAndType(@Param("userId") Long userId,
+                                               @Param("type") NotificationType type,
                                                Pageable pageable);
     
     /**
@@ -61,18 +61,18 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
      */
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.priority = :priority " +
            "AND n.isArchived = false ORDER BY n.createdAt DESC")
-    Page<InAppNotification> findByUserIdAndPriority(@Param("userId") Integer userId, 
-                                                   @Param("priority") NotificationPriority priority, 
-                                                   Pageable pageable);
+    Page<InAppNotification> findByUserIdAndPriority(@Param("userId") Long userId,
+                                                    @Param("priority") NotificationPriority priority,
+                                                    Pageable pageable);
     
     /**
      * Busca notificaciones por categoría
      */
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.category = :category " +
            "AND n.isArchived = false ORDER BY n.createdAt DESC")
-    Page<InAppNotification> findByUserIdAndCategory(@Param("userId") Integer userId, 
-                                                   @Param("category") String category, 
-                                                   Pageable pageable);
+    Page<InAppNotification> findByUserIdAndCategory(@Param("userId") Long userId,
+                                                    @Param("category") String category,
+                                                    Pageable pageable);
     
     /**
      * Busca notificaciones recientes (últimas 24 horas)
@@ -80,8 +80,8 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId " +
            "AND n.createdAt >= :since AND n.isArchived = false " +
            "ORDER BY n.createdAt DESC")
-    List<InAppNotification> findRecentByUserId(@Param("userId") Integer userId, 
-                                             @Param("since") LocalDateTime since);
+    List<InAppNotification> findRecentByUserId(@Param("userId") Long userId,
+                                               @Param("since") LocalDateTime since);
     
     /**
      * Marca todas las notificaciones de un usuario como leídas
@@ -90,7 +90,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     @Transactional
     @Query("UPDATE in_app_notifications n SET n.isRead = true, n.readAt = :now " +
            "WHERE n.userId = :userId AND n.isRead = false")
-    void markAllAsReadByUserId(@Param("userId") Integer userId, @Param("now") LocalDateTime now);
+    void markAllAsReadByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
     
     /**
      * Marca una notificación específica como leída
@@ -108,7 +108,7 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     @Transactional
     @Query("UPDATE in_app_notifications n SET n.isArchived = true " +
            "WHERE n.userId = :userId AND n.createdAt < :cutoffDate AND n.isArchived = false")
-    void archiveOldByUserId(@Param("userId") Integer userId, @Param("cutoffDate") LocalDateTime cutoffDate);
+    void archiveOldByUserId(@Param("userId") Long userId, @Param("cutoffDate") LocalDateTime cutoffDate);
     
     /**
      * Elimina notificaciones expiradas
@@ -124,15 +124,15 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.priority IN :highPriorities " +
            "AND n.isRead = false AND n.isArchived = false " +
            "ORDER BY n.priority DESC, n.createdAt DESC")
-    List<InAppNotification> findHighPriorityUnreadByUserId(@Param("userId") Integer userId, 
-                                                          @Param("highPriorities") List<NotificationPriority> highPriorities);
+    List<InAppNotification> findHighPriorityUnreadByUserId(@Param("userId") Long userId,
+                                                           @Param("highPriorities") List<NotificationPriority> highPriorities);
     
     /**
      * Obtiene estadísticas de notificaciones por usuario
      */
     @Query("SELECT n.priority, COUNT(n) FROM in_app_notifications n WHERE n.userId = :userId " +
            "AND n.isArchived = false GROUP BY n.priority")
-    List<Object[]> getPriorityStatsByUserId(@Param("userId") Integer userId);
+    List<Object[]> getPriorityStatsByUserId(@Param("userId") Long userId);
     
     /**
      * Busca notificaciones por múltiples criterios
@@ -146,12 +146,12 @@ public interface IInAppNotificationRepository extends JpaRepository<InAppNotific
            "(:isArchived IS NULL OR n.isArchived = :isArchived) AND " +
            "(n.expiresAt IS NULL OR n.expiresAt > :now) " +
            "ORDER BY n.priority DESC, n.createdAt DESC")
-    Page<InAppNotification> findWithFilters(@Param("userId") Integer userId,
-                                           @Param("type") NotificationType type,
-                                           @Param("priority") NotificationPriority priority,
-                                           @Param("category") String category,
-                                           @Param("isRead") Boolean isRead,
-                                           @Param("isArchived") Boolean isArchived,
-                                           @Param("now") LocalDateTime now,
-                                           Pageable pageable);
+    Page<InAppNotification> findWithFilters(@Param("userId") Long userId,
+                                            @Param("type") NotificationType type,
+                                            @Param("priority") NotificationPriority priority,
+                                            @Param("category") String category,
+                                            @Param("isRead") Boolean isRead,
+                                            @Param("isArchived") Boolean isArchived,
+                                            @Param("now") LocalDateTime now,
+                                            Pageable pageable);
 }

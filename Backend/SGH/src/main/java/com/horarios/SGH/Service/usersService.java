@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.horarios.SGH.Model.users;
-import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Repository.Iusers;
 
 @Service
@@ -19,7 +18,7 @@ public class usersService {
     @Autowired
     private FileStorageService fileStorageService;
 
-    public Optional<users> findById(int userId) {
+    public Optional<users> findById(Long userId) {
         try {
             return usersRepository.findById(userId);
         } catch (Exception e) {
@@ -48,7 +47,7 @@ public class usersService {
      * @param photo Archivo de imagen para la foto de perfil
      * @return Mensaje de confirmación
      */
-    public String updateUserPhoto(int userId, MultipartFile photo) {
+    public String updateUserPhoto(Long userId, MultipartFile photo) {
         try {
             Optional<users> userOpt = usersRepository.findById(userId);
             if (!userOpt.isPresent()) {
@@ -98,15 +97,15 @@ public class usersService {
      * @param userId ID del usuario
      * @return DTO con información del usuario
      */
-    public Optional<com.horarios.SGH.DTO.usersDTO> getUserWithPhoto(int userId) {
+    public Optional<com.horarios.SGH.DTO.usersDTO> getUserWithPhoto(Long userId) {
         try {
             return usersRepository.findById(userId)
                 .map(user -> {
                     com.horarios.SGH.DTO.usersDTO dto = new com.horarios.SGH.DTO.usersDTO();
                     dto.setUserId(user.getUserId());
                     dto.setUserName(user.getPerson().getFullName());
-                    dto.setPassword(user.getPasswordHash());
-                    dto.setRole(user.getRole().getRoleName());
+                    // dto.setPassword(user.getPasswordHash()); // Comentado porque no existe en users
+                    // dto.setRole(user.getRole().getRoleName()); // Comentado porque no existe en users
                     dto.setPhotoData(user.getPerson().getPhotoData());
                     dto.setPhotoContentType(user.getPerson().getPhotoContentType());
                     dto.setPhotoFileName(user.getPerson().getPhotoFileName());

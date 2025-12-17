@@ -32,17 +32,13 @@ public class DebugNotificationService {
         // 1. Verificar coordinadores en la base de datos
         diagnosis.append("1. COORDINADORES EN BD:\n");
         try {
-            List<users> allUsers = usersRepository.findAll();
-            int coordinatorsCount = 0;
-            for (users user : allUsers) {
-                if (user.getRole() != null && "COORDINADOR".equals(user.getRole().getRoleName())) {
-                    coordinatorsCount++;
-                    diagnosis.append("   ✓ Coordinador encontrado: ID=" + user.getUserId() + 
-                                   ", Email=" + (user.getPerson() != null ? user.getPerson().getEmail() : "N/A") + 
-                                   ", Status=" + user.getAccountStatus() + "\n");
-                }
+            List<users> coordinators = usersRepository.findByRoleNameWithDetails("COORDINADOR");
+            diagnosis.append("   ✓ Total coordinadores: " + coordinators.size() + "\n");
+            for (users user : coordinators) {
+                diagnosis.append("   ✓ Coordinador encontrado: ID=" + user.getUserId() +
+                               ", Email=" + (user.getPerson() != null ? user.getPerson().getEmail() : "N/A") +
+                               ", Status=" + user.getAccountStatus() + "\n");
             }
-            diagnosis.append("   Total coordinadores: " + coordinatorsCount + "\n");
         } catch (Exception e) {
             diagnosis.append("   ❌ Error consultando usuarios: " + e.getMessage() + "\n");
         }
@@ -61,7 +57,7 @@ public class DebugNotificationService {
         try {
             // Crear notificación de prueba
             InAppNotificationDTO testNotification = new InAppNotificationDTO();
-            testNotification.setUserId(1); // Usuario admin por defecto
+            testNotification.setUserId(1L); // Usuario admin por defecto
             testNotification.setNotificationType(NotificationType.SYSTEM_NOTIFICATION.name());
             testNotification.setTitle("Notificación de Diagnóstico");
             testNotification.setMessage("Esta es una notificación de prueba para verificar el funcionamiento");
@@ -84,7 +80,7 @@ public class DebugNotificationService {
     public void createTestNotificationForCurrentUser() {
         try {
             InAppNotificationDTO testNotification = new InAppNotificationDTO();
-            testNotification.setUserId(1); // Asumiendo ID 1 para testing
+            testNotification.setUserId(1L); // Asumiendo ID 1 para testing
             testNotification.setNotificationType(NotificationType.SYSTEM_NOTIFICATION.name());
             testNotification.setTitle("🔔 Notificación de Prueba");
             testNotification.setMessage("Esta es una notificación de prueba. Si la ves, el sistema funciona correctamente.");
