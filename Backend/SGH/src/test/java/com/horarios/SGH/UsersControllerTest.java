@@ -1,8 +1,8 @@
 package com.horarios.SGH;
 
 import com.horarios.SGH.Controller.usersController;
-import com.horarios.SGH.Model.users;
-import com.horarios.SGH.Repository.Iusers;
+import com.horarios.SGH.Model.User;
+import com.horarios.SGH.Repository.IUserRepository;
 import com.horarios.SGH.Service.usersService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,21 +28,23 @@ public class UsersControllerTest {
     private usersService usersService;
 
     @MockBean
-    private Iusers usersRepository;
+    private IUserRepository usersRepository;
 
     @Test
     public void testGetUserByIdSuccess() throws Exception {
-        users user = new users();
-        com.horarios.SGH.Model.People person = new com.horarios.SGH.Model.People();
-        person.setFullName("testuser");
+        User user = new User();
         user.setUserId(1L);
-        user.setPerson(person);
+        user.setUsername("testuser");
+        user.setEmail("testuser@example.com");
+        user.setFirstName("Test");
+        user.setLastName("User");
 
         when(usersService.findById(1L)).thenReturn(Optional.of(user));
 
         mockMvc.perform(get("/users/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.person.fullName").value("testuser"));
+                .andExpect(jsonPath("$.userId").value(1L))
+                .andExpect(jsonPath("$.username").value("testuser"));
     }
 
     @Test
@@ -55,45 +57,11 @@ public class UsersControllerTest {
     }
 
     @Test
-    public void testLoginSuccess() throws Exception {
-        users user = new users();
-        com.horarios.SGH.Model.People person = new com.horarios.SGH.Model.People();
-        person.setEmail("testuser");
-        user.setPerson(person);
-        // user.setPasswordHash("password"); // Comentado porque no existe en users
-
-        when(usersRepository.findByUserName("testuser")).thenReturn(Optional.of(user));
-
-        mockMvc.perform(post("/users/login")
-                .param("userName", "testuser")
-                .param("password", "password"))
-                .andExpect(status().isMethodNotAllowed());
-    }
-
-    @Test
-    public void testLoginInvalidUsername() throws Exception {
-        mockMvc.perform(post("/users/login")
-                .param("userName", "")
-                .param("password", "password"))
-                .andExpect(status().isMethodNotAllowed());
-    }
-
-    @Test
-    public void testLoginUserNotFound() throws Exception {
-        when(usersRepository.findByUserName("testuser")).thenReturn(Optional.empty());
-
-        mockMvc.perform(post("/users/login")
-                .param("userName", "testuser")
-                .param("password", "password"))
-                .andExpect(status().isMethodNotAllowed());
-    }
-
-    @Test
     public void testDeleteUserSuccess() throws Exception {
-        users user = new users();
-        com.horarios.SGH.Model.People person = new com.horarios.SGH.Model.People();
-        person.setEmail("testuser");
-        user.setPerson(person);
+        User user = new User();
+        user.setUserId(1L);
+        user.setUsername("testuser");
+        user.setEmail("testuser@example.com");
 
         when(usersRepository.findByUserName("testuser")).thenReturn(Optional.of(user));
 

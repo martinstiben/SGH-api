@@ -5,14 +5,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import com.horarios.SGH.Model.users;
+import com.horarios.SGH.Model.User;
 import com.horarios.SGH.Model.subjects;
 import com.horarios.SGH.Model.teachers;
 import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.TeacherSubject;
 import com.horarios.SGH.Model.TeacherAvailability;
 import com.horarios.SGH.Model.Days;
-import com.horarios.SGH.Repository.Iusers;
+import com.horarios.SGH.Model.UserCredentials;
+import com.horarios.SGH.Model.UserRole;
+import com.horarios.SGH.Repository.IUserRepository;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Icourses;
@@ -36,7 +38,7 @@ public class DataInitializer {
     private String masterPassword;
 
     @Bean
-    public CommandLineRunner seedRolesAndMasterUser(Iusers repo, PasswordEncoder encoder, IPeopleRepository peopleRepo, IRolesRepository rolesRepo) {
+    public CommandLineRunner seedRolesAndMasterUser(IUserRepository repo, PasswordEncoder encoder, IPeopleRepository peopleRepo, IRolesRepository rolesRepo) {
         return args -> {
             // Primero crear los roles si no existen
             if (rolesRepo.count() == 0) {
@@ -61,17 +63,31 @@ public class DataInitializer {
                 People masterPerson = new People("Master User", masterUsername);
                 masterPerson = peopleRepo.save(masterPerson);
 
-                // Obtener rol MAESTRO - ahora debería existir
-                Role maestroRole = rolesRepo.findByRoleName("MAESTRO")
-                    .orElseGet(() -> {
-                        System.out.println(">> Rol MAESTRO no encontrado, creando...");
-                        return rolesRepo.save(new Role("MAESTRO", "Rol de profesor"));
-                    });
-
-                users u = new users(masterPerson, encoder.encode(masterPassword));
+                // Crear usuario
+                User u = new User(masterPerson);
                 u.setUsername(masterUsername);
                 u.setEmail(masterUsername);
+                u.setFirstName("Master");
+                u.setLastName("User");
+                u = repo.save(u);
+
+                // Crear credenciales para el usuario
+                UserCredentials userCredentials = new UserCredentials(u, encoder.encode(masterPassword));
+                u.setUserCredentials(userCredentials);
                 repo.save(u);
+
+                // Obtener rol COORDINADOR
+                Role coordinadorRole = rolesRepo.findByRoleName("COORDINADOR")
+                    .orElseGet(() -> {
+                        System.out.println(">> Rol COORDINADOR no encontrado, creando...");
+                        return rolesRepo.save(new Role("COORDINADOR", "Rol de coordinador"));
+                    });
+
+                // Crear UserRole para asignar el rol al usuario
+                UserRole userRole = new UserRole(u, coordinadorRole);
+                u.addRole(coordinadorRole);
+                repo.save(u);
+
                 System.out.println(">> Master creado: " + masterUsername);
             } else {
                 System.out.println(">> Master ya existe: " + masterUsername);
@@ -83,7 +99,7 @@ public class DataInitializer {
     }
 
     @Bean
-    public CommandLineRunner seedInitialData(Isubjects subjectRepo, Iteachers teacherRepo, Icourses courseRepo, TeacherSubjectRepository teacherSubjectRepo, ITeacherAvailabilityRepository availabilityRepo, Iusers userRepo, PasswordEncoder encoder, IPeopleRepository peopleRepo, IRolesRepository rolesRepo) {
+    public CommandLineRunner seedInitialData(Isubjects subjectRepo, Iteachers teacherRepo, Icourses courseRepo, TeacherSubjectRepository teacherSubjectRepo, ITeacherAvailabilityRepository availabilityRepo, IUserRepository userRepo, PasswordEncoder encoder, IPeopleRepository peopleRepo, IRolesRepository rolesRepo) {
         return args -> {
             // Declarar variables de materias para usar en todo el método
             subjects math = null, physics = null, chemistry = null, biology = null, ethics = null, history = null, literature = null, english = null;

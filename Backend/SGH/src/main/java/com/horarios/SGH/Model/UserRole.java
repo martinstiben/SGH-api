@@ -14,7 +14,7 @@ public class UserRole {
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    private users user;
+    private User user;
 
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
@@ -31,7 +31,7 @@ public class UserRole {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public UserRole(users user, Role role) {
+    public UserRole(User user, Role role) {
         this();
         this.user = user;
         this.role = role;
@@ -45,11 +45,11 @@ public class UserRole {
         this.userRoleId = userRoleId;
     }
 
-    public users getUser() {
+    public User getUser() {
         return user;
     }
 
-    public void setUser(users user) {
+    public void setUser(User user) {
         this.user = user;
     }
 

@@ -6,7 +6,7 @@ import com.horarios.SGH.Model.InAppNotification;
 import com.horarios.SGH.Model.NotificationCategory;
 import com.horarios.SGH.Model.NotificationPriority;
 import com.horarios.SGH.Model.NotificationType;
-import com.horarios.SGH.Model.users;
+import com.horarios.SGH.Model.User;
 import com.horarios.SGH.Repository.IInAppNotificationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +45,7 @@ public class InAppNotificationService {
         
         try {
             // Buscar información del usuario
-            users user = userService.findById(notificationDTO.getUserId())
+            User user = userService.findById(notificationDTO.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + notificationDTO.getUserId()));
             
             // Convertir tipos de datos

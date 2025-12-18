@@ -1,12 +1,11 @@
 package com.horarios.SGH.Service;
 
-import com.horarios.SGH.Model.users;
-import com.horarios.SGH.Repository.Iusers;
+import com.horarios.SGH.Repository.IUserRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,10 +22,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Value("${app.master.password}")
     private String masterPassword;
 
-    private final Iusers userRepository;
+    private final IUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public CustomUserDetailsService(Iusers userRepository, PasswordEncoder passwordEncoder) {
+    public CustomUserDetailsService(IUserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -42,16 +41,24 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         // Intentar cargar desde base de datos
-        users user = userRepository.findByUserName(username).orElse(null);
-        if (user != null) {
+        com.horarios.SGH.Model.User appUserEntity = userRepository.findByUserName(username).orElse(null);
+        if (appUserEntity != null) {
             // Verificar que el email coincida exactamente
-            if (!user.getPerson().getEmail().equals(username)) {
+            if (!appUserEntity.getPerson().getEmail().equals(username)) {
                 throw new UsernameNotFoundException("Usuario no encontrado: " + username);
             }
 
-            return User.withUsername(user.getPerson().getEmail())
-                     .password(user.getPasswordHash())
-                     .roles(user.getRole().getRoleName())
+            // Obtener la contraseña del usuario desde UserCredentials
+            String passwordHash = appUserEntity.getUserCredentials() != null ? 
+                appUserEntity.getUserCredentials().getPasswordHash() : "";
+
+            // Obtener el rol del usuario usando getFirstRole()
+            String roleName = appUserEntity.getFirstRole() != null ? 
+                appUserEntity.getFirstRole().getRoleName() : "ESTUDIANTE";
+
+            return User.withUsername(appUserEntity.getPerson().getEmail())
+                     .password(passwordHash)
+                     .roles(roleName)
                      .build();
         }
 

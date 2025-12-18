@@ -109,19 +109,16 @@ public class AuthControllerTest {
 
     @Test
     public void testGetProfile() throws Exception {
-        com.horarios.SGH.Model.users user = new com.horarios.SGH.Model.users();
-        com.horarios.SGH.Model.People person = new com.horarios.SGH.Model.People();
-        person.setFullName("Juan Pérez");
-        person.setEmail("test@example.com");
-        user.setUserId(1L); // Cambiado de int a Long
-        user.setPerson(person);
+        com.horarios.SGH.Model.User user = new com.horarios.SGH.Model.User();
+        user.setUserId(1L);
+        user.setUsername("testuser");
+        user.setEmail("test@example.com");
+        user.setFirstName("Juan");
+        user.setLastName("Pérez");
         
         // Crear un UserRole para simular la relación con roles
         com.horarios.SGH.Model.Role role = new com.horarios.SGH.Model.Role();
         role.setRoleName("MAESTRO");
-        com.horarios.SGH.Model.UserRole userRole = new com.horarios.SGH.Model.UserRole();
-        userRole.setUser(user);
-        userRole.setRole(role);
         
         // Mockear el servicio para que devuelva el usuario con su rol
         when(authService.getProfile()).thenReturn(user);

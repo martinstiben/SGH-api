@@ -4,7 +4,6 @@ import com.horarios.SGH.DTO.NotificationDTO;
 import com.horarios.SGH.Model.NotificationLog;
 import com.horarios.SGH.Model.NotificationStatus;
 import com.horarios.SGH.Model.NotificationType;
-import com.horarios.SGH.Model.users;
 import com.horarios.SGH.Repository.INotificationLogRepository;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +39,7 @@ public class NotificationService {
     private INotificationLogRepository notificationLogRepository;
     
     @Autowired
-    private usersService userService;
+    private com.horarios.SGH.Service.usersService userService;
     
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -126,7 +125,7 @@ public class NotificationService {
                                                                Map<String, String> variables) {
         log.info("Enviando notificación a todos los usuarios con rol: {}", role);
         
-        List<users> usersWithRole = userService.findUsersByRole(role);
+        List<com.horarios.SGH.Model.User> usersWithRole = userService.findUsersByRole(role);
         
         List<CompletableFuture<Void>> futures = usersWithRole.stream()
             .map(user -> {
@@ -2640,12 +2639,13 @@ public class NotificationService {
     /**
      * Crea NotificationDTO desde usuario y tipo de notificación
      */
-    private NotificationDTO createNotificationFromTemplate(users user, NotificationType type, String subject,
+    private NotificationDTO createNotificationFromTemplate(com.horarios.SGH.Model.User user, NotificationType type, String subject,
                                                           Map<String, String> variables) {
         NotificationDTO notification = new NotificationDTO();
-        notification.setRecipientEmail(user.getPerson().getEmail());
-        notification.setRecipientName(user.getPerson().getFullName());
-        notification.setRecipientRole(user.getRole().getRoleName());
+        notification.setRecipientEmail(user.getEmail());
+        notification.setRecipientName(user.getFullName());
+        com.horarios.SGH.Model.Role userRole = user.getFirstRole();
+        notification.setRecipientRole(userRole != null ? userRole.getRoleName() : "UNKNOWN");
         notification.setNotificationType(type.name());
         notification.setSubject(subject);
         notification.setContent("");

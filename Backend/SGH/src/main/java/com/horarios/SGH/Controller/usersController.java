@@ -13,9 +13,9 @@ import org.springframework.security.core.Authentication;
 
 
 import com.horarios.SGH.DTO.responseDTO;
-import com.horarios.SGH.Model.users;
+import com.horarios.SGH.Model.User;
 import com.horarios.SGH.Service.usersService;
-import com.horarios.SGH.Repository.Iusers;
+import com.horarios.SGH.Repository.IUserRepository;
 
 @CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000", "http://localhost:3001"})
 @RestController
@@ -26,7 +26,7 @@ public class usersController {
     private usersService usersService;
 
     @Autowired
-    private Iusers usersRepository;
+    private IUserRepository usersRepository;
 
     @Value("${app.master.username}")
     private String masterUsername;
@@ -36,7 +36,7 @@ public class usersController {
     @PreAuthorize("hasRole('COORDINADOR')")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
-            Optional<users> usuarioOptional = usersService.findById(id);
+            Optional<User> usuarioOptional = usersService.findById(id);
             if (usuarioOptional.isPresent()) {
                 return ResponseEntity.ok(usuarioOptional.get());
             } else {
@@ -67,7 +67,7 @@ public class usersController {
                         .body(new responseDTO("ERROR", "No puedes eliminar tu propia cuenta"));
             }
 
-            Optional<users> usuario = usersRepository.findByUserName(username);
+            Optional<User> usuario = usersRepository.findByUserName(username);
             if (!usuario.isPresent() || !usuario.get().getPerson().getEmail().equals(username)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new responseDTO("ERROR", "Usuario no encontrado"));
@@ -132,10 +132,10 @@ public class usersController {
     @PreAuthorize("hasRole('COORDINADOR')")
     public ResponseEntity<java.util.List<com.horarios.SGH.DTO.usersDTO>> getAllUsers() {
         try {
-            java.util.List<users> allUsers = usersRepository.findAll();
+            java.util.List<User> allUsers = usersRepository.findAll();
             java.util.List<com.horarios.SGH.DTO.usersDTO> userDTOs = new java.util.ArrayList<>();
 
-            for (users user : allUsers) {
+            for (User user : allUsers) {
                 com.horarios.SGH.DTO.usersDTO dto = new com.horarios.SGH.DTO.usersDTO();
                 dto.setUserId(user.getUserId());
                 dto.setUserName(user.getPerson().getFullName());
@@ -164,13 +164,13 @@ public class usersController {
             }
 
             // Obtener el ID del usuario autenticado
-            Optional<users> currentUser = usersRepository.findByUserName(auth.getName());
+            Optional<User> currentUser = usersRepository.findByUserName(auth.getName());
             if (currentUser.isPresent() && currentUser.get().getUserId().equals(id)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(new responseDTO("ERROR", "No puedes eliminar tu propia cuenta"));
             }
 
-            Optional<users> usuario = usersRepository.findById(id);
+            Optional<User> usuario = usersRepository.findById(id);
             if (!usuario.isPresent()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new responseDTO("ERROR", "Usuario no encontrado"));

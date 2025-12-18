@@ -3,7 +3,7 @@ package com.horarios.SGH.Controller;
 import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.DTO.InAppNotificationResponseDTO;
 import com.horarios.SGH.Model.InAppNotification;
-import com.horarios.SGH.Model.users;
+import com.horarios.SGH.Model.User;
 import com.horarios.SGH.Service.InAppNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -233,18 +233,18 @@ public class InAppNotificationController {
             Long userId = null;
 
             // Caso 1: Usuario está directamente en el principal
-            if (principal instanceof users) {
-                users user = (users) principal;
+            if (principal instanceof User) {
+                User user = (User) principal;
                 log.debug("Usuario encontrado como principal: {} (ID: {})",
-                         user.getUserName(), user.getUserId());
+                         user.getUsername(), user.getUserId());
                 
                 // Intentar obtener email de person o usar username
                 if (user.getPerson() != null && user.getPerson().getEmail() != null) {
                     email = user.getPerson().getEmail();
                     log.debug("Email obtenido de person: {}", email);
                 } else {
-                    email = user.getUserName();
-                    log.debug("Usando userName como email: {}", email);
+                    email = user.getUsername();
+                    log.debug("Usando username como email: {}", email);
                 }
                 userId = user.getUserId();
             }
@@ -279,7 +279,7 @@ public class InAppNotificationController {
 
             // Caso 3: Buscar usuario por email en la base de datos
             log.debug("Buscando usuario por email: {}", email.trim().toLowerCase());
-            users user = usersService.findByEmail(email.trim().toLowerCase());
+            User user = usersService.findByEmail(email.trim().toLowerCase());
             
             if (user == null) {
                 log.error("Usuario no encontrado para email: {}", email);

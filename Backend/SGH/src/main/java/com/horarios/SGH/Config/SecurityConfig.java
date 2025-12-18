@@ -46,14 +46,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permitir múltiples orígenes comunes de desarrollo
+        // Permitir múltiples orígenes de desarrollo y producción
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000",
-            "http://localhost:3001",
+            "http://localhost:3000",    // Next.js
+            "http://localhost:3001",    // Next.js dev
+            "http://localhost:5173",    // Vite dev server
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
-            "http://localhost:5173",  // Vite dev server
-            "http://127.0.0.1:5173"
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5500",   // Live Server
+            "http://localhost:5500",   // Live Server
+            "http://10.3.226.178:19000", // Expo Go
+            "http://10.3.226.178:8081",  // Metro bundler
+            "http://172.30.5.58:8085"   // Metro bundler
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

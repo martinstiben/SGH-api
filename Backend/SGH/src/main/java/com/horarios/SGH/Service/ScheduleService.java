@@ -8,13 +8,13 @@ import com.horarios.SGH.Model.courses;
 import com.horarios.SGH.Model.subjects;
 import com.horarios.SGH.Model.teachers;
 import com.horarios.SGH.Model.TeacherSubject;
-import com.horarios.SGH.Model.users;
+import com.horarios.SGH.Model.User;
 import com.horarios.SGH.Repository.IScheduleRepository;
 import com.horarios.SGH.Repository.ITeacherAvailabilityRepository;
 import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.Isubjects;
-import com.horarios.SGH.Repository.Iusers;
+import com.horarios.SGH.Repository.IUserRepository;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
 import com.horarios.SGH.DTO.NotificationDTO;
 import com.horarios.SGH.Model.NotificationType;
@@ -28,18 +28,29 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * Servicio para gestión de horarios académicos con funcionalidades completas
+ * de creación, actualización, eliminación y notificaciones.
+ * 
+ * @author Sistema SGH
+ * @version 1.0
+ */
 @Service
 @RequiredArgsConstructor
 public class ScheduleService {
+
+    private static final Logger logger = Logger.getLogger(ScheduleService.class.getName());
 
     private final IScheduleRepository scheduleRepo;
     private final ITeacherAvailabilityRepository availabilityRepo;
     private final Icourses courseRepo;
     private final Iteachers teacherRepo;
     private final Isubjects subjectRepo;
-    private final Iusers userRepo;
+    private final IUserRepository userRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
 
     @Autowired
@@ -51,6 +62,15 @@ public class ScheduleService {
     @Autowired
     private usersService userService;
 
+    /**
+     * Verifica si un profesor está disponible en el horario especificado.
+     * 
+     * @param teacherId ID del profesor
+     * @param day día de la semana
+     * @param start hora de inicio
+     * @param end hora de fin
+     * @return true si el profesor está disponible
+     */
     private boolean isTeacherAvailable(Integer teacherId, String day, LocalTime start, LocalTime end) {
         try {
             Days dayEnum = Days.valueOf(day);
@@ -69,12 +89,24 @@ public class ScheduleService {
         }
     }
 
+    /**
+     * Crea un nuevo horario o múltiples horarios.
+     * 
+     * @param assignments lista de asignaciones de horarios
+     * @param executedBy usuario que ejecuta la acción
+     * @return lista de DTOs de horarios creados
+     */
     @Transactional
     public List<ScheduleDTO> createSchedule(List<ScheduleDTO> assignments, String executedBy) {
+        if (assignments == null || assignments.isEmpty()) {
+            throw new IllegalArgumentException("La lista de asignaciones no puede estar vacía");
+        }
+
         List<schedule> entities = new ArrayList<>();
 
         for (ScheduleDTO dto : assignments) {
-            courses course = courseRepo.findById(dto.getCourseId()).orElseThrow();
+            courses course = courseRepo.findById(dto.getCourseId())
+                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado con ID: " + dto.getCourseId()));
 
             teachers teacher;
             subjects subject;
@@ -89,8 +121,10 @@ public class ScheduleService {
 
             // Si se especifica teacherId y subjectId, usar esos valores
             if (dto.getTeacherId() != null && dto.getSubjectId() != null) {
-                teacher = teacherRepo.findById(dto.getTeacherId()).orElseThrow();
-                subject = subjectRepo.findById(dto.getSubjectId()).orElseThrow();
+                teacher = teacherRepo.findById(dto.getTeacherId())
+                    .orElseThrow(() -> new IllegalArgumentException("Profesor no encontrado con ID: " + dto.getTeacherId()));
+                subject = subjectRepo.findById(dto.getSubjectId())
+                    .orElseThrow(() -> new IllegalArgumentException("Materia no encontrada con ID: " + dto.getSubjectId()));
 
                 // VALIDACIÓN: Un profesor solo puede estar asociado a UNA materia
                 List<TeacherSubject> teacherAssociations = teacherSubjectRepo.findByTeacher_Id(teacher.getId());
@@ -119,13 +153,23 @@ public class ScheduleService {
             entities.add(s);
         }
 
-        scheduleRepo.saveAll(entities);
+        List<schedule> saved = scheduleRepo.saveAll(entities);
+        
+        // Enviar notificaciones
+        sendScheduleNotifications(saved, "CREATED");
+        
+        logger.log(Level.INFO, "Se crearon {0} horarios por el usuario: {1}", 
+                  new Object[]{saved.size(), executedBy});
 
-
-
-        return entities.stream().map(this::toDTO).collect(Collectors.toList());
+        return saved.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    /**
+     * Obtiene horarios por nombre.
+     * 
+     * @param scheduleName nombre del horario
+     * @return lista de DTOs de horarios
+     */
     @Transactional(readOnly = true)
     public List<ScheduleDTO> getByName(String scheduleName) {
         return scheduleRepo.findByScheduleName(scheduleName)
@@ -134,20 +178,43 @@ public class ScheduleService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Obtiene horarios por curso.
+     * 
+     * @param courseId ID del curso
+     * @return lista de DTOs de horarios
+     */
     public List<ScheduleDTO> getByCourse(Integer courseId) {
         return scheduleRepo.findByCourseId(courseId).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    /**
+     * Obtiene horarios por profesor.
+     * 
+     * @param teacherId ID del profesor
+     * @return lista de DTOs de horarios
+     */
     public List<ScheduleDTO> getByTeacher(Integer teacherId) {
         return scheduleRepo.findByTeacherId(teacherId).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    /**
+     * Obtiene todos los horarios.
+     * 
+     * @return lista de todos los DTOs de horarios
+     */
     public List<ScheduleDTO> getAll() {
         return scheduleRepo.findAll().stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    /**
+     * Obtiene horarios por email de estudiante.
+     * 
+     * @param email email del estudiante
+     * @return lista de DTOs de horarios del curso del estudiante
+     */
     public List<ScheduleDTO> getByStudentEmail(String email) {
-        users student = userRepo.findByUserName(email)
+        User student = userRepo.findByUserName(email)
             .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         if (student.getCourse() == null) {
@@ -157,17 +224,34 @@ public class ScheduleService {
         return getByCourse(student.getCourse().getId());
     }
 
-    public users getUserByEmail(String email) {
+    /**
+     * Obtiene usuario por email.
+     * 
+     * @param email email del usuario
+     * @return usuario encontrado
+     */
+    public User getUserByEmail(String email) {
         return userRepo.findByUserName(email)
             .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 
+    /**
+     * Actualiza un horario existente.
+     * 
+     * @param id ID del horario
+     * @param dto nuevos datos del horario
+     * @param executedBy usuario que ejecuta la acción
+     * @return DTO del horario actualizado
+     */
     @Transactional
     public ScheduleDTO updateSchedule(Integer id, ScheduleDTO dto, String executedBy) {
-        System.out.println("Updating schedule with id: " + id + ", dto: " + dto);
-        schedule existing = scheduleRepo.findById(id).orElseThrow(() -> new RuntimeException("Horario no encontrado"));
+        logger.log(Level.INFO, "Actualizando horario ID: {0} por usuario: {1}", new Object[]{id, executedBy});
+        
+        schedule existing = scheduleRepo.findById(id)
+            .orElseThrow(() -> new RuntimeException("Horario no encontrado"));
 
-        courses course = courseRepo.findById(dto.getCourseId()).orElseThrow();
+        courses course = courseRepo.findById(dto.getCourseId())
+            .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado con ID: " + dto.getCourseId()));
 
         teachers teacher;
         subjects subject;
@@ -182,8 +266,10 @@ public class ScheduleService {
 
         // Si se especifica teacherId y subjectId, usar esos valores
         if (dto.getTeacherId() != null && dto.getSubjectId() != null) {
-            teacher = teacherRepo.findById(dto.getTeacherId()).orElseThrow();
-            subject = subjectRepo.findById(dto.getSubjectId()).orElseThrow();
+            teacher = teacherRepo.findById(dto.getTeacherId())
+                .orElseThrow(() -> new IllegalArgumentException("Profesor no encontrado con ID: " + dto.getTeacherId()));
+            subject = subjectRepo.findById(dto.getSubjectId())
+                .orElseThrow(() -> new IllegalArgumentException("Materia no encontrada con ID: " + dto.getSubjectId()));
 
             // VALIDACIÓN: Un profesor solo puede estar asociado a UNA materia
             List<TeacherSubject> teacherAssociations = teacherSubjectRepo.findByTeacher_Id(teacher.getId());
@@ -218,28 +304,56 @@ public class ScheduleService {
         existing.setScheduleName(dto.getScheduleName());
 
         schedule saved = scheduleRepo.save(existing);
+        
+        // Enviar notificaciones
+        List<schedule> updatedList = new ArrayList<>();
+        updatedList.add(saved);
+        sendScheduleNotifications(updatedList, "UPDATED");
+        
+        logger.log(Level.INFO, "Horario ID: {0} actualizado exitosamente", id);
 
         return toDTO(saved);
     }
 
+    /**
+     * Elimina un horario.
+     * 
+     * @param id ID del horario
+     * @param executedBy usuario que ejecuta la acción
+     */
     @Transactional
     public void deleteSchedule(Integer id, String executedBy) {
         if (!scheduleRepo.existsById(id)) {
             throw new RuntimeException("Horario no encontrado");
         }
         scheduleRepo.deleteById(id);
+        logger.log(Level.INFO, "Horario ID: {0} eliminado por usuario: {1}", new Object[]{id, executedBy});
     }
 
+    /**
+     * Elimina horarios por día.
+     * 
+     * @param day día a eliminar
+     */
     @Transactional
     public void deleteByDay(String day) {
         scheduleRepo.deleteByDay(day);
     }
 
+    /**
+     * Elimina todos los horarios.
+     */
     @Transactional
     public void deleteAllSchedules() {
         scheduleRepo.deleteAll();
     }
 
+    /**
+     * Convierte DTO a entidad.
+     * 
+     * @param dto DTO a convertir
+     * @return entidad schedule
+     */
     private schedule toEntity(ScheduleDTO dto) {
         schedule s = new schedule();
         s.setId(dto.getId());
@@ -253,6 +367,12 @@ public class ScheduleService {
         return s;
     }
 
+    /**
+     * Convierte entidad a DTO.
+     * 
+     * @param s entidad a convertir
+     * @return DTO
+     */
     private ScheduleDTO toDTO(schedule s) {
         ScheduleDTO dto = new ScheduleDTO();
         dto.setId(s.getId());
@@ -270,7 +390,10 @@ public class ScheduleService {
     }
 
     /**
-     * Envía notificaciones relacionadas con cambios en horarios
+     * Envía notificaciones relacionadas con cambios en horarios.
+     * 
+     * @param schedules lista de horarios
+     * @param action acción realizada (CREATED, UPDATED, DELETED)
      */
     private void sendScheduleNotifications(List<schedule> schedules, String action) {
         for (schedule s : schedules) {
@@ -282,13 +405,16 @@ public class ScheduleService {
                 sendStudentsScheduleNotification(s, action);
 
             } catch (Exception e) {
-                System.err.println("Error enviando notificación para horario " + s.getId() + ": " + e.getMessage());
+                logger.log(Level.WARNING, "Error enviando notificación para horario " + s.getId() + ": " + e.getMessage(), e);
             }
         }
     }
 
     /**
-     * Envía notificación al profesor sobre cambios en su horario
+     * Envía notificación al profesor sobre cambios en su horario.
+     * 
+     * @param s horario
+     * @param action acción realizada
      */
     private void sendTeacherScheduleNotification(schedule s, String action) {
         try {
@@ -360,25 +486,28 @@ public class ScheduleService {
             notificationService.sendNotificationAsync(emailNotification);
 
         } catch (Exception e) {
-            System.err.println("Error enviando notificación al profesor: " + e.getMessage());
+            logger.log(Level.WARNING, "Error enviando notificación al profesor: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Envía notificación a los coordinadores sobre cambios en el horario
+     * Envía notificación a los coordinadores sobre cambios en el horario.
+     * 
+     * @param s horario
+     * @param action acción realizada
      */
     private void sendStudentsScheduleNotification(schedule s, String action) {
         try {
             // Enviar notificación al coordinador sobre el cambio de horario
-            List<users> coordinators = userService.findUsersByRole("COORDINADOR");
+            List<User> coordinators = userService.findUsersByRole("COORDINADOR");
 
             if (coordinators.isEmpty()) {
-                System.err.println("No se encontraron coordinadores para enviar notificación");
+                logger.log(Level.WARNING, "No se encontraron coordinadores para enviar notificación");
                 return;
             }
 
             // Enviar a todos los coordinadores
-            for (users coordinator : coordinators) {
+            for (User coordinator : coordinators) {
                 // ===========================================
                 // 1. ENVIAR NOTIFICACIÓN IN-APP
                 // ===========================================
@@ -449,7 +578,7 @@ public class ScheduleService {
             }
 
         } catch (Exception e) {
-            System.err.println("Error enviando notificación a coordinadores: " + e.getMessage());
+            logger.log(Level.WARNING, "Error enviando notificación a coordinadores: " + e.getMessage(), e);
         }
     }
 }

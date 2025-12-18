@@ -33,7 +33,7 @@ public class People {
     private byte[] photoData;
 
     @OneToOne(mappedBy = "person", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private users user;
+    private User user;
 
     // Constructor vacío
     public People() {}

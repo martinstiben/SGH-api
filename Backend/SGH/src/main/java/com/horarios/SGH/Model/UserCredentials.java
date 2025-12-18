@@ -15,7 +15,7 @@ public class UserCredentials {
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     @NotNull(message = "El usuario es obligatorio")
-    private users user;
+    private User user;
 
     @Column(name = "password_hash", nullable = false, length = 72)
     @NotNull(message = "El hash de la contraseña es obligatorio")
@@ -53,7 +53,7 @@ public class UserCredentials {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public UserCredentials(users user, String passwordHash) {
+    public UserCredentials(User user, String passwordHash) {
         this();
         this.user = user;
         this.passwordHash = passwordHash;
@@ -67,11 +67,11 @@ public class UserCredentials {
         this.credentialId = credentialId;
     }
 
-    public users getUser() {
+    public User getUser() {
         return user;
     }
 
-    public void setUser(users user) {
+    public void setUser(User user) {
         this.user = user;
     }
 

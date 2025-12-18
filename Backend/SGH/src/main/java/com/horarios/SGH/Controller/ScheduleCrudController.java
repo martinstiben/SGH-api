@@ -131,10 +131,10 @@ public class ScheduleCrudController {
     })
     public List<ScheduleDTO> getAll(Authentication auth) {
         // Obtener el usuario autenticado
-        com.horarios.SGH.Model.users currentUser = scheduleService.getUserByEmail(auth.getName());
+        com.horarios.SGH.Model.User currentUser = scheduleService.getUserByEmail(auth.getName());
 
         // Si es estudiante, filtrar por su curso
-        if ("ESTUDIANTE".equals(currentUser.getRole().getRoleName())) {
+        if ("ESTUDIANTE".equals(currentUser.getFirstRole().getRoleName())) {
             if (currentUser.getCourse() == null) {
                 throw new RuntimeException("Estudiante no tiene curso asignado");
             }

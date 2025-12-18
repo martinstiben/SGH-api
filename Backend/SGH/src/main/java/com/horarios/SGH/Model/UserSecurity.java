@@ -14,7 +14,7 @@ public class UserSecurity {
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     @NotNull(message = "El usuario es obligatorio")
-    private users user;
+    private User user;
 
     @Column(name = "is_enabled", nullable = false)
     private boolean enabled = true;
@@ -57,7 +57,7 @@ public class UserSecurity {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public UserSecurity(users user) {
+    public UserSecurity(User user) {
         this();
         this.user = user;
     }
@@ -70,11 +70,11 @@ public class UserSecurity {
         this.securityId = securityId;
     }
 
-    public users getUser() {
+    public User getUser() {
         return user;
     }
 
-    public void setUser(users user) {
+    public void setUser(User user) {
         this.user = user;
     }
 
