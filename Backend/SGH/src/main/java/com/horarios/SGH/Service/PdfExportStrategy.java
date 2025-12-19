@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Estrategia de exportación a PDF.
@@ -41,14 +43,15 @@ public class PdfExportStrategy implements ExportStrategy {
     }
 
     private PdfPTable createScheduleTable(List<schedule> schedules, Font headerFont, Font cellFont) throws DocumentException {
-        String[] days = {"Lunes", "Martes", "Miércoles", "Jueves", "Viernes"};
+        String[] dayNames = {"Lunes", "Martes", "Miércoles", "Jueves", "Viernes"};
+        String[] dayKeys = {"Lunes", "Martes", "Miércoles", "Jueves", "Viernes"};
         List<String> times = generateTimes(schedules);
 
-        PdfPTable table = new PdfPTable(days.length + 1);
+        PdfPTable table = new PdfPTable(dayNames.length + 1);
         table.setWidthPercentage(100);
 
         // Configurar anchos de columna
-        float[] columnWidths = new float[days.length + 1];
+        float[] columnWidths = new float[dayNames.length + 1];
         columnWidths[0] = 1.5f; // Tiempo
         for (int i = 1; i < columnWidths.length; i++) {
             columnWidths[i] = 2f;
@@ -58,10 +61,10 @@ public class PdfExportStrategy implements ExportStrategy {
         BaseColor headerBg = new BaseColor(60, 120, 180);
 
         // Header: Tiempo + días
-        addTableHeader(table, days, headerFont, headerBg);
+        addTableHeader(table, dayNames, headerFont, headerBg);
 
         // Contenido de la tabla
-        addTableContent(table, schedules, times, days, cellFont);
+        addTableContent(table, schedules, times, dayKeys, cellFont);
 
         return table;
     }
@@ -105,27 +108,64 @@ public class PdfExportStrategy implements ExportStrategy {
     }
 
     private List<String> generateTimes(List<schedule> schedules) {
-        // Lógica simplificada para generar tiempos únicos
-        return List.of(
-            "9:00 AM - 9:30 AM",
-            "9:30 AM - 10:30 AM",
-            "10:30 AM - 11:30 AM",
-            "11:30 AM - 12:00 PM",
-            "12:00 PM - 1:00 PM",
-            "1:00 PM - 2:00 PM",
-            "2:00 PM - 3:00 PM",
-            "3:00 PM - 4:00 PM",
-            "4:00 PM - 5:00 PM"
-        );
+        Set<String> timeSet = new TreeSet<>();
+        // Always include break times first
+        timeSet.add("09:00");
+        timeSet.add("12:00");
+        for (schedule s : schedules) {
+            String startTime = s.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+            // Exclude schedules that coincide with break times
+            if (!startTime.equals("09:00") && !startTime.equals("12:00")) {
+                timeSet.add(startTime);
+            }
+        }
+        List<String> times = new java.util.ArrayList<>();
+        for (String startTime : timeSet) {
+            String[] parts = startTime.split(":");
+            int hours = Integer.parseInt(parts[0]);
+            int minutes = Integer.parseInt(parts[1]);
+            int endHours = hours;
+            int endMinutes = minutes;
+            if (startTime.equals("09:00")) {
+                // Descanso de 30 minutos
+                endMinutes += 30;
+            } else {
+                // Clases de 1 hora
+                endHours += 1;
+            }
+            String endTime = String.format("%02d:%02d", endHours, endMinutes);
+            String periodStart = formatTime(startTime);
+            String periodEnd = formatTime(endTime);
+            times.add(periodStart + " - " + periodEnd);
+        }
+        return times;
+    }
+
+    private String formatTime(String time) {
+        String[] parts = time.split(":");
+        int hours = Integer.parseInt(parts[0]);
+        int minutes = Integer.parseInt(parts[1]);
+        String period = hours >= 12 ? "PM" : "AM";
+        int displayHours = hours % 12;
+        if (displayHours == 0) displayHours = 12;
+        return String.format("%d:%02d %s", displayHours, minutes, period);
     }
 
     private schedule getScheduleForTimeAndDay(List<schedule> schedules, String time, String day) {
-        // Lógica simplificada para encontrar horario
-        return schedules.stream()
-            .filter(s -> s.getDay().equals(day) &&
-                    time.contains(s.getStartTime().format(DateTimeFormatter.ofPattern("h:mm a"))))
-            .findFirst()
-            .orElse(null);
+        String[] timeParts = time.split(" - ");
+        String startTimeStr = timeParts[0];
+        String[] hmp = startTimeStr.split("[: ]");
+        int hours = Integer.parseInt(hmp[0]);
+        if (hmp[2].equals("PM") && hours != 12) hours += 12;
+        if (hmp[2].equals("AM") && hours == 12) hours = 0;
+        String scheduleTime = String.format("%02d:%s", hours, hmp[1]);
+
+        for (schedule s : schedules) {
+            if (s.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm")).equals(scheduleTime) && s.getDay().equalsIgnoreCase(day)) {
+                return s;
+            }
+        }
+        return null;
     }
 
     private String getScheduleContent(schedule s, String time) {
@@ -134,9 +174,15 @@ public class PdfExportStrategy implements ExportStrategy {
         } else if (time.equals("12:00 PM - 1:00 PM")) {
             return "Almuerzo";
         } else if (s != null) {
-            String docente = s.getTeacherId() != null ? s.getTeacherId().getTeacherName() : "";
-            String materia = s.getSubjectId() != null ? s.getSubjectId().getSubjectName() : "";
-            return docente + "/" + materia;
+            String docente = (s.getTeacherId() != null && s.getTeacherId().getTeacherName() != null) ? s.getTeacherId().getTeacherName() : "";
+            String materia = (s.getSubjectId() != null && s.getSubjectId().getSubjectName() != null) ? s.getSubjectId().getSubjectName() : "";
+            if (!docente.isEmpty() && !materia.isEmpty()) {
+                return docente + " - " + materia;
+            } else if (!docente.isEmpty()) {
+                return docente;
+            } else if (!materia.isEmpty()) {
+                return materia;
+            }
         }
         return "";
     }

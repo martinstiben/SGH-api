@@ -33,6 +33,9 @@ public class ScheduleExportServiceRefactored {
      */
     public byte[] exportByCourse(Integer courseId, ExportStrategy strategy) throws Exception {
         List<schedule> schedules = scheduleRepository.findByCourseId(courseId);
+        if (schedules.isEmpty()) {
+            throw new Exception("No se encontraron horarios para el curso con ID: " + courseId);
+        }
         String title = "📘 Horario del Curso";
         return strategy.export(schedules, title);
     }
@@ -46,6 +49,9 @@ public class ScheduleExportServiceRefactored {
      */
     public byte[] exportByTeacher(Integer teacherId, ExportStrategy strategy) throws Exception {
         List<schedule> schedules = scheduleRepository.findByTeacherId(teacherId);
+        if (schedules.isEmpty()) {
+            throw new Exception("No se encontraron horarios para el profesor con ID: " + teacherId);
+        }
 
         // Obtener nombre del profesor para el título
         String teacherName = schedules.stream()
@@ -65,7 +71,7 @@ public class ScheduleExportServiceRefactored {
      * @return Array de bytes con el contenido exportado
      */
     public byte[] exportAllSchedules(ExportStrategy strategy) throws Exception {
-        List<schedule> schedules = scheduleRepository.findAll();
+        List<schedule> schedules = scheduleRepository.findAllWithRelations();
         String title = "📚 HORARIO GENERAL - TODOS LOS CURSOS";
         return strategy.export(schedules, title);
     }
@@ -77,7 +83,7 @@ public class ScheduleExportServiceRefactored {
      * @return Array de bytes con el contenido exportado
      */
     public byte[] exportAllTeachersSchedules(ExportStrategy strategy) throws Exception {
-        List<schedule> schedules = scheduleRepository.findAll();
+        List<schedule> schedules = scheduleRepository.findAllWithRelations();
         String title = "👨‍🏫 HORARIO GENERAL - TODOS LOS PROFESORES";
         return strategy.export(schedules, title);
     }
