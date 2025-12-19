@@ -27,6 +27,11 @@ public class courses {
     @JoinColumn(name = "grade_director_id")
     private teachers gradeDirector;
 
+    // Relación con profesor y materia asignados al curso
+    @ManyToOne
+    @JoinColumn(name = "teacher_subject_id")
+    private TeacherSubject teacherSubject;
+
     // Relaciones normalizadas
     @OneToMany(mappedBy = "courseId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<schedule> schedules;
@@ -63,6 +68,14 @@ public class courses {
 
     public void setGradeDirector(teachers gradeDirector) {
         this.gradeDirector = gradeDirector;
+    }
+
+    public TeacherSubject getTeacherSubject() {
+        return teacherSubject;
+    }
+
+    public void setTeacherSubject(TeacherSubject teacherSubject) {
+        this.teacherSubject = teacherSubject;
     }
 
     // Getters y setters para relaciones
