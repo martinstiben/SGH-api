@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 @RequestMapping("/auth")
 @CrossOrigin(origins = {"http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000", "http://localhost:3001"})
 @Tag(name = "Autenticación", description = "Endpoints para autenticación y registro de usuarios")
-public class AuthController {
+public class AuthController extends AbstractController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
@@ -69,11 +69,11 @@ public class AuthController {
         try {
             String message = service.initiateLogin(request);
             logger.info("Login initiated, code sent");
-            return ResponseEntity.ok(Map.of("message", message));
+            return successResponse(message);
         } catch (Exception e) {
             logger.error("Login failed: {}", e.getMessage());
             logger.error("Login error details:", e);
-            return ResponseEntity.status(401).body(Map.of("error", "Credenciales inválidas"));
+            return ResponseEntity.status(401).body(errorResponse("Credenciales inválidas").getBody());
         }
     }
 
@@ -102,7 +102,7 @@ public class AuthController {
         } catch (Exception e) {
             logger.error("Code verification failed: {}", e.getMessage());
             logger.error("Code verification error details:", e);
-            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -124,16 +124,16 @@ public class AuthController {
             logger.info("Registrando nuevo usuario: {}", request.getEmail());
             String msg = service.register(request.getName(), request.getEmail(), request.getPassword(), request.getRole(), request.getSubjectId(), request.getCourseId());
             logger.info("Usuario registrado exitosamente: {}", request.getEmail());
-            return ResponseEntity.ok(Map.of("message", msg));
+            return successResponse(msg);
         } catch (IllegalArgumentException ex) {
             logger.warn("Error de validación en registro: {}", ex.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            return errorResponse(ex.getMessage());
         } catch (IllegalStateException ex) {
             logger.warn("Error de estado en registro: {}", ex.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            return errorResponse(ex.getMessage());
         } catch (Exception ex) {
             logger.error("Error interno en registro:", ex);
-            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+            return handleException(ex);
         }
     }
 
@@ -151,14 +151,14 @@ public class AuthController {
                 String token = authHeader.substring(7);
                 tokenRevocationService.revokeToken(token);
                 logger.info("Token revocado exitosamente");
-                return ResponseEntity.ok(Map.of("message", "Sesión cerrada exitosamente"));
+                return successResponse("Sesión cerrada exitosamente");
             } else {
                 logger.warn("Intento de logout sin token válido");
-                return ResponseEntity.badRequest().body(Map.of("error", "Token no proporcionado"));
+                return errorResponse("Token no proporcionado");
             }
         } catch (Exception e) {
             logger.error("Error al cerrar sesión:", e);
-            return ResponseEntity.status(500).body(Map.of("error", "Error al cerrar sesión"));
+            return handleException(e);
         }
     }
 
@@ -189,7 +189,7 @@ public class AuthController {
             return ResponseEntity.ok(profile);
         } catch (Exception e) {
             logger.error("Error obteniendo perfil:", e);
-            return ResponseEntity.status(500).body(Map.of("error", "Error obteniendo perfil"));
+            return handleException(e);
         }
     }
 
@@ -234,16 +234,16 @@ public class AuthController {
             }
 
             logger.info("Perfil actualizado correctamente");
-            return ResponseEntity.ok(Map.of("message", "Perfil actualizado correctamente"));
+            return successResponse("Perfil actualizado correctamente");
         } catch (IllegalArgumentException e) {
             logger.warn("Error de validación en actualización de perfil: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return errorResponse(e.getMessage());
         } catch (IllegalStateException e) {
             logger.warn("Error de estado en actualización de perfil: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return errorResponse(e.getMessage());
         } catch (Exception e) {
             logger.error("Error actualizando perfil:", e); // Para debugging
-            return ResponseEntity.status(500).body(Map.of("error", "Error actualizando perfil: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -271,10 +271,17 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("roles", roles));
         } catch (Exception e) {
             logger.error("Error obteniendo roles:", e);
-            return ResponseEntity.status(500).body(Map.of("error", "Error obteniendo roles"));
+            return handleException(e);
         }
     }
 
+    /**
+     * Obtiene la etiqueta legible para un rol del sistema.
+     * Método auxiliar para convertir códigos de rol a etiquetas de usuario.
+     *
+     * @param role Código del rol (ej: "MAESTRO", "ESTUDIANTE")
+     * @return Etiqueta legible del rol
+     */
     private String getRoleLabel(String role) {
         switch (role) {
             case "MAESTRO":
@@ -326,7 +333,7 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("pendingUsers", result));
         } catch (Exception e) {
             logger.error("Error obteniendo usuarios pendientes:", e); // Para debugging
-            return ResponseEntity.status(500).body(Map.of("error", "Error obteniendo usuarios pendientes: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -348,13 +355,13 @@ public class AuthController {
             logger.info("Aprobando usuario con ID: {}", userId);
             String message = service.approveUser(userId);
             logger.info("Usuario aprobado exitosamente: {}", userId);
-            return ResponseEntity.ok(Map.of("message", message));
+            return successResponse(message);
         } catch (IllegalArgumentException | IllegalStateException e) {
             logger.warn("Error en aprobación de usuario {}: {}", userId, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return errorResponse(e.getMessage());
         } catch (Exception e) {
             logger.error("Error interno en aprobación de usuario {}:", userId, e);
-            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+            return handleException(e);
         }
     }
 
@@ -375,13 +382,13 @@ public class AuthController {
             logger.info("Solicitud de restablecimiento de contraseña para: {}", request.getEmail());
             String message = service.requestPasswordReset(request.getEmail());
             logger.info("Código de restablecimiento enviado exitosamente a: {}", request.getEmail());
-            return ResponseEntity.ok(Map.of("message", message));
+            return successResponse(message);
         } catch (IllegalArgumentException | IllegalStateException e) {
             logger.warn("Error en solicitud de restablecimiento para {}: {}", request.getEmail(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return errorResponse(e.getMessage());
         } catch (Exception e) {
             logger.error("Error interno en solicitud de restablecimiento para {}:", request.getEmail(), e);
-            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+            return handleException(e);
         }
     }
 
@@ -402,13 +409,13 @@ public class AuthController {
             logger.info("Verificando código de restablecimiento para: {}", request.getEmail());
             String message = service.resetPassword(request.getEmail(), request.getVerificationCode(), request.getNewPassword());
             logger.info("Contraseña restablecida exitosamente para: {}", request.getEmail());
-            return ResponseEntity.ok(Map.of("message", message));
+            return successResponse(message);
         } catch (IllegalArgumentException | IllegalStateException e) {
             logger.warn("Error en verificación de código para {}: {}", request.getEmail(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return errorResponse(e.getMessage());
         } catch (Exception e) {
             logger.error("Error interno en verificación de código para {}:", request.getEmail(), e);
-            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+            return handleException(e);
         }
     }
 
@@ -432,13 +439,13 @@ public class AuthController {
             logger.info("Rechazando usuario {} con motivo: {}", userId, reason);
             String message = service.rejectUser(userId, reason);
             logger.info("Usuario {} rechazado exitosamente", userId);
-            return ResponseEntity.ok(Map.of("message", message));
+            return successResponse(message);
         } catch (IllegalArgumentException | IllegalStateException e) {
             logger.warn("Error en rechazo de usuario {}: {}", userId, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return errorResponse(e.getMessage());
         } catch (Exception e) {
             logger.error("Error interno en rechazo de usuario {}:", userId, e);
-            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor"));
+            return handleException(e);
         }
     }
 }

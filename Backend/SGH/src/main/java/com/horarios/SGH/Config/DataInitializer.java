@@ -1,5 +1,7 @@
 package com.horarios.SGH.Config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,14 +29,55 @@ import com.horarios.SGH.Model.Role;
 
 import org.springframework.boot.CommandLineRunner;
 import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.List;
 
+/**
+ * Configuración para inicialización de datos en la base de datos.
+ * Implementa el patrón Command para ejecutar inicialización de datos al arranque.
+ * Aplica el principio de Responsabilidad Única delegando lógica específica a métodos auxiliares.
+ *
+ * @author Sistema SGH
+ * @version 1.0
+ */
 @Configuration
 public class DataInitializer {
 
-    @Value("${app.master.name:master}")
+    private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
+
+    // Constantes para configuración de usuario master
+    private static final String DEFAULT_MASTER_USERNAME = "master";
+    private static final String DEFAULT_MASTER_PASSWORD = "Master$2025!";
+
+    // Constantes para roles
+    private static final String ROLE_MAESTRO = "MAESTRO";
+    private static final String ROLE_ESTUDIANTE = "ESTUDIANTE";
+    private static final String ROLE_COORDINADOR = "COORDINADOR";
+    private static final String ROLE_DIRECTOR_AREA = "DIRECTOR_DE_AREA";
+
+    // Constantes para materias
+    private static final List<String> SUBJECT_NAMES = Arrays.asList(
+        "Matemáticas", "Física", "Química", "Biología", "Ética", "Historia", "Literatura", "Inglés"
+    );
+
+    // Constantes para profesores
+    private static final List<String> TEACHER_NAMES = Arrays.asList(
+        "Juan Pérez", "María García", "Carlos López", "Ana Rodríguez",
+        "Pedro Martínez", "Laura Sánchez", "Miguel Torres", "Sofia Ramírez"
+    );
+
+    // Constantes para cursos
+    private static final List<String> COURSE_NAMES = Arrays.asList(
+        "1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B",
+        "5A", "5B", "6A", "6B", "7A", "7B", "8A", "8B"
+    );
+
+    private static final List<String> UNASSIGNED_COURSES = Arrays.asList("9A", "9B");
+
+    @Value("${app.master.name:" + DEFAULT_MASTER_USERNAME + "}")
     private String masterUsername;
 
-    @Value("${app.master.password:Master$2025!}")
+    @Value("${app.master.password:" + DEFAULT_MASTER_PASSWORD + "}")
     private String masterPassword;
 
     @Bean
@@ -46,16 +89,16 @@ public class DataInitializer {
                 rolesRepo.save(new Role("ESTUDIANTE", "Rol de estudiante"));
                 rolesRepo.save(new Role("COORDINADOR", "Rol de coordinador"));
                 rolesRepo.save(new Role("DIRECTOR_DE_AREA", "Rol de director de área"));
-                System.out.println(">> Roles iniciales creados");
+                logger.info("Roles iniciales creados");
             } else {
-                System.out.println(">> Roles ya existen");
+                logger.info("Roles ya existen");
             }
             
             // Ahora crear el usuario master
             if (!repo.existsByUserName(masterUsername)) {
                 // Verificar si ya existe una persona con este email
                 if (peopleRepo.findByEmail(masterUsername).isPresent()) {
-                    System.out.println(">> Persona con email master ya existe, saltando creación");
+                    logger.info("Persona con email master ya existe, saltando creación");
                     return;
                 }
 
@@ -79,7 +122,7 @@ public class DataInitializer {
                 // Obtener rol COORDINADOR
                 Role coordinadorRole = rolesRepo.findByRoleName("COORDINADOR")
                     .orElseGet(() -> {
-                        System.out.println(">> Rol COORDINADOR no encontrado, creando...");
+                        logger.info("Rol COORDINADOR no encontrado, creando...");
                         return rolesRepo.save(new Role("COORDINADOR", "Rol de coordinador"));
                     });
 
@@ -88,13 +131,13 @@ public class DataInitializer {
                 u.addRole(coordinadorRole);
                 repo.save(u);
 
-                System.out.println(">> Master creado: " + masterUsername);
+                logger.info("Master creado: {}", masterUsername);
             } else {
-                System.out.println(">> Master ya existe: " + masterUsername);
+                logger.info("Master ya existe: {}", masterUsername);
             }
 
             long total = repo.count();
-            System.out.println(">> Usuarios totales: " + total + " (sin límite)");
+            logger.info("Usuarios totales: {} (sin límite)", total);
         };
     }
 
@@ -138,7 +181,7 @@ public class DataInitializer {
                 english.setSubjectName("Inglés");
                 subjectRepo.save(english);
 
-                System.out.println(">> Materias iniciales creadas");
+                logger.info("Materias iniciales creadas");
             } else {
                 // Si ya existen, cargarlas
                 math = subjectRepo.findBySubjectName("Matemáticas");
@@ -279,7 +322,7 @@ public class DataInitializer {
             }
 
             if (teachersCreated > 0 || availabilitiesCreated > 0) {
-                System.out.println(">> Profesores adicionales creados: " + teachersCreated + ", disponibilidades: " + availabilitiesCreated);
+                logger.info("Profesores adicionales creados: {}, disponibilidades: {}", teachersCreated, availabilitiesCreated);
             }
 
             // Crear cursos adicionales si no existen específicamente
@@ -383,7 +426,7 @@ public class DataInitializer {
             }
 
             if (assignedCreated > 0 || unassignedCreated > 0) {
-                System.out.println(">> Cursos de prueba creados (" + assignedCreated + " con profesores, " + unassignedCreated + " sin asignar)");
+                logger.info("Cursos de prueba creados ({} con profesores, {} sin asignar)", assignedCreated, unassignedCreated);
             }
 
             // Resumen final de datos iniciales
@@ -393,13 +436,13 @@ public class DataInitializer {
             long totalAvailabilities = availabilityRepo.count();
             long totalAssignments = teacherSubjectRepo.count();
 
-            System.out.println(">> DATOS INICIALES COMPLETOS:");
-            System.out.println("   - Materias: " + totalSubjects);
-            System.out.println("   - Profesores: " + totalTeachers);
-            System.out.println("   - Cursos: " + totalCourses + " (" + assignedCreated + " con profesor, " + unassignedCreated + " sin asignar)");
-            System.out.println("   - Disponibilidades: " + totalAvailabilities);
-            System.out.println("   - Asignaciones profesor-materia: " + totalAssignments);
-            System.out.println(">> Listo para testing de generación automática de horarios");
+            logger.info("DATOS INICIALES COMPLETOS:");
+            logger.info("   - Materias: {}", totalSubjects);
+            logger.info("   - Profesores: {}", totalTeachers);
+            logger.info("   - Cursos: {} ({} con profesor, {} sin asignar)", totalCourses, assignedCreated, unassignedCreated);
+            logger.info("   - Disponibilidades: {}", totalAvailabilities);
+            logger.info("   - Asignaciones profesor-materia: {}", totalAssignments);
+            logger.info("Listo para testing de generación automática de horarios");
         };
     }
 }

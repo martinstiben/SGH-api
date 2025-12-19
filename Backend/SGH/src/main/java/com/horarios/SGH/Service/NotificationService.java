@@ -6,7 +6,8 @@ import com.horarios.SGH.Model.NotificationStatus;
 import com.horarios.SGH.Model.NotificationType;
 import com.horarios.SGH.Repository.INotificationLogRepository;
 import jakarta.mail.internet.MimeMessage;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -24,13 +25,36 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Servicio principal para el envío de notificaciones por correo electrónico
- * Sistema de Gestión de Horarios (SGH)
+ * Servicio principal para el envío de notificaciones por correo electrónico.
+ * Gestiona notificaciones asíncronas con reintentos automáticos y plantillas HTML.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de gestionar notificaciones por email
+ * - OCP: Abierto para extensión de tipos de notificación
+ * - DIP: Depende de abstracciones (JavaMailSender, repositorios)
+ *
+ * Funcionalidades:
+ * - Envío asíncrono con pool de hilos dedicado
+ * - Sistema de reintentos automáticos con backoff
+ * - Plantillas HTML optimizadas para Gmail
+ * - Envío masivo por roles
+ * - Logging detallado de notificaciones
+ * - Validación de tipos por rol de usuario
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
-@Slf4j
+
 @Service
 @EnableAsync
 public class NotificationService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
+    
+    /**
+     * Logger estático para compatibilidad con código existente.
+     */
+    private static final Logger log = logger;
     
     @Autowired
     private JavaMailSender mailSender;
@@ -53,7 +77,11 @@ public class NotificationService {
     private final ExecutorService emailExecutor = Executors.newFixedThreadPool(5);
     
     /**
-     * Valida y prepara notificación
+     * Valida y prepara una notificación para envío.
+     * Realiza validación de tipo por rol y crea registro de log en base de datos.
+     *
+     * @param notification DTO con los datos de la notificación a validar
+     * @throws IllegalArgumentException si el tipo de notificación no es válido para el rol
      */
     public void validateAndPrepareNotification(NotificationDTO notification) {
         log.info("Validando notificación para: {}", notification.getRecipientEmail());

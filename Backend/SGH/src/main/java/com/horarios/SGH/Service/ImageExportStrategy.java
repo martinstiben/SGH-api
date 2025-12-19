@@ -10,11 +10,33 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Estrategia de exportación a imagen PNG.
- * Implementa la interfaz ExportStrategy para exportar horarios en formato de imagen.
+ * Estrategia de exportación a imagen PNG para horarios académicos.
+ * Implementa el patrón Strategy para exportar horarios en formato de imagen.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de exportar a imagen PNG
+ * - LSP: Intercambiable con otras estrategias de exportación
+ * - DIP: Depende de la interfaz ExportStrategy
+ *
+ * Características:
+ * - Genera imagen PNG con tabla de horarios
+ * - Diseño simple y legible
+ * - Colores diferenciados para descansos y almuerzos
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
 public class ImageExportStrategy implements ExportStrategy {
 
+    /**
+     * Exporta la lista de horarios a un archivo de imagen PNG.
+     * Crea una imagen con una tabla que muestra el horario formateado.
+     *
+     * @param schedules Lista de horarios a exportar
+     * @param title Título a mostrar en la parte superior de la imagen
+     * @return Array de bytes con el contenido de la imagen PNG
+     * @throws Exception si ocurre un error durante la generación de la imagen
+     */
     @Override
     public byte[] export(List<schedule> schedules, String title) throws Exception {
         List<String> times = generateTimes(schedules);
@@ -47,17 +69,43 @@ public class ImageExportStrategy implements ExportStrategy {
         return outputStream.toByteArray();
     }
 
+    /**
+     * Configura el contexto gráfico para el dibujo de la imagen.
+     * Establece colores de fondo y texto por defecto.
+     *
+     * @param g Contexto gráfico 2D
+     * @param width Ancho de la imagen
+     * @param height Alto de la imagen
+     */
     private void setupGraphics(Graphics2D g, int width, int height) {
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, width, height);
         g.setColor(new Color(30, 30, 30));
     }
 
+    /**
+     * Dibuja el título en la parte superior de la imagen.
+     *
+     * @param g Contexto gráfico donde dibujar
+     * @param title Texto del título
+     * @param padding Espacio de relleno desde el borde superior
+     */
     private void drawTitle(Graphics2D g, String title, int padding) {
         g.setFont(new Font("Arial", Font.BOLD, 18));
         g.drawString(title, 20, padding);
     }
 
+    /**
+     * Dibuja la tabla completa con horarios en la imagen.
+     * Incluye encabezados de días y contenido de cada celda.
+     *
+     * @param g Contexto gráfico donde dibujar
+     * @param schedules Lista de horarios a mostrar
+     * @param times Lista de intervalos de tiempo
+     * @param days Array de nombres de días
+     * @param padding Espacio de relleno
+     * @param rowHeight Alto de cada fila
+     */
     private void drawTable(Graphics2D g, List<schedule> schedules, List<String> times, String[] days, int padding, int rowHeight) {
         int y = padding + rowHeight;
 
@@ -86,6 +134,13 @@ public class ImageExportStrategy implements ExportStrategy {
         }
     }
 
+    /**
+     * Genera la lista de intervalos de tiempo para el horario.
+     * Incluye tiempos fijos para clases, descansos y almuerzo.
+     *
+     * @param schedules Lista de horarios (no utilizada en esta implementación simplificada)
+     * @return Lista de intervalos de tiempo formateados
+     */
     private List<String> generateTimes(List<schedule> schedules) {
         // Lógica simplificada para generar tiempos únicos
         return List.of(
@@ -101,6 +156,14 @@ public class ImageExportStrategy implements ExportStrategy {
         );
     }
 
+    /**
+     * Busca un horario específico para un tiempo y día determinados.
+     *
+     * @param schedules Lista de horarios a buscar
+     * @param time Intervalo de tiempo a buscar
+     * @param day Día de la semana
+     * @return Horario encontrado o null si no existe
+     */
     private schedule getScheduleForTimeAndDay(List<schedule> schedules, String time, String day) {
         // Lógica simplificada para encontrar horario
         return schedules.stream()
@@ -110,6 +173,14 @@ public class ImageExportStrategy implements ExportStrategy {
             .orElse(null);
     }
 
+    /**
+     * Genera el contenido de celda para un horario específico.
+     * Maneja casos especiales como descansos y almuerzos.
+     *
+     * @param s Horario a procesar (puede ser null)
+     * @param time Intervalo de tiempo para determinar el contenido
+     * @return Contenido formateado para la celda
+     */
     private String getScheduleContent(schedule s, String time) {
         if (time.equals("9:00 AM - 9:30 AM")) {
             return "Descanso";

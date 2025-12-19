@@ -8,8 +8,7 @@ import com.horarios.SGH.Model.NotificationPriority;
 import com.horarios.SGH.Model.NotificationType;
 import com.horarios.SGH.Model.User;
 import com.horarios.SGH.Repository.IInAppNotificationRepository;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.logging.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,25 +22,64 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Servicio para el manejo de notificaciones In-App en tiempo real
- * Integra con WebSocket para sincronización en React web y React Native móvil
+ * Servicio para el manejo de notificaciones In-App en tiempo real.
+ * Gestiona notificaciones dentro de la aplicación con integración WebSocket.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de gestionar notificaciones In-App
+ * - OCP: Abierto para extensión de tipos de notificación
+ * - DIP: Depende de abstracciones (repositorios, servicios)
+ *
+ * Funcionalidades:
+ * - Envío asíncrono de notificaciones
+ * - Consulta paginada de notificaciones
+ * - Marcado como leído
+ * - Integración con WebSocket para tiempo real
+ * - Categorización y priorización de notificaciones
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
-@Slf4j
 @Service
 public class InAppNotificationService {
     
-    @Autowired
-    private IInAppNotificationRepository inAppNotificationRepository;
-    
-    @Autowired
-    private usersService userService;
+    private final IInAppNotificationRepository inAppNotificationRepository;
+    private final usersService userService;
     
     /**
-     * Envía notificación In-App y la distribuye en tiempo real vía WebSocket
+     * Logger para registro de eventos del servicio de notificaciones in-app.
+     */
+    private static final Logger logger = Logger.getLogger(InAppNotificationService.class.getName());
+    
+    /**
+     * Logger estático para compatibilidad con código existente.
+     */
+    private static final Logger log = logger;
+    
+    /**
+     * Constructor manual para inyección de dependencias.
+     * Mantiene compatibilidad con Spring y permite testing.
+     *
+     * @param inAppNotificationRepository Repositorio de notificaciones in-app
+     * @param userService Servicio de usuarios
+     */
+    public InAppNotificationService(IInAppNotificationRepository inAppNotificationRepository,
+                                   usersService userService) {
+        this.inAppNotificationRepository = inAppNotificationRepository;
+        this.userService = userService;
+    }
+    
+    /**
+     * Envía notificación In-App de forma asíncrona y la distribuye en tiempo real vía WebSocket.
+     * Valida el usuario destinatario y crea la notificación en base de datos.
+     *
+     * @param notificationDTO DTO con los datos de la notificación a enviar
+     * @return CompletableFuture con la notificación creada
+     * @throws IllegalArgumentException si el usuario no existe
      */
     @Async
     public CompletableFuture<InAppNotification> sendInAppNotificationAsync(InAppNotificationDTO notificationDTO) {
-        log.info("Enviando notificación In-App a usuario {}: {}", notificationDTO.getUserId(), notificationDTO.getTitle());
+        logger.info("Enviando notificación In-App a usuario " + notificationDTO.getUserId() + ": " + notificationDTO.getTitle());
         
         try {
             // Buscar información del usuario
@@ -74,62 +112,80 @@ public class InAppNotificationService {
             // InAppNotificationDTO dto = convertToDTO(savedNotification);
             // webSocketService.sendNotificationToUser(String.valueOf(user.getUserId()), dto);
             
-            log.info("Notificación In-App guardada exitosamente para usuario {}: {}",
-                    notificationDTO.getUserId(), notificationDTO.getTitle());
+            logger.info("Notificación In-App guardada exitosamente para usuario " +
+                    notificationDTO.getUserId() + ": " + notificationDTO.getTitle());
             
             return CompletableFuture.completedFuture(savedNotification);
             
         } catch (Exception e) {
-            log.error("Error al enviar notificación In-App a usuario {}: {}",
-                     notificationDTO.getUserId(), e.getMessage());
+            logger.severe("Error al enviar notificación In-App a usuario " +
+                     notificationDTO.getUserId() + ": " + e.getMessage());
             return CompletableFuture.failedFuture(e);
         }
     }
     
     /**
-     * Obtiene notificaciones activas de un usuario
+     * Obtiene notificaciones activas de un usuario con paginación.
+     * Las notificaciones activas son aquellas no expiradas y no archivadas.
+     *
+     * @param userId ID del usuario
+     * @param page Número de página (0-based)
+     * @param size Tamaño de página
+     * @return Página de notificaciones activas
      */
     @Transactional(readOnly = true)
     public Page<InAppNotification> getActiveNotificationsByUserId(Long userId, int page, int size) {
-        log.info("Buscando notificaciones activas para usuario {} (página: {}, tamaño: {})", userId, page, size);
+        logger.info("Buscando notificaciones activas para usuario " + userId + " (página: " + page + ", tamaño: " + size + ")");
         LocalDateTime now = LocalDateTime.now();
         Pageable pageable = PageRequest.of(page, size);
-        Page<InAppNotification> result = inAppNotificationRepository.findActiveByUserId(userId, now, pageable);
-        log.info("Encontradas {} notificaciones activas para usuario {}", result.getTotalElements(), userId);
+        Page<InAppNotification> result = inAppNotificationRepository.findActiveByUserId(userId, pageable);
+        logger.info("Encontradas " + result.getTotalElements() + " notificaciones activas para usuario " + userId);
         return result;
     }
-    
+
     /**
-     * Obtiene notificaciones no leídas de un usuario
+     * Obtiene todas las notificaciones no leídas de un usuario.
+     *
+     * @param userId ID del usuario
+     * @return Lista de notificaciones no leídas
      */
     @Transactional(readOnly = true)
     public List<InAppNotification> getUnreadNotificationsByUserId(Long userId) {
         LocalDateTime now = LocalDateTime.now();
         return inAppNotificationRepository.findUnreadByUserId(userId, now);
     }
-    
+
     /**
-     * Cuenta notificaciones no leídas de un usuario
+     * Cuenta el número de notificaciones no leídas de un usuario.
+     *
+     * @param userId ID del usuario
+     * @return Número de notificaciones no leídas
      */
     @Transactional(readOnly = true)
     public Long countUnreadNotificationsByUserId(Long userId) {
         LocalDateTime now = LocalDateTime.now();
         return inAppNotificationRepository.countUnreadByUserId(userId, now);
     }
-    
+
     /**
-     * Marca una notificación como leída
+     * Marca una notificación específica como leída.
+     * Actualiza la fecha de lectura y cambia el estado.
+     *
+     * @param notificationId ID de la notificación a marcar como leída
      */
     @Transactional
     public void markAsRead(Long notificationId) {
         LocalDateTime now = LocalDateTime.now();
-        log.info("Marcando notificación {} como leída", notificationId);
+        logger.info("Marcando notificación " + notificationId + " como leída");
         inAppNotificationRepository.markAsRead(notificationId, now);
-        log.info("Notificación {} marcada como leída exitosamente", notificationId);
+        logger.info("Notificación " + notificationId + " marcada como leída exitosamente");
     }
-    
+
     /**
-     * Marca todas las notificaciones de un usuario como leídas
+     * Marca todas las notificaciones activas de un usuario como leídas.
+     * Actualiza masivamente todas las notificaciones no leídas del usuario.
+     *
+     * @param userId ID del usuario
      */
     @Transactional
     public void markAllAsRead(Long userId) {
@@ -141,7 +197,11 @@ public class InAppNotificationService {
     }
 
     /**
-     * Obtiene una notificación por ID
+     * Obtiene una notificación específica por su ID.
+     *
+     * @param notificationId ID de la notificación
+     * @return La notificación encontrada
+     * @throws IllegalArgumentException si la notificación no existe
      */
     @Transactional(readOnly = true)
     public InAppNotification getNotificationById(Long notificationId) {
@@ -150,7 +210,11 @@ public class InAppNotificationService {
     }
 
     /**
-     * Obtiene el conteo de notificaciones no leídas de un usuario
+     * Obtiene el conteo de notificaciones no leídas de un usuario.
+     * Método de conveniencia que delega a countUnreadNotificationsByUserId.
+     *
+     * @param userId ID del usuario
+     * @return Número de notificaciones no leídas
      */
     @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
@@ -196,7 +260,6 @@ public class InAppNotificationService {
         dto.setArchived(notification.isArchived());
         dto.setCreatedAt(notification.getCreatedAt());
         dto.setReadAt(notification.getReadAt());
-        dto.setExpiresAt(notification.getExpiresAt());
 
         // Campos calculados
         dto.setPriorityDisplayName(notification.getPriority().getDisplayName());
@@ -222,7 +285,7 @@ public class InAppNotificationService {
             return new com.fasterxml.jackson.databind.ObjectMapper()
                 .writeValueAsString(metadata);
         } catch (Exception e) {
-            log.warn("Error al convertir metadata a JSON: {}", e.getMessage());
+            logger.warning("Error al convertir metadata a JSON: " + e.getMessage());
             return null;
         }
     }

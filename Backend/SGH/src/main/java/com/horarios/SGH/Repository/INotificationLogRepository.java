@@ -5,23 +5,104 @@ import com.horarios.SGH.Model.NotificationStatus;
 import com.horarios.SGH.Model.NotificationType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Repositorio para el manejo de logs de notificaciones
- * Proporciona acceso a la base de datos para operaciones CRUD sobre NotificationLog
+ * Repositorio especializado para logs de notificaciones siguiendo principios SOLID.
+ * Extiende AbstractRepository para operaciones comunes y añade consultas específicas del dominio de logging.
+ *
+ * Implementa el patrón Repository con consultas optimizadas para auditoría y monitoreo de notificaciones.
+ * Aplica el patrón Factory a través de RepositoryFactory para consultas dinámicas de logs.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única - gestión de logs de notificaciones
+ * - OCP: Extensible mediante Specifications para filtros de auditoría
+ * - LSP: Compatible con JpaRepository y AbstractRepository
+ * - ISP: Interface específica para logs de notificación
+ * - DIP: Depende de abstracciones, no implementaciones concretas
+ *
+ * Patrón Abstract aplicado: Extiende AbstractRepository para operaciones comunes de auditoría
+ * Patrón Factory aplicado: Usa RepositoryFactory para consultas dinámicas de logs
+ *
+ * @author Sistema SGH
+ * @version 2.0 - Refactorizado con patrones SOLID
  */
 @Repository
-public interface INotificationLogRepository extends JpaRepository<NotificationLog, Long> {
-    
+public interface INotificationLogRepository extends AbstractRepository<NotificationLog, Long> {
+
+    // ==================== IMPLEMENTACIÓN DE MÉTODOS ABSTRACTOS ====================
+
     /**
-     * Busca notificaciones pendientes de envío
+     * {@inheritDoc}
+     * Para logs de notificación, considera "activos" todos los registros (no hay eliminación lógica).
+     */
+    @Override
+    @Query("SELECT nl FROM notification_logs nl ORDER BY nl.createdAt DESC")
+    Page<NotificationLog> findActive(Pageable pageable);
+
+    /**
+     * {@inheritDoc}
+     * Busca logs por fecha de creación en un rango.
+     */
+    @Override
+    @Query("SELECT nl FROM notification_logs nl WHERE nl.createdAt BETWEEN :startDate AND :endDate")
+    Page<NotificationLog> findByCreatedDateBetween(LocalDateTime startDate,
+                                                  LocalDateTime endDate,
+                                                  Pageable pageable);
+
+    /**
+     * {@inheritDoc}
+     * Cuenta todos los logs (no hay concepto de "inactivos" en logs).
+     */
+    @Override
+    default long countActive() {
+        return count();
+    }
+
+    /**
+     * {@inheritDoc}
+     * Los logs siempre existen si tienen ID (no hay estado activo/inactivo).
+     */
+    @Override
+    default boolean existsActiveById(Long id) {
+        return existsById(id);
+    }
+
+    /**
+     * {@inheritDoc}
+     * Los logs siempre están "activos" (no hay eliminación lógica).
+     */
+    @Override
+    default Optional<NotificationLog> findActiveById(Long id) {
+        return findById(id);
+    }
+
+    /**
+     * {@inheritDoc}
+     * Busca logs por términos de búsqueda en asunto o contenido.
+     */
+    @Override
+    @Query("SELECT nl FROM notification_logs nl WHERE " +
+           "LOWER(nl.subject) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(nl.content) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(nl.recipientEmail) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    Page<NotificationLog> searchByTerm(String searchTerm, Pageable pageable);
+
+    // ==================== MÉTODOS ESPECÍFICOS DEL DOMINIO ====================
+
+    /**
+     * Busca logs de notificaciones pendientes de envío.
+     * Método optimizado para cola de procesamiento.
+     *
+     * @param status estado de las notificaciones a buscar
+     * @param pageable configuración de paginación
+     * @return página de logs pendientes
      */
     @Query("SELECT nl FROM notification_logs nl WHERE nl.status = :status ORDER BY nl.createdAt ASC")
     Page<NotificationLog> findPendingNotifications(@Param("status") NotificationStatus status, Pageable pageable);

@@ -2,8 +2,8 @@ package com.horarios.SGH.Service;
 
 import com.horarios.SGH.DTO.InAppNotificationDTO;
 import com.horarios.SGH.Model.NotificationType;
-import com.horarios.SGH.Model.users;
-import com.horarios.SGH.Repository.Iusers;
+import com.horarios.SGH.Model.User;
+import com.horarios.SGH.Repository.IUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ import java.util.List;
 public class DebugNotificationService {
 
     @Autowired
-    private Iusers usersRepository;
+    private IUserRepository usersRepository;
 
     @Autowired
     private InAppNotificationService inAppNotificationService;
@@ -32,9 +32,9 @@ public class DebugNotificationService {
         // 1. Verificar coordinadores en la base de datos
         diagnosis.append("1. COORDINADORES EN BD:\n");
         try {
-            List<users> coordinators = usersRepository.findByRoleNameWithDetails("COORDINADOR");
+            List<User> coordinators = usersRepository.findByRoleNameWithDetails("COORDINADOR");
             diagnosis.append("   ✓ Total coordinadores: " + coordinators.size() + "\n");
-            for (users user : coordinators) {
+            for (User user : coordinators) {
                 diagnosis.append("   ✓ Coordinador encontrado: ID=" + user.getUserId() +
                                ", Email=" + (user.getPerson() != null ? user.getPerson().getEmail() : "N/A") +
                                ", Status=" + user.getAccountStatus() + "\n");
@@ -42,11 +42,11 @@ public class DebugNotificationService {
         } catch (Exception e) {
             diagnosis.append("   ❌ Error consultando usuarios: " + e.getMessage() + "\n");
         }
-        
+
         // 2. Verificar método findByRoleNameWithDetails
         diagnosis.append("\n2. MÉTODO findByRoleNameWithDetails:\n");
         try {
-            List<users> coordinators = usersRepository.findByRoleNameWithDetails("COORDINADOR");
+            List<User> coordinators = usersRepository.findByRoleNameWithDetails("COORDINADOR");
             diagnosis.append("   ✓ Método funciona, encontró: " + coordinators.size() + " coordinadores\n");
         } catch (Exception e) {
             diagnosis.append("   ❌ Error en findByRoleNameWithDetails: " + e.getMessage() + "\n");

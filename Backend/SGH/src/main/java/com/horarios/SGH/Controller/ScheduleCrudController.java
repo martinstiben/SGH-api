@@ -5,10 +5,15 @@ import com.horarios.SGH.DTO.responseDTO;
 import com.horarios.SGH.Service.ScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,17 +23,35 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controlador REST para operaciones CRUD de horarios del sistema SGH.
+ * Proporciona endpoints para crear, leer, actualizar y eliminar horarios,
+ * con validaciones de seguridad y permisos basados en roles.
+ *
+ * Implementa el patrón Strategy para diferentes estrategias de obtención de horarios
+ * según el rol del usuario (estudiante vs coordinador).
+ *
+ * @author Sistema SGH
+ * @version 1.0
+ */
 @RestController
 @RequestMapping("/schedules-crud")
+@RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Horarios CRUD", description = "Operaciones CRUD para gestión manual de horarios")
-public class ScheduleCrudController {
+public class ScheduleCrudController extends AbstractController {
 
     private final ScheduleService scheduleService;
 
-    public ScheduleCrudController(ScheduleService scheduleService) {
-        this.scheduleService = scheduleService;
-    }
-
+    /**
+     * Crea nuevos horarios en el sistema aplicando validaciones de negocio.
+     * Implementa el patrón Factory Method para crear horarios con validaciones
+     * de disponibilidad de profesores y conflictos de horario.
+     *
+     * @param assignments Lista de horarios a crear
+     * @param auth Información de autenticación del coordinador
+     * @return ResponseEntity con los horarios creados o error
+     */
     @PostMapping
     @PreAuthorize("hasRole('COORDINADOR')")
     @Operation(
@@ -41,8 +64,12 @@ public class ScheduleCrudController {
                       "Las horas se envían como strings en formato 'HH:mm'."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Horarios creados exitosamente"),
-        @ApiResponse(responseCode = "400", description = "Error de validación (profesor no disponible, conflicto de horario, etc.)"),
+        @ApiResponse(responseCode = "200", description = "Horarios creados exitosamente",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ScheduleDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Error de validación (profesor no disponible, conflicto de horario, etc.)",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "403", description = "No autorizado"),
         @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     public ResponseEntity<List<ScheduleDTO>> createSchedule(
@@ -51,10 +78,19 @@ public class ScheduleCrudController {
             @RequestBody List<ScheduleDTO> assignments,
             Authentication auth) {
         try {
+            if (assignments == null || assignments.isEmpty()) {
+                return ResponseEntity.badRequest().body(null);
+            }
+
             List<ScheduleDTO> result = scheduleService.createSchedule(assignments, auth.getName());
+            log.info("Horarios creados exitosamente: {} horarios por coordinador {}", result.size(), auth.getName());
             return ResponseEntity.ok(result);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            log.warn("Error de validación creando horarios: {}", e.getMessage());
             return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            log.error("Error interno creando horarios: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 

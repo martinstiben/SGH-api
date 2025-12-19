@@ -8,7 +8,6 @@ import com.horarios.SGH.Service.InAppNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,13 +27,16 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/notifications")
 @Tag(name = "Notificaciones In-App", description = "API para gestión de notificaciones dentro de la aplicación")
-public class InAppNotificationController {
+public class InAppNotificationController extends AbstractController {
 
-    @Autowired
-    private InAppNotificationService inAppNotificationService;
+    private final InAppNotificationService inAppNotificationService;
+    private final com.horarios.SGH.Service.usersService usersService;
 
-    @Autowired
-    private com.horarios.SGH.Service.usersService usersService;
+    public InAppNotificationController(InAppNotificationService inAppNotificationService,
+                                     com.horarios.SGH.Service.usersService usersService) {
+        this.inAppNotificationService = inAppNotificationService;
+        this.usersService = usersService;
+    }
 
     /**
      * Obtiene todas las notificaciones activas del usuario actual
@@ -102,7 +104,7 @@ public class InAppNotificationController {
             // Verificar que la notificación pertenece al usuario
             InAppNotification notification = inAppNotificationService.getNotificationById(notificationId);
             if (!notification.getUserId().equals(userId)) {
-                return ResponseEntity.status(403).body(Map.of("error", "No tienes permiso para acceder a esta notificación"));
+                return ResponseEntity.status(403).body(errorResponse("No tienes permiso para acceder a esta notificación").getBody());
             }
 
             inAppNotificationService.markAsRead(notificationId);

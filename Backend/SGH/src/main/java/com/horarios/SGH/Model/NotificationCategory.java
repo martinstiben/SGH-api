@@ -1,9 +1,19 @@
 package com.horarios.SGH.Model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
- * Categorías de notificaciones para el sistema SGH
- * Define las categorías principales de las notificaciones en la aplicación
+ * Enumeración que define las categorías de notificaciones en el sistema SGH.
+ * Cada categoría agrupa notificaciones relacionadas por tema o funcionalidad,
+ * facilitando la organización y filtrado de las notificaciones por parte de los usuarios.
+ *
+ * Esta enumeración ayuda a los usuarios a identificar rápidamente el tipo de
+ * información que contiene cada notificación.
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
+@Schema(description = "Categorías de notificaciones del sistema SGH")
 public enum NotificationCategory {
     
     /**

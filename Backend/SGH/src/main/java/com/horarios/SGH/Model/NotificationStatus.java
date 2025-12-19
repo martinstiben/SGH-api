@@ -1,9 +1,20 @@
 package com.horarios.SGH.Model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
- * Estados posibles de las notificaciones en el sistema SGH
- * Define el flujo de vida de una notificación desde su creación hasta su resolución
+ * Enumeración que define los estados posibles de las notificaciones en el sistema SGH.
+ * Cada estado representa una etapa en el ciclo de vida de una notificación,
+ * desde su creación hasta su resolución final.
+ *
+ * Esta enumeración es crucial para el seguimiento y gestión del estado
+ * de las notificaciones, permitiendo monitorear el éxito del envío y tomar
+ * acciones correctivas cuando sea necesario.
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
+@Schema(description = "Estados del ciclo de vida de las notificaciones")
 public enum NotificationStatus {
     
     /**

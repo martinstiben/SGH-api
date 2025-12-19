@@ -3,7 +3,8 @@ package com.horarios.SGH.Repository;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,18 +14,85 @@ import com.horarios.SGH.Model.Role;
 import com.horarios.SGH.Model.User;
 
 /**
- * Repositorio JPA para la entidad User con consultas optimizadas.
- * Proporciona métodos para operaciones CRUD y consultas específicas del negocio.
- * 
+ * Repositorio especializado para la entidad User siguiendo los principios SOLID.
+ * Extiende AbstractRepository para operaciones comunes y añade consultas específicas del dominio de usuarios.
+ *
+ * Implementa el patrón Repository con consultas optimizadas usando JOIN FETCH para evitar N+1 queries.
+ * Aplica el patrón Specification a través de RepositoryFactory para consultas dinámicas.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Una sola responsabilidad - gestión de usuarios
+ * - OCP: Extensible mediante Specifications
+ * - LSP: Compatible con JpaRepository
+ * - ISP: Interface específica para usuarios
+ * - DIP: Depende de abstracciones, no implementaciones
+ *
  * @author Sistema SGH
- * @version 1.0
+ * @version 2.0 - Refactorizado con patrones SOLID
  */
 @Repository
-public interface IUserRepository extends JpaRepository<User, Long> {
+public interface IUserRepository extends AbstractRepository<User, Long> {
+
+    // ==================== IMPLEMENTACIÓN DE MÉTODOS ABSTRACTOS ====================
+
+    /**
+     * {@inheritDoc}
+     * Para usuarios, considera "activos" aquellos con estado ACTIVE.
+     */
+    @Override
+    @Query("SELECT u FROM User u WHERE u.accountStatus = 'ACTIVE'")
+    Page<User> findActive(Pageable pageable);
+
+    /**
+     * {@inheritDoc}
+     * Busca usuarios por fecha de creación en un rango.
+     */
+    @Override
+    @Query("SELECT u FROM User u WHERE u.createdAt BETWEEN :startDate AND :endDate")
+    Page<User> findByCreatedDateBetween(java.time.LocalDateTime startDate,
+                                       java.time.LocalDateTime endDate,
+                                       Pageable pageable);
+
+    /**
+     * {@inheritDoc}
+     * Cuenta usuarios activos (estado ACTIVE).
+     */
+    @Override
+    @Query("SELECT COUNT(u) FROM User u WHERE u.accountStatus = 'ACTIVE'")
+    long countActive();
+
+    /**
+     * {@inheritDoc}
+     * Verifica si existe un usuario activo con el ID especificado.
+     */
+    @Override
+    @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.userId = :id AND u.accountStatus = 'ACTIVE'")
+    boolean existsActiveById(Long id);
+
+    /**
+     * {@inheritDoc}
+     * Busca un usuario activo por su ID.
+     */
+    @Override
+    @Query("SELECT u FROM User u WHERE u.userId = :id AND u.accountStatus = 'ACTIVE'")
+    Optional<User> findActiveById(Long id);
+
+    /**
+     * {@inheritDoc}
+     * Busca usuarios por términos de búsqueda en nombre completo o email.
+     */
+    @Override
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.person p " +
+           "WHERE LOWER(p.fullName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+           "OR LOWER(p.email) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    Page<User> searchByTerm(String searchTerm, Pageable pageable);
+
+    // ==================== MÉTODOS ESPECÍFICOS DEL DOMINIO ====================
 
     /**
      * Encuentra un usuario por email de la persona asociada.
-     * 
+     * Método optimizado para autenticación.
+     *
      * @param email email a buscar
      * @return Optional con el usuario encontrado
      */

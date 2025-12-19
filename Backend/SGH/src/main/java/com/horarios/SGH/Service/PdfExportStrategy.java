@@ -3,19 +3,49 @@ package com.horarios.SGH.Service;
 import com.horarios.SGH.Model.schedule;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
-import lombok.RequiredArgsConstructor;
+
 
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Estrategia de exportación a PDF.
- * Implementa la interfaz ExportStrategy para exportar horarios en formato PDF.
+ * Estrategia de exportación a PDF para horarios académicos.
+ * Implementa el patrón Strategy para exportar horarios en formato PDF usando iText.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de exportar a PDF
+ * - LSP: Intercambiable con otras estrategias de exportación
+ * - DIP: Depende de la interfaz ExportStrategy
+ *
+ * Características:
+ * - Genera PDF con tabla estructurada
+ * - Colores diferenciados para descansos y almuerzos
+ * - Formato profesional con encabezados
+ * - Optimizado para impresión
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
-@RequiredArgsConstructor
 public class PdfExportStrategy implements ExportStrategy {
 
+    /**
+     * Constructor manual para PdfExportStrategy.
+     * No requiere inyección de dependencias para esta implementación.
+     */
+    public PdfExportStrategy() {
+        // Constructor sin parámetros
+    }
+
+    /**
+     * Exporta la lista de horarios a un archivo PDF.
+     * Crea un documento PDF con una tabla que muestra el horario formateado.
+     *
+     * @param schedules Lista de horarios a exportar
+     * @param title Título a mostrar en el documento PDF
+     * @return Array de bytes con el contenido del archivo PDF
+     * @throws Exception si ocurre un error durante la generación del PDF
+     */
     @Override
     public byte[] export(List<schedule> schedules, String title) throws Exception {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

@@ -14,7 +14,7 @@ import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Isubjects;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.logging.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,21 +22,75 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Servicio para gestión de docentes y sus relaciones.
+ * Maneja profesores, sus asignaciones a materias, disponibilidad horaria y fotos de perfil.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de gestionar docentes
+ * - DIP: Depende de abstracciones (repositorios, servicios)
+ *
+ * Funcionalidades:
+ * - CRUD completo de profesores
+ * - Gestión de relaciones profesor-materia
+ * - Configuración automática de disponibilidad horaria
+ * - Gestión de fotos de perfil
+ * - Validación de integridad referencial
+ *
+ * @author Sistema SGH
+ * @version 1.0
+ */
 @Service
-@RequiredArgsConstructor
 public class TeacherService {
 
     private final Isubjects subjectRepo;
     private final Iteachers teacherRepo;
+    
+    /**
+     * Logger para registro de eventos del servicio de docentes.
+     */
+    private static final Logger logger = Logger.getLogger(TeacherService.class.getName());
+    
     private final TeacherSubjectRepository teacherSubjectRepo;
     private final ITeacherAvailabilityRepository availabilityRepo;
     private final IScheduleRepository scheduleRepo;
     private final Icourses courseRepo;
     private final FileStorageService fileStorageService;
+    
+    /**
+     * Constructor manual para inyección de dependencias.
+     * Mantiene compatibilidad con Spring y permite testing.
+     *
+     * @param subjectRepo Repositorio de asignaturas
+     * @param teacherRepo Repositorio de docentes
+     * @param teacherSubjectRepo Repositorio de relación docente-materia
+     * @param availabilityRepo Repositorio de disponibilidad de docentes
+     * @param scheduleRepo Repositorio de horarios
+     * @param courseRepo Repositorio de cursos
+     * @param fileStorageService Servicio de almacenamiento de archivos
+     */
+    public TeacherService(Isubjects subjectRepo, Iteachers teacherRepo, 
+                         TeacherSubjectRepository teacherSubjectRepo,
+                         ITeacherAvailabilityRepository availabilityRepo,
+                         IScheduleRepository scheduleRepo,
+                         Icourses courseRepo,
+                         FileStorageService fileStorageService) {
+        this.subjectRepo = subjectRepo;
+        this.teacherRepo = teacherRepo;
+        this.teacherSubjectRepo = teacherSubjectRepo;
+        this.availabilityRepo = availabilityRepo;
+        this.scheduleRepo = scheduleRepo;
+        this.courseRepo = courseRepo;
+        this.fileStorageService = fileStorageService;
+    }
 
     /**
-     * Crea un docente. Si se envía subjectId, crea también la relación TeacherSubject.
+     * Crea un docente con configuración automática de disponibilidad.
+     * Si se especifica subjectId, crea la relación profesor-materia.
      * Automáticamente registra disponibilidad predeterminada de 06:00am a 12:00pm Lunes a Viernes.
+     *
+     * @param dto DTO con los datos del docente a crear
+     * @return DTO del docente creado con ID asignado
      */
     public TeacherDTO create(TeacherDTO dto) {
         teachers teacher = new teachers();

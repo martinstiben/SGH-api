@@ -1,11 +1,22 @@
 package com.horarios.SGH.Model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Tipos de notificaciones esenciales para el Sistema de Gestión de Horarios (SGH)
+ * Enumeración que define los tipos de notificaciones disponibles en el sistema SGH.
+ * Cada tipo está asociado a roles específicos y define el contenido y destinatarios
+ * de las notificaciones del sistema.
+ *
+ * Esta enumeración es fundamental para el sistema de notificaciones, permitiendo
+ * enviar mensajes contextualizados según el rol del usuario y el tipo de evento.
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
+@Schema(description = "Tipos de notificaciones del sistema SGH")
 public enum NotificationType {
 
     // Notificaciones principales automatizadas

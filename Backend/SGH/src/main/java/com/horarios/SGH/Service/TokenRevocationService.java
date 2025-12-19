@@ -2,51 +2,58 @@ package com.horarios.SGH.Service;
 
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
+/**
+ * Servicio para gestión de revocación de tokens JWT.
+ * Implementa AbstractTokenRevocationService con almacenamiento en memoria.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de gestionar revocación de tokens
+ * - OCP: Abierto para extensión mediante diferentes storages
+ * - LSP: Sustituye a AbstractTokenRevocationService
+ * - ISP: Implementa solo métodos necesarios
+ * - DIP: Depende de TokenStorage abstracción
+ *
+ * Patrones de diseño utilizados:
+ * - Template Method: En AbstractTokenRevocationService
+ * - Strategy: TokenStorage intercambiable
+ * - Factory: TokenRevocationServiceFactory
+ *
+ * @author Sistema SGH
+ * @version 2.0 - Refactorizado con patrones
+ */
 @Service
-public class TokenRevocationService {
-
-    // Almacén de tokens revocados (en producción usarías Redis o BD)
-    private final Set<String> revokedTokens = ConcurrentHashMap.newKeySet();
+public class TokenRevocationService extends AbstractTokenRevocationService {
 
     /**
-     * Revoca un token específico
+     * Constructor con inyección de TokenStorage.
+     * Usa Factory para crear instancia por defecto.
+     *
+     * @param tokenStorage Almacenamiento de tokens
      */
-    public void revokeToken(String token) {
-        if (token != null && !token.trim().isEmpty()) {
-            revokedTokens.add(token);
-        }
+    public TokenRevocationService(TokenStorage tokenStorage) {
+        super(tokenStorage);
     }
 
     /**
-     * Verifica si un token está revocado
+     * Constructor por defecto usando almacenamiento en memoria.
      */
-    public boolean isTokenRevoked(String token) {
-        return token != null && revokedTokens.contains(token);
+    public TokenRevocationService() {
+        this(new InMemoryTokenStorage());
     }
 
-    /**
-     * Revoca todos los tokens de un usuario (útil para logout forzado)
-     */
+    @Override
+    protected void performRevocation(String token) {
+        tokenStorage.addToken(token);
+    }
+
+    @Override
     public void revokeAllTokensForUser(String username) {
         // En una implementación completa, mantendrías una relación usuario-token
         // Por ahora, este método está preparado para futuras implementaciones
     }
 
-    /**
-     * Limpia tokens expirados (mantenimiento)
-     */
-    public void cleanupExpiredTokens() {
-        // En producción, implementarías limpieza periódica
-        // Por ahora, los tokens se mantienen hasta reinicio de aplicación
-    }
-
-    /**
-     * Obtiene el número de tokens revocados (para monitoreo)
-     */
-    public int getRevokedTokensCount() {
-        return revokedTokens.size();
+    @Override
+    protected void onTokenRevoked(String token) {
+        // Logging o notificaciones adicionales podrían ir aquí
     }
 }

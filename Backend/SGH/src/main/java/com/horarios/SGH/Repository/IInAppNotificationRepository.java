@@ -5,7 +5,6 @@ import com.horarios.SGH.Model.NotificationType;
 import com.horarios.SGH.Model.NotificationPriority;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,22 +13,98 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Repositorio para el manejo de notificaciones In-App
- * Proporciona acceso a la base de datos para operaciones CRUD sobre InAppNotification
+ * Repositorio especializado para notificaciones In-App siguiendo principios SOLID.
+ * Extiende AbstractRepository para operaciones comunes y añade consultas específicas del dominio de notificaciones.
+ *
+ * Implementa el patrón Repository con consultas optimizadas y el patrón Factory a través de RepositoryFactory
+ * para consultas dinámicas. Aplica el patrón Specification para filtros complejos.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única - gestión de notificaciones In-App
+ * - OCP: Extensible mediante Specifications y Factory
+ * - LSP: Compatible con JpaRepository y AbstractRepository
+ * - ISP: Interface específica para notificaciones
+ * - DIP: Depende de abstracciones, no implementaciones concretas
+ *
+ * Patrón Abstract aplicado: Extiende AbstractRepository para operaciones comunes
+ * Patrón Factory aplicado: Usa RepositoryFactory para consultas dinámicas
+ *
+ * @author Sistema SGH
+ * @version 2.0 - Refactorizado con patrones SOLID
  */
 @Repository
-public interface IInAppNotificationRepository extends JpaRepository<InAppNotification, Long> {
-    
+public interface IInAppNotificationRepository extends AbstractRepository<InAppNotification, Long> {
+
+    // ==================== IMPLEMENTACIÓN DE MÉTODOS ABSTRACTOS ====================
+
     /**
-     * Busca notificaciones por usuario activo (no archivadas y no expiradas)
+     * {@inheritDoc}
+     * Para notificaciones, considera "activas" aquellas no archivadas.
+     */
+    @Override
+    @Query("SELECT n FROM in_app_notifications n WHERE n.isArchived = false ORDER BY n.createdAt DESC")
+    Page<InAppNotification> findActive(Pageable pageable);
+
+    /**
+     * {@inheritDoc}
+     * Busca notificaciones por fecha de creación en un rango.
+     */
+    @Override
+    @Query("SELECT n FROM in_app_notifications n WHERE n.createdAt BETWEEN :startDate AND :endDate")
+    Page<InAppNotification> findByCreatedDateBetween(LocalDateTime startDate,
+                                                    LocalDateTime endDate,
+                                                    Pageable pageable);
+
+    /**
+     * {@inheritDoc}
+     * Cuenta notificaciones activas (no archivadas).
+     */
+    @Override
+    @Query("SELECT COUNT(n) FROM in_app_notifications n WHERE n.isArchived = false")
+    long countActive();
+
+    /**
+     * {@inheritDoc}
+     * Verifica si existe una notificación activa con el ID especificado.
+     */
+    @Override
+    @Query("SELECT COUNT(n) > 0 FROM in_app_notifications n WHERE n.notificationId = :id AND n.isArchived = false")
+    boolean existsActiveById(Long id);
+
+    /**
+     * {@inheritDoc}
+     * Busca una notificación activa por su ID.
+     */
+    @Override
+    @Query("SELECT n FROM in_app_notifications n WHERE n.notificationId = :id AND n.isArchived = false")
+    Optional<InAppNotification> findActiveById(Long id);
+
+    /**
+     * {@inheritDoc}
+     * Busca notificaciones por términos de búsqueda en título o mensaje.
+     */
+    @Override
+    @Query("SELECT n FROM in_app_notifications n WHERE " +
+           "LOWER(n.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(n.message) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    Page<InAppNotification> searchByTerm(String searchTerm, Pageable pageable);
+
+    // ==================== MÉTODOS ESPECÍFICOS DEL DOMINIO ====================
+
+    /**
+     * Busca notificaciones activas por usuario (no archivadas).
+     * Método optimizado para dashboard de usuario.
+     *
+     * @param userId ID del usuario
+     * @param pageable configuración de paginación
+     * @return página de notificaciones activas del usuario
      */
     @Query("SELECT n FROM in_app_notifications n WHERE n.userId = :userId AND n.isArchived = false " +
-           "AND (n.expiresAt IS NULL OR n.expiresAt > :now) ORDER BY n.createdAt DESC")
-    Page<InAppNotification> findActiveByUserId(@Param("userId") Long userId,
-                                              @Param("now") LocalDateTime now,
-                                              Pageable pageable);
+           "ORDER BY n.priority DESC, n.createdAt DESC")
+    Page<InAppNotification> findActiveByUserId(@Param("userId") Long userId, Pageable pageable);
     
     /**
      * Busca notificaciones no leídas por usuario

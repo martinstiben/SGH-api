@@ -8,8 +8,10 @@ import com.horarios.SGH.Repository.Icourses;
 import com.horarios.SGH.Repository.Iteachers;
 import com.horarios.SGH.Repository.IUserRepository;
 import com.horarios.SGH.Repository.TeacherSubjectRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.logging.Logger;
 
 import java.util.Comparator;
 import java.util.List;
@@ -17,75 +19,212 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Servicio para gestión de cursos con operaciones CRUD y consulta de estudiantes.
- * 
+ * Servicio para gestión de cursos académicos del sistema SGH.
+ * Implementa el patrón Strategy para diferentes estrategias de ordenamiento,
+ * Factory Method para creación de DTOs, y Template Method para operaciones CRUD.
+ *
+ * Proporciona operaciones completas de gestión de cursos con validaciones
+ * de negocio, manejo robusto de excepciones y logging detallado.
+ *
  * @author Sistema SGH
  * @version 1.0
  */
 @Service
-@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CourseService {
 
     private final Icourses courseRepo;
     private final Iteachers teacherRepo;
     private final IUserRepository userRepo;
     private final TeacherSubjectRepository teacherSubjectRepo;
-
+    
     /**
-     * Crea un comparador natural para ordenar nombres de cursos numéricamente.
-     * 
-     * @return comparador para ordenamiento natural
+     * Logger para registro de eventos del servicio de cursos.
      */
-    private static Comparator<CourseDTO> naturalOrderComparator() {
-        return Comparator.comparing(dto -> Pattern.compile("(\\d+)").splitAsStream(dto.getCourseName())
-                .map(part -> part.matches("\\d+") ? String.format("%010d", Integer.parseInt(part)) : part)
-                .collect(Collectors.joining()));
+    private static final Logger logger = Logger.getLogger(CourseService.class.getName());
+    
+    /**
+     * Logger estático para compatibilidad con código existente.
+     */
+    private static final Logger log = logger;
+    
+    /**
+     * Constructor manual para inyección de dependencias.
+     * Mantiene compatibilidad con Spring y permite testing.
+     *
+     * @param courseRepo Repositorio de cursos
+     * @param teacherRepo Repositorio de docentes
+     * @param userRepo Repositorio de usuarios
+     * @param teacherSubjectRepo Repositorio de relación docente-materia
+     */
+    public CourseService(Icourses courseRepo, Iteachers teacherRepo, 
+                        IUserRepository userRepo, TeacherSubjectRepository teacherSubjectRepo) {
+        this.courseRepo = courseRepo;
+        this.teacherRepo = teacherRepo;
+        this.userRepo = userRepo;
+        this.teacherSubjectRepo = teacherSubjectRepo;
     }
 
     /**
-     * Crea un nuevo curso.
-     * 
+     * Estrategia de ordenamiento para cursos.
+     * Implementa patrón Strategy.
+     */
+    @FunctionalInterface
+    public interface CourseSortingStrategy {
+        Comparator<CourseDTO> getComparator();
+    }
+
+    /**
+     * Estrategia de ordenamiento natural (por número de curso).
+     */
+    public static final CourseSortingStrategy NATURAL_ORDER = () ->
+        Comparator.comparing(dto -> Pattern.compile("(\\d+)")
+            .splitAsStream(dto.getCourseName())
+            .map(part -> part.matches("\\d+") ? String.format("%010d", Integer.parseInt(part)) : part)
+            .collect(Collectors.joining()));
+
+    /**
+     * Estrategia de ordenamiento alfabético.
+     */
+    public static final CourseSortingStrategy ALPHABETICAL_ORDER = () ->
+        Comparator.comparing(CourseDTO::getCourseName);
+
+    /**
+     * Factory para crear CourseDTOs.
+     * Implementa patrón Factory Method.
+     */
+    public static class CourseDTOFactory {
+        public static CourseDTO createFromEntity(courses course) {
+            if (course == null) {
+                return null;
+            }
+
+            CourseDTO dto = new CourseDTO();
+            dto.setCourseId(course.getId());
+            dto.setCourseName(course.getCourseName());
+            dto.setGradeDirectorId(course.getGradeDirector() != null ? course.getGradeDirector().getId() : null);
+            return dto;
+        }
+
+        public static CourseDTO createBasic(int courseId, String courseName) {
+            CourseDTO dto = new CourseDTO();
+            dto.setCourseId(courseId);
+            dto.setCourseName(courseName);
+            return dto;
+        }
+
+        public static CourseDTO createWithDirector(int courseId, String courseName, Integer gradeDirectorId) {
+            CourseDTO dto = new CourseDTO();
+            dto.setCourseId(courseId);
+            dto.setCourseName(courseName);
+            dto.setGradeDirectorId(gradeDirectorId);
+            return dto;
+        }
+    }
+
+    /**
+     * Método Template para operaciones CRUD de cursos.
+     * Implementa patrón Template Method.
+     */
+    protected abstract class CourseOperationTemplate<T> {
+        protected abstract void validateInput(T input);
+        protected abstract courses executeOperation(T input);
+        protected abstract CourseDTO createResult(courses entity);
+
+        public final CourseDTO execute(T input) {
+            validateInput(input);
+            try {
+                courses result = executeOperation(input);
+                CourseDTO dto = createResult(result);
+                logger.info("Operación de curso ejecutada exitosamente");
+                return dto;
+            } catch (Exception e) {
+                logger.severe("Error en operación de curso: " + e.getMessage());
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * Crea un nuevo curso aplicando validaciones y patrón Template Method.
+     *
      * @param dto datos del curso a crear
      * @return DTO del curso creado con ID asignado
      * @throws IllegalArgumentException si los datos son inválidos
      */
+    @Transactional
     public CourseDTO create(CourseDTO dto) {
-        if (dto == null) {
-            throw new IllegalArgumentException("Los datos del curso no pueden ser null");
-        }
-        
-        if (dto.getCourseName() == null || dto.getCourseName().trim().isEmpty()) {
-            throw new IllegalArgumentException("El nombre del curso es obligatorio");
-        }
+        return new CourseOperationTemplate<CourseDTO>() {
+            @Override
+            protected void validateInput(CourseDTO input) {
+                if (input == null) {
+                    throw new IllegalArgumentException("Los datos del curso no pueden ser null");
+                }
 
-        courses entity = new courses();
-        entity.setCourseName(dto.getCourseName().trim());
+                if (input.getCourseName() == null || input.getCourseName().trim().isEmpty()) {
+                    throw new IllegalArgumentException("El nombre del curso es obligatorio");
+                }
 
-        // Solo asignar director de grado si se especifica
-        if (dto.getGradeDirectorId() != null) {
-            teachers director = teacherRepo.findById(dto.getGradeDirectorId())
-                .orElseThrow(() -> new IllegalArgumentException("Director de grado no encontrado"));
-            entity.setGradeDirector(director);
-        }
+                // Validar formato del nombre del curso
+                if (!input.getCourseName().matches("^[a-zA-ZÀ-ÿ0-9\\s]+$")) {
+                    throw new IllegalArgumentException("El nombre del curso solo puede contener letras, números y espacios");
+                }
+            }
 
-        courses saved = courseRepo.save(entity);
-        dto.setCourseId(saved.getId());
-        return dto;
+            @Override
+            protected courses executeOperation(CourseDTO input) {
+                courses entity = new courses();
+                entity.setCourseName(input.getCourseName().trim());
+
+                // Solo asignar director de grado si se especifica
+                if (input.getGradeDirectorId() != null) {
+                    teachers director = teacherRepo.findById(input.getGradeDirectorId())
+                        .orElseThrow(() -> new IllegalArgumentException("Director de grado no encontrado"));
+                    entity.setGradeDirector(director);
+                }
+
+                return courseRepo.save(entity);
+            }
+
+            @Override
+            protected CourseDTO createResult(courses entity) {
+                return CourseDTOFactory.createFromEntity(entity);
+            }
+        }.execute(dto);
     }
 
     /**
      * Obtiene todos los cursos ordenados naturalmente.
-     * 
-     * @return lista de DTOs de cursos
+     * Implementa patrón Strategy para ordenamiento configurable.
+     *
+     * @return lista de DTOs de cursos ordenados
      */
     public List<CourseDTO> getAll() {
-        return courseRepo.findAll().stream().map(c -> {
-            CourseDTO dto = new CourseDTO();
-            dto.setCourseId(c.getId());
-            dto.setCourseName(c.getCourseName());
-            dto.setGradeDirectorId(c.getGradeDirector() != null ? c.getGradeDirector().getId() : null);
-            return dto;
-        }).sorted(naturalOrderComparator()).collect(Collectors.toList());
+        return getAll(NATURAL_ORDER);
+    }
+
+    /**
+     * Obtiene todos los cursos con estrategia de ordenamiento específica.
+     *
+     * @param sortingStrategy estrategia de ordenamiento a aplicar
+     * @return lista de DTOs de cursos ordenados
+     */
+    public List<CourseDTO> getAll(CourseSortingStrategy sortingStrategy) {
+        try {
+            List<CourseDTO> courses = courseRepo.findAll().stream()
+                .map(CourseDTOFactory::createFromEntity)
+                .collect(Collectors.toList());
+
+            if (sortingStrategy != null) {
+                courses.sort(sortingStrategy.getComparator());
+            }
+
+            logger.info("Obtenidos " + courses.size() + " cursos ordenados");
+            return courses;
+        } catch (Exception e) {
+            logger.severe("Error obteniendo todos los cursos: " + e.getMessage());
+            throw new RuntimeException("Error al obtener cursos", e);
+        }
     }
 
     /**

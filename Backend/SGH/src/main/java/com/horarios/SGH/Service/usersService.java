@@ -2,8 +2,7 @@ package com.horarios.SGH.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,15 +13,14 @@ import com.horarios.SGH.Repository.IUserRepository;
 /**
  * Servicio para gestión de usuarios con optimizaciones de rendimiento
  * y manejo robusto de excepciones.
- * 
+ *
  * @author Sistema SGH
  * @version 1.0
  */
 @Service
 @Transactional
+@Slf4j
 public class usersService {
-
-    private static final Logger logger = Logger.getLogger(usersService.class.getName());
 
     private final IUserRepository usersRepository;
     private final FileStorageService fileStorageService;
@@ -52,10 +50,10 @@ public class usersService {
         }
         
         try {
-            logger.log(Level.INFO, "Buscando usuario con ID: {0}", userId);
+            log.info("Buscando usuario con ID: {}", userId);
             return usersRepository.findById(userId);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error al obtener el usuario con ID: " + userId, e);
+            log.error("Error al obtener el usuario con ID: {}", userId, e);
             throw new RuntimeException("Error al obtener el usuario con ID: " + userId, e);
         }
     }
@@ -77,21 +75,21 @@ public class usersService {
         String normalizedEmail = email.trim().toLowerCase();
         
         try {
-            logger.log(Level.INFO, "Buscando usuario por email: {0}", normalizedEmail);
-            
+            log.info("Buscando usuario por email: {}", normalizedEmail);
+
             // MÉTODO OPTIMIZADO: Usa la consulta nativa del repositorio en lugar de cargar todos los usuarios
             Optional<User> userOpt = usersRepository.findByPerson_Email(normalizedEmail);
-            
+
             if (userOpt.isPresent()) {
-                logger.log(Level.INFO, "Usuario encontrado por email: {0}", normalizedEmail);
+                log.info("Usuario encontrado por email: {}", normalizedEmail);
                 return userOpt.get();
             }
-            
-            logger.log(Level.INFO, "No se encontró usuario con email: {0}", normalizedEmail);
+
+            log.info("No se encontró usuario con email: {}", normalizedEmail);
             return null;
-            
+
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error al buscar usuario por email: " + normalizedEmail, e);
+            log.error("Error al buscar usuario por email: {}", normalizedEmail, e);
             throw new RuntimeException("Error al buscar usuario por email: " + normalizedEmail, e);
         }
     }
@@ -133,25 +131,24 @@ public class usersService {
                 user.getPerson().setPhotoContentType(photoData.getContentType());
                 user.getPerson().setPhotoFileName(photoData.getFileName());
                 
-                logger.log(Level.INFO, "Foto actualizada para usuario ID: {0}", userId);
+                log.info("Foto actualizada para usuario ID: {}", userId);
             } else {
                 // Si photo es null o vacío, eliminar foto existente
                 user.getPerson().setPhotoData(null);
                 user.getPerson().setPhotoContentType(null);
                 user.getPerson().setPhotoFileName(null);
                 
-                logger.log(Level.INFO, "Foto eliminada para usuario ID: {0}", userId);
+                log.info("Foto eliminada para usuario ID: {}", userId);
             }
 
             usersRepository.save(user);
             return "Foto de perfil actualizada correctamente";
 
         } catch (IllegalArgumentException e) {
-            logger.log(Level.WARNING, "Error de validación actualizando foto para usuario {0}: {1}", 
-                      new Object[]{userId, e.getMessage()});
+            log.warn("Error de validación actualizando foto para usuario {}: {}", userId, e.getMessage());
             throw e; // Re-lanzar excepciones de validación
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error al actualizar la foto de perfil para usuario " + userId, e);
+            log.error("Error al actualizar la foto de perfil para usuario {}", userId, e);
             throw new RuntimeException("Error al actualizar la foto de perfil: " + e.getMessage(), e);
         }
     }
@@ -170,17 +167,16 @@ public class usersService {
         }
 
         try {
-            logger.log(Level.INFO, "Buscando usuarios por rol: {0}", roleName);
-            
+            log.info("Buscando usuarios por rol: {}", roleName);
+
             // Usar consulta optimizada que carga las relaciones con JOIN FETCH
             List<User> users = usersRepository.findByRoleNameWithDetails(roleName.trim());
-            
-            logger.log(Level.INFO, "Encontrados {0} usuarios con rol: {1}", 
-                      new Object[]{users.size(), roleName});
-            
+
+            log.info("Encontrados {} usuarios con rol: {}", users.size(), roleName);
+
             return users;
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error al obtener usuarios por rol: " + roleName, e);
+            log.error("Error al obtener usuarios por rol: {}", roleName, e);
             throw new RuntimeException("Error al obtener usuarios por rol: " + roleName, e);
         }
     }
@@ -199,7 +195,7 @@ public class usersService {
         }
 
         try {
-            logger.log(Level.INFO, "Obteniendo información completa del usuario ID: {0}", userId);
+            log.info("Obteniendo información completa del usuario ID: {}", userId);
             
             return usersRepository.findById(userId)
                 .map(user -> {
@@ -212,7 +208,7 @@ public class usersService {
                     return dto;
                 });
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error al obtener el usuario ID: " + userId, e);
+            log.error("Error al obtener el usuario ID: {}", userId, e);
             throw new RuntimeException("Error al obtener el usuario: " + e.getMessage(), e);
         }
     }
@@ -243,10 +239,10 @@ public class usersService {
     public long getTotalUsersCount() {
         try {
             long count = usersRepository.count();
-            logger.log(Level.INFO, "Total de usuarios en el sistema: {0}", count);
+            log.info("Total de usuarios en el sistema: {}", count);
             return count;
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error al obtener el conteo total de usuarios", e);
+            log.error("Error al obtener el conteo total de usuarios", e);
             throw new RuntimeException("Error al obtener el conteo de usuarios", e);
         }
     }
@@ -268,7 +264,7 @@ public class usersService {
             String normalizedEmail = email.trim().toLowerCase();
             return usersRepository.existsByPerson_Email(normalizedEmail);
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error verificando existencia de email: " + email, e);
+            log.error("Error verificando existencia de email: {}", email, e);
             throw new RuntimeException("Error verificando existencia de email", e);
         }
     }

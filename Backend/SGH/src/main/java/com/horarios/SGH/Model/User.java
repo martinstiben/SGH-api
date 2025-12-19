@@ -3,22 +3,46 @@ package com.horarios.SGH.Model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
 
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Entidad que representa un usuario del sistema SGH.
- * Un usuario puede ser un estudiante, maestro, coordinador o director de área.
- * 
+ * Entidad principal que representa un usuario del sistema SGH.
+ * Un usuario puede ser un estudiante, maestro, coordinador o director de área,
+ * y contiene toda la información necesaria para autenticación y autorización.
+ *
+ * Esta entidad es el núcleo del sistema de usuarios, conectando personas,
+ * credenciales, roles y configuraciones de seguridad.
+ *
+ * @author Sistema SGH
+ * @version 1.0
+ */
+/**
+ * Entidad principal que representa un usuario del sistema SGH.
+ * Un usuario puede ser un estudiante, maestro, coordinador o director de área,
+ * y contiene toda la información necesaria para autenticación y autorización.
+ *
+ * Esta entidad es el núcleo del sistema de usuarios, conectando personas,
+ * credenciales, roles y configuraciones de seguridad.
+ *
+ * Extiende AbstractEntity para funcionalidades comunes como timestamps,
+ * validación y operaciones estándar de entidades.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de representar usuarios
+ * - OCP: Abierto para extensión
+ * - LSP: Sustituye a AbstractEntity
+ *
+ * Patrones de diseño aplicados:
+ * - Template Method: Implementado a través de AbstractEntity
+ * - Factory: Para creación centralizada (delegado a EntityFactory)
+ *
  * @author Sistema SGH
  * @version 1.0
  */
 @Entity(name = "users")
-@Data
-public class User {
+public class User extends AbstractEntity {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -62,18 +86,18 @@ public class User {
     @NotNull(message = "El estado de la cuenta es obligatorio")
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime createdAt;
-
-    // Relación con UserCredentials para manejar las credenciales
+    /**
+     * Relación uno-a-uno con UserCredentials para manejar las credenciales de autenticación.
+     * Esta relación es obligatoria y se maneja en cascada.
+     */
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private UserCredentials userCredentials;
 
-    // Relación con UserSecurity para manejar la seguridad
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private UserSecurity userSecurity;
 
-    // Relación con UserRole para gestionar roles
+    /**
+     * Relación muchos-a-muchos con Role para gestionar los roles del usuario.
+     * Un usuario puede tener múltiples roles (ej: estudiante y maestro).
+     */
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_roles",
@@ -86,7 +110,7 @@ public class User {
      * Constructor vacío requerido por JPA.
      */
     public User() {
-        this.createdAt = LocalDateTime.now();
+        super();
     }
 
     /**
@@ -101,7 +125,7 @@ public class User {
 
     /**
      * Constructor completo para creación de usuarios.
-     * 
+     *
      * @param username nombre de usuario único
      * @param email correo electrónico único
      * @param firstName nombre del usuario
@@ -114,6 +138,348 @@ public class User {
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
+    }
+
+    /**
+     * Obtiene el identificador único del usuario.
+     *
+     * @return ID del usuario
+     */
+    public Long getUserId() {
+        return userId;
+    }
+
+    /**
+     * Establece el identificador único del usuario.
+     *
+     * @param userId ID del usuario
+     */
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    /**
+     * Obtiene el nombre de usuario único.
+     *
+     * @return nombre de usuario
+     */
+    public String getUsername() {
+        return username;
+    }
+
+    /**
+     * Establece el nombre de usuario único.
+     *
+     * @param username nombre de usuario
+     */
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    /**
+     * Obtiene el correo electrónico del usuario.
+     *
+     * @return email del usuario
+     */
+    public String getEmail() {
+        return email;
+    }
+
+    /**
+     * Establece el correo electrónico del usuario.
+     *
+     * @param email email del usuario
+     */
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    /**
+     * Obtiene el nombre del usuario.
+     *
+     * @return nombre del usuario
+     */
+    public String getFirstName() {
+        return firstName;
+    }
+
+    /**
+     * Establece el nombre del usuario.
+     *
+     * @param firstName nombre del usuario
+     */
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    /**
+     * Obtiene el apellido del usuario.
+     *
+     * @return apellido del usuario
+     */
+    public String getLastName() {
+        return lastName;
+    }
+
+    /**
+     * Establece el apellido del usuario.
+     *
+     * @param lastName apellido del usuario
+     */
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    /**
+     * Obtiene la persona asociada al usuario.
+     *
+     * @return persona asociada
+     */
+    public People getPerson() {
+        return person;
+    }
+
+    /**
+     * Establece la persona asociada al usuario.
+     *
+     * @param person persona asociada
+     */
+    public void setPerson(People person) {
+        this.person = person;
+    }
+
+    /**
+     * Obtiene el curso al que pertenece el usuario (si es estudiante).
+     *
+     * @return curso del usuario
+     */
+    public courses getCourse() {
+        return course;
+    }
+
+    /**
+     * Establece el curso al que pertenece el usuario.
+     *
+     * @param course curso del usuario
+     */
+    public void setCourse(courses course) {
+        this.course = course;
+    }
+
+    /**
+     * Verifica si el usuario está verificado.
+     *
+     * @return true si está verificado
+     */
+    public boolean isVerified() {
+        return isVerified;
+    }
+
+    /**
+     * Establece si el usuario está verificado.
+     *
+     * @param verified true si está verificado
+     */
+    public void setVerified(boolean verified) {
+        isVerified = verified;
+    }
+
+    /**
+     * Obtiene el estado de la cuenta del usuario.
+     *
+     * @return estado de la cuenta
+     */
+    public AccountStatus getAccountStatus() {
+        return accountStatus;
+    }
+
+    /**
+     * Establece el estado de la cuenta del usuario.
+     *
+     * @param accountStatus estado de la cuenta
+     */
+    public void setAccountStatus(AccountStatus accountStatus) {
+        this.accountStatus = accountStatus;
+    }
+
+    /**
+     * Valida si la entidad tiene información básica completa.
+     * Método de validación de negocio.
+     */
+    @Override
+    public void validate() {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("El nombre de usuario no puede estar vacío");
+        }
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("El email no puede estar vacío");
+        }
+        if (firstName == null || firstName.trim().isEmpty()) {
+            throw new IllegalArgumentException("El nombre no puede estar vacío");
+        }
+        if (lastName == null || lastName.trim().isEmpty()) {
+            throw new IllegalArgumentException("El apellido no puede estar vacío");
+        }
+        if (person == null) {
+            throw new IllegalArgumentException("La persona es obligatoria");
+        }
+        if (accountStatus == null) {
+            throw new IllegalArgumentException("El estado de la cuenta es obligatorio");
+        }
+    }
+
+    /**
+     * Verifica si la entidad es nueva (no persistida).
+     * Una entidad es nueva si no tiene ID asignado.
+     *
+     * @return true si es una nueva entidad
+     */
+    @Override
+    public boolean isNew() {
+        return userId == null;
+    }
+
+    /**
+     * Obtiene una representación resumida del usuario.
+     * Formato: "Usuario [userId] - [username] ([email])"
+     *
+     * @return Representación resumida
+     */
+    @Override
+    public String getSummary() {
+        return String.format("Usuario %d - %s (%s)",
+                userId != null ? userId : 0,
+                username != null ? username : "Sin usuario",
+                email != null ? email : "Sin email");
+    }
+
+    /**
+     * Obtiene las credenciales del usuario.
+     *
+     * @return credenciales del usuario
+     */
+    public UserCredentials getUserCredentials() {
+        return userCredentials;
+    }
+
+    /**
+     * Establece las credenciales del usuario.
+     *
+     * @param userCredentials credenciales del usuario
+     */
+    public void setUserCredentials(UserCredentials userCredentials) {
+        this.userCredentials = userCredentials;
+    }
+
+
+    /**
+     * Obtiene los roles asignados al usuario.
+     *
+     * @return conjunto de roles
+     */
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    /**
+     * Establece los roles asignados al usuario.
+     *
+     * @param roles conjunto de roles
+     */
+    public void setRoles(Set<Role> roles) {
+        this.roles = roles;
+    }
+
+
+    /**
+     * Activa la cuenta del usuario.
+     */
+    public void activate() {
+        this.accountStatus = AccountStatus.ACTIVE;
+    }
+
+    /**
+     * Desactiva la cuenta del usuario.
+     */
+    public void deactivate() {
+        this.accountStatus = AccountStatus.INACTIVE;
+    }
+
+    /**
+     * Suspende la cuenta del usuario.
+     */
+    public void suspend() {
+        this.accountStatus = AccountStatus.BLOCKED;
+    }
+
+    /**
+     * Agrega un rol al usuario.
+     *
+     * @param role rol a agregar
+     */
+    public void addRole(Role role) {
+        if (role != null) {
+            if (roles == null) {
+                roles = new HashSet<>();
+            }
+            roles.add(role);
+        }
+    }
+
+    /**
+     * Remueve un rol del usuario.
+     *
+     * @param role rol a remover
+     */
+    public void removeRole(Role role) {
+        if (role != null && roles != null) {
+            roles.remove(role);
+        }
+    }
+
+    /**
+     * Limpia todos los roles del usuario.
+     */
+    public void clearRoles() {
+        if (roles != null) {
+            roles.clear();
+        }
+    }
+
+    /**
+     * Verifica si el usuario es estudiante.
+     *
+     * @return true si es estudiante
+     */
+    public boolean isStudent() {
+        return hasRole("ESTUDIANTE");
+    }
+
+    /**
+     * Verifica si el usuario es maestro.
+     *
+     * @return true si es maestro
+     */
+    public boolean isTeacher() {
+        return hasRole("MAESTRO");
+    }
+
+    /**
+     * Verifica si el usuario es coordinador.
+     *
+     * @return true si es coordinador
+     */
+    public boolean isCoordinator() {
+        return hasRole("COORDINADOR");
+    }
+
+    /**
+     * Verifica si el usuario es director de área.
+     *
+     * @return true si es director de área
+     */
+    public boolean isDirector() {
+        return hasRole("DIRECTOR_DE_AREA");
     }
 
     /**
@@ -157,100 +523,6 @@ public class User {
         return accountStatus == AccountStatus.ACTIVE;
     }
 
-    /**
-     * Verifica si el usuario está verificado.
-     * 
-     * @return true si el usuario está verificado
-     */
-    public boolean isVerified() {
-        return isVerified;
-    }
-
-    /**
-     * Activa la cuenta del usuario.
-     */
-    public void activate() {
-        this.accountStatus = AccountStatus.ACTIVE;
-    }
-
-    /**
-     * Desactiva la cuenta del usuario.
-     */
-    public void deactivate() {
-        this.accountStatus = AccountStatus.INACTIVE;
-    }
-
-    /**
-     * Suspende la cuenta del usuario.
-     */
-    public void suspend() {
-        this.accountStatus = AccountStatus.BLOCKED;
-    }
-
-    /**
-     * Agrega un rol al usuario.
-     * 
-     * @param role rol a agregar
-     */
-    public void addRole(Role role) {
-        if (role != null) {
-            roles.add(role);
-        }
-    }
-
-    /**
-     * Remueve un rol del usuario.
-     * 
-     * @param role rol a remover
-     */
-    public void removeRole(Role role) {
-        if (role != null) {
-            roles.remove(role);
-        }
-    }
-
-    /**
-     * Limpia todos los roles del usuario.
-     */
-    public void clearRoles() {
-        roles.clear();
-    }
-
-    /**
-     * Verifica si el usuario es estudiante.
-     * 
-     * @return true si es estudiante
-     */
-    public boolean isStudent() {
-        return hasRole("ESTUDIANTE");
-    }
-
-    /**
-     * Verifica si el usuario es maestro.
-     * 
-     * @return true si es maestro
-     */
-    public boolean isTeacher() {
-        return hasRole("MAESTRO");
-    }
-
-    /**
-     * Verifica si el usuario es coordinador.
-     * 
-     * @return true si es coordinador
-     */
-    public boolean isCoordinator() {
-        return hasRole("COORDINADOR");
-    }
-
-    /**
-     * Verifica si el usuario es director de área.
-     * 
-     * @return true si es director de área
-     */
-    public boolean isDirector() {
-        return hasRole("DIRECTOR_DE_AREA");
-    }
 
     /**
      * Método de utilidad para logging y debugging.

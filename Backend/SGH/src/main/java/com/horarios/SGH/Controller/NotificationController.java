@@ -7,10 +7,8 @@ import com.horarios.SGH.Service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -29,10 +27,13 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/api/notifications")
 @Tag(name = "Notificaciones", description = "API para gestión de notificaciones por correo electrónico")
-public class NotificationController {
+public class NotificationController extends AbstractController {
 
-    @Autowired
-    private NotificationService notificationService;
+    private final NotificationService notificationService;
+
+    public NotificationController(NotificationService notificationService) {
+        this.notificationService = notificationService;
+    }
 
     /**
      * Envía una notificación individual
@@ -60,8 +61,7 @@ public class NotificationController {
 
         } catch (Exception e) {
             log.error("Error al enviar notificación: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al enviar notificación: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -87,8 +87,7 @@ public class NotificationController {
 
         } catch (Exception e) {
             log.error("Error al enviar notificaciones masivas: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al enviar notificaciones masivas: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -120,8 +119,7 @@ public class NotificationController {
 
         } catch (Exception e) {
             log.error("Error al enviar notificación a rol {}: {}", role, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al enviar notificación a rol: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -146,8 +144,7 @@ public class NotificationController {
 
         } catch (Exception e) {
             log.error("Error al reintentar notificaciones fallidas: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al reintentar notificaciones: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -170,8 +167,7 @@ public class NotificationController {
 
         } catch (Exception e) {
             log.error("Error al obtener estadísticas: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al obtener estadísticas: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -210,8 +206,7 @@ public class NotificationController {
 
         } catch (Exception e) {
             log.error("Error al obtener logs de notificaciones: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al obtener logs: " + e.getMessage()));
+            return handleException(e);
         }
     }
 
@@ -265,8 +260,7 @@ public class NotificationController {
             return ResponseEntity.ok(types);
         } catch (Exception e) {
             log.error("Error al obtener tipos de notificación para rol {}: {}", role, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al obtener tipos: " + e.getMessage()));
+            return handleException(e);
         }
     }
 

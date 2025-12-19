@@ -1,9 +1,18 @@
 package com.horarios.SGH.Model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
- * Niveles de prioridad para las notificaciones In-App
- * Define la urgencia y importancia de las notificaciones en la aplicación
+ * Enumeración que define los niveles de prioridad para las notificaciones In-App del sistema SGH.
+ * Cada nivel determina la urgencia, importancia y presentación visual de las notificaciones.
+ *
+ * Esta enumeración es fundamental para el sistema de notificaciones, permitiendo
+ * clasificar las alertas según su criticidad y requerir diferentes niveles de atención del usuario.
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
+@Schema(description = "Niveles de prioridad para notificaciones In-App")
 public enum NotificationPriority {
     
     /**

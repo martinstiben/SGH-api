@@ -6,18 +6,32 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 /**
- * Servicio responsable del manejo de archivos de imagen en base de datos.
- * Principio de responsabilidad única (SRP): Solo maneja el procesamiento de imágenes.
+ * Servicio para el manejo y procesamiento de archivos de imagen.
+ * Implementa validación y procesamiento de imágenes para almacenamiento en base de datos.
+ *
+ * Principios SOLID aplicados:
+ * - SRP: Responsabilidad única de procesar archivos de imagen
+ * - DIP: No depende de implementaciones concretas de almacenamiento
+ *
+ * Funcionalidades:
+ * - Validación de tipo y tamaño de archivo
+ * - Procesamiento de imágenes multipart
+ * - Conversión a formato binario para BD
+ *
+ * @author Sistema SGH
+ * @version 1.0
  */
 @Service
 public class FileStorageService {
 
     /**
-     * Procesa un archivo de imagen y retorna sus datos binarios.
-     * @param file Archivo multipart a procesar
-     * @return PhotoData conteniendo los datos binarios, tipo de contenido y nombre del archivo
-     * @throws IllegalArgumentException Si el archivo no es válido
-     * @throws RuntimeException Si ocurre un error de I/O
+     * Procesa un archivo de imagen multipart y extrae sus datos para almacenamiento.
+     * Realiza validación completa del archivo antes del procesamiento.
+     *
+     * @param file Archivo multipart recibido del cliente. No debe ser null.
+     * @return PhotoData conteniendo los datos binarios, tipo MIME y nombre original del archivo
+     * @throws IllegalArgumentException si el archivo no cumple con las validaciones
+     * @throws RuntimeException si ocurre un error de I/O durante el procesamiento
      */
     public PhotoData processImageFile(MultipartFile file) {
         validateImageFile(file);
@@ -34,7 +48,11 @@ public class FileStorageService {
     }
 
     /**
-     * Valida que el archivo sea una imagen válida y no exceda el tamaño máximo.
+     * Valida que el archivo multipart sea una imagen válida y cumpla con restricciones.
+     * Verifica que no sea null/vacío, sea de tipo imagen y no exceda el tamaño máximo.
+     *
+     * @param file Archivo a validar
+     * @throws IllegalArgumentException si alguna validación falla
      */
     private void validateImageFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -53,20 +71,49 @@ public class FileStorageService {
     }
 
     /**
-     * Clase interna para encapsular los datos de la foto.
+     * Clase de datos para encapsular información de una imagen procesada.
+     * Contiene los datos binarios, tipo MIME y nombre original del archivo.
+     * Se utiliza como DTO para transferir datos de imagen entre capas.
      */
     public static class PhotoData {
         private byte[] data;
         private String contentType;
         private String fileName;
 
+        /**
+         * Obtiene los datos binarios de la imagen.
+         * @return Array de bytes con el contenido de la imagen
+         */
         public byte[] getData() { return data; }
+
+        /**
+         * Establece los datos binarios de la imagen.
+         * @param data Array de bytes con el contenido de la imagen
+         */
         public void setData(byte[] data) { this.data = data; }
 
+        /**
+         * Obtiene el tipo MIME del archivo de imagen.
+         * @return Tipo de contenido (ej. "image/jpeg", "image/png")
+         */
         public String getContentType() { return contentType; }
+
+        /**
+         * Establece el tipo MIME del archivo de imagen.
+         * @param contentType Tipo de contenido MIME
+         */
         public void setContentType(String contentType) { this.contentType = contentType; }
 
+        /**
+         * Obtiene el nombre original del archivo.
+         * @return Nombre del archivo como fue subido por el usuario
+         */
         public String getFileName() { return fileName; }
+
+        /**
+         * Establece el nombre original del archivo.
+         * @param fileName Nombre del archivo original
+         */
         public void setFileName(String fileName) { this.fileName = fileName; }
     }
 }
